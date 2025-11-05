@@ -1,0 +1,154 @@
+# Paprika - .gitattributes
+# Configuration Git pour normalisation des fins de ligne
+
+# ========================================
+# AUTO-DETECTION
+# ========================================
+# Par défaut, laisser Git auto-détecter les fichiers texte
+# et normaliser les fins de ligne
+* text=auto
+
+# ========================================
+# FICHIERS TEXTE (LF sur tous les OS)
+# ========================================
+# Code source
+*.js text eol=lf
+*.jsx text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.json text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+
+# Configuration
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.ini text eol=lf
+*.conf text eol=lf
+
+# Documentation
+*.md text eol=lf
+*.mdx text eol=lf
+*.txt text eol=lf
+
+# Web
+*.html text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.sass text eol=lf
+
+# Shell scripts (LF obligatoire)
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Git
+.gitignore text eol=lf
+.gitattributes text eol=lf
+.gitmodules text eol=lf
+
+# ========================================
+# SCRIPTS WINDOWS (CRLF)
+# ========================================
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# ========================================
+# FICHIERS BINAIRES
+# ========================================
+# Images
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.svg binary
+*.bmp binary
+*.tiff binary
+*.avif binary
+
+# Fonts
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.eot binary
+
+# Audio/Video
+*.mp3 binary
+*.mp4 binary
+*.mov binary
+*.avi binary
+*.wav binary
+*.flac binary
+
+# Archives
+*.zip binary
+*.tar binary
+*.gz binary
+*.bz2 binary
+*.7z binary
+*.rar binary
+
+# Documents
+*.pdf binary
+*.doc binary
+*.docx binary
+*.xls binary
+*.xlsx binary
+*.ppt binary
+*.pptx binary
+
+# Autres binaires
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.a binary
+*.lib binary
+
+# iOS
+*.xcworkspace binary
+*.xcodeproj binary
+*.pbxproj binary
+
+# Android
+*.apk binary
+*.aab binary
+*.dex binary
+
+# ========================================
+# LINGUIST (GitHub language stats)
+# ========================================
+# Exclure des stats de langage GitHub
+*.md linguist-documentation
+docs/* linguist-documentation
+*.json linguist-generated=true
+package-lock.json linguist-generated=true
+yarn.lock linguist-generated=true
+
+# ========================================
+# DIFF PERSONNALISÉS
+# ========================================
+# Package.json (diff plus lisible)
+package.json diff=json
+package-lock.json diff=json
+
+# TypeScript/JavaScript
+*.ts diff=typescript
+*.tsx diff=typescript
+*.js diff=javascript
+*.jsx diff=javascript
+
+# Markdown
+*.md diff=markdown
+
+# ========================================
+# MERGE STRATEGIES
+# ========================================
+# Toujours prendre "ours" pour ces fichiers en cas de conflit
+# (fichiers générés automatiquement)
+package-lock.json merge=ours
+yarn.lock merge=ours
