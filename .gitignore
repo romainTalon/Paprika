@@ -1,0 +1,331 @@
+# Paprika - .gitignore
+
+# ========================================
+# SECRETS & ENVIRONNEMENT
+# ========================================
+# ⚠️ CRITIQUE : Ne JAMAIS committer ces fichiers
+.env
+.env.local
+.env*.local
+.env.production
+.env.development
+.env.test
+
+# Clés API et secrets
+*.pem
+*.key
+*.secret
+secrets/
+credentials/
+
+# ========================================
+# EXPO & REACT NATIVE
+# ========================================
+# Expo
+.expo/
+.expo-shared/
+dist/
+web-build/
+
+# Expo EAS
+eas.json
+
+# Metro bundler
+.metro-health-check*
+
+# ========================================
+# NODE MODULES
+# ========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Package managers
+.pnpm-debug.log*
+.yarn/
+.yarn-integrity
+
+# ========================================
+# TYPESCRIPT
+# ========================================
+*.tsbuildinfo
+*.js.map
+*.d.ts.map
+
+# ========================================
+# BUILDS & ARTIFACTS
+# ========================================
+# iOS
+ios/Pods/
+ios/.xcode.env.local
+ios/build/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+xcuserdata/
+*.xccheckout
+*.moved-aside
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/captures/
+android/local.properties
+*.apk
+*.aab
+*.jks
+*.keystore
+
+# ========================================
+# DATABASE & ORM
+# ========================================
+# Drizzle
+drizzle/migrations/*.sql
+# Garder le dossier mais pas les migrations auto-générées en local
+!drizzle/migrations/.gitkeep
+
+# SQLite (si utilisé pour dev local)
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# ========================================
+# SUPABASE
+# ========================================
+# Config locale Supabase
+supabase/.temp/
+.supabase/
+
+# ========================================
+# IDE & EDITORS
+# ========================================
+# VSCode
+.vscode/
+!.vscode/settings.json.example
+!.vscode/extensions.json.example
+
+# JetBrains (WebStorm, IntelliJ)
+.idea/
+*.iml
+*.ipr
+*.iws
+.idea_modules/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ========================================
+# MACOS
+# ========================================
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# ========================================
+# WINDOWS
+# ========================================
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# ========================================
+# LINUX
+# ========================================
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ========================================
+# TESTING
+# ========================================
+coverage/
+.nyc_output/
+*.lcov
+.coverage
+.coverage.*
+htmlcov/
+junit.xml
+.pytest_cache/
+.cache/
+
+# ========================================
+# LOGS
+# ========================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+
+# ========================================
+# TEMPORARY FILES
+# ========================================
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+
+# ========================================
+# CLAUDE CODE
+# ========================================
+# Claude Code settings (à adapter selon besoins)
+.claude/settings.local.json
+# Garder les autres fichiers .claude/ pour partage d'équipe
+
+# ========================================
+# AUTRES
+# ========================================
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache
+.cache
+.parcel-cache
+
+# Next.js (si utilisé)
+.next/
+out/
+
+# Nuxt.js (si utilisé)
+.nuxt/
+dist/
+
+# Gatsby (si utilisé)
+.cache/
+public/
+
+# Serverless directories
+.serverless/
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Storybook (si utilisé)
+.out/
+.storybook-out/
+
+# Sentry
+.sentryclirc
+
+# Turborepo (si utilisé)
+.turbo
+
+# ========================================
+# ASSETS GÉNÉRÉS
+# ========================================
+# Images optimisées automatiquement
+*.webp.tmp
+*.avif.tmp
+
+# ========================================
+# DOCUMENTATION (exceptions)
+# ========================================
+# Garder tous les .md SAUF les brouillons
+*.draft.md
+*.wip.md
+
+# ========================================
+# CUSTOM PAPRIKA
+# ========================================
+# Screenshots de debug
+screenshots/
+debug-*.png
+debug-*.jpg
+
+# Données de test
+test-data/
+fixtures/*.json
+!fixtures/example.json
+
+# Backup base de données locale
+*.backup.sql
+backups/
+
+# Fichiers de migration temporaires
+migrations-temp/
+
+# ========================================
+# FIN
+# ========================================
