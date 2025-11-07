@@ -8,7 +8,13 @@
       "mcp__supabase__list_projects",
       "mcp__supabase__execute_sql",
       "Bash(npx tsc:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(npx create-expo-app@latest . --template blank-typescript)",
+      "Bash(npx create-expo-app@latest paprika-temp --template blank-typescript)",
+      "Bash(cp:*)",
+      "Bash(npx tailwindcss init)",
+      "Bash(npm run start)",
+      "Bash(taskkill:*)"
     ],
     "deny": [],
     "ask": []

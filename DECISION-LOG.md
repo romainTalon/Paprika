@@ -216,50 +216,72 @@ async function importRecipeFromURL(url: string) {
 
 ---
 
-## 2025-11-03 - NativeWind au lieu de Styled Components
+## 2025-11-07 - StyleSheet Natif + Design System au lieu de NativeWind
 
-**Contexte** : Choix de la solution de styling React Native
+**Contexte** : NativeWind v4 instable avec Expo 54, problèmes de configuration et incompatibilités de versions pendant le setup initial.
 
-**Décision** : **NativeWind** (Tailwind CSS pour React Native)
+**Décision** : **React Native StyleSheet natif** avec un Design System structuré (`src/theme/` + composants UI réutilisables)
 
 **Raisons** :
-- ✅ **Tailwind CSS** : Syntax familière, hyper productive
-- ✅ Performances natives (compilation styles au build time)
-- ✅ Design System cohérent via `tailwind.config.js`
-- ✅ Responsive design facile (`md:`, `lg:` breakpoints)
-- ✅ Dark mode natif
-- ✅ Pas de runtime overhead (vs Styled Components)
-- ✅ Bundle size réduit (~50KB)
+- ✅ **Stabilité maximale** : Pas de problèmes de configuration ou breaking changes
+- ✅ **Performance native** : StyleSheet compilé au build time, zéro overhead
+- ✅ **Type-safety** : TypeScript fonctionne parfaitement avec StyleSheet
+- ✅ **Production-ready** : Approche standard et éprouvée React Native
+- ✅ **Debugging facile** : Moins de couches d'abstraction
+- ✅ **Bundle size** : Aucune dépendance supplémentaire
+- ✅ **Design System réutilisable** : `theme/` + composants UI = expérience similaire à Tailwind
 
 **Alternatives considérées** :
-- **Styled Components** : Runtime overhead, bundle plus lourd, moins performant
-- **StyleSheet natif** : Verbeux, pas de design system intégré
+- **NativeWind v4** : Problèmes d'incompatibilité avec Expo 54, configuration complexe
+- **Styled Components** : Runtime overhead, bundle plus lourd
 - **Tamagui** : Excellent mais trop opinionated, courbe d'apprentissage
 
-**Exemple** :
-```tsx
-// NativeWind (✅ Propre)
-<View className="flex-1 bg-cream-100 p-4">
-  <Text className="text-2xl font-bold text-warm-brown">
-    Hello
-  </Text>
-</View>
-
-// StyleSheet natif (❌ Verbeux)
-<View style={styles.container}>
-  <Text style={styles.title}>Hello</Text>
-</View>
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF9F0', padding: 16 },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#6B5847' }
-});
+**Architecture du Design System** :
+```
+src/
+├── theme/
+│   ├── colors.ts       # Palette Warm & Cozy
+│   ├── spacing.ts      # Système d'espacement (4px base)
+│   ├── typography.ts   # Tailles, poids, line heights
+│   ├── shadows.ts      # Ombres pré-définies
+│   └── index.ts        # Export centralisé
+└── components/ui/
+    ├── Text.tsx        # Composant Text avec variants
+    ├── Button.tsx      # Composant Button réutilisable
+    ├── Container.tsx   # Conteneur principal
+    └── index.ts
 ```
 
+**Exemple d'utilisation** :
+```tsx
+// ✅ Avec Design System (simple et propre)
+import { Container, Text, Button } from "@/components/ui";
+import { spacing } from "@/theme";
+
+<Container centered>
+  <Text variant="h1" color="primary">
+    🍳 Paprika
+  </Text>
+  <Button variant="primary" size="lg" style={{ marginTop: spacing.xl }}>
+    Commencer
+  </Button>
+</Container>
+```
+
+**Migration future** :
+- Possible de passer à NativeWind v5 quand stable
+- Ou rester avec StyleSheet (excellent pour MVP et production)
+
 **Conséquences** :
-- Dépendance à NativeWind (updates breaking possibles)
-- Quelques limitations vs Tailwind web (certaines classes non supportées)
+- Plus verbeux pour styles complexes (mais composants UI compensent)
+- Besoin de maintenir le Design System (mais structure claire)
+- Meilleure stabilité = développement plus rapide
 
 **Statut** : ✅ Validée
+
+**Ressources** :
+- [docs/09-design-system.md](./docs/09-design-system.md)
+- Design System original : [docs/07-ui-guidelines.md](./docs/07-ui-guidelines.md)
 
 ---
 
@@ -411,4 +433,4 @@ await db.insert(nutritionCache).values({ ... });
 ---
 
 **Maintenu par** : Équipe Paprika
-**Dernière mise à jour** : 5 novembre 2025
+**Dernière mise à jour** : 7 novembre 2025
