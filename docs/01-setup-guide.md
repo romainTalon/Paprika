@@ -89,10 +89,6 @@ Créer/modifier `tsconfig.json` :
 # Core & Navigation
 npm install expo-router react-native-safe-area-context react-native-screens
 
-# UI & Styling
-npm install nativewind clsx
-npm install -D tailwindcss
-
 # State Management & Data Fetching
 npm install @tanstack/react-query zustand
 npm install @react-native-async-storage/async-storage
@@ -116,75 +112,47 @@ npm install -D eslint prettier
 npm install -D @typescript-eslint/eslint-plugin @typescript-eslint/parser
 ```
 
-### **Étape 1.4 : Configuration NativeWind**
+### **Étape 1.4 : Configuration Design System**
 
-```javascript
-// tailwind.config.js
-/** @type {import('tailwindcss').Config} */
-module.exports = {
-  content: [
-    "./App.{js,jsx,ts,tsx}",
-    "./app/**/*.{js,jsx,ts,tsx}",
-    "./src/**/*.{js,jsx,ts,tsx}",
-  ],
-  presets: [require("nativewind/preset")],
-  theme: {
-    extend: {
-      colors: {
-        primary: {
-          DEFAULT: "#FFB03A",
-          50: "#FFF8F0",
-          100: "#FFEFD9",
-          200: "#FFE0B2",
-          300: "#FFD08A",
-          400: "#FFC062",
-          500: "#FFB03A",
-          600: "#E69A34",
-          700: "#CC842E",
-          800: "#B36E28",
-          900: "#995822",
-        },
-        cream: {
-          DEFAULT: "#FFF9F0",
-          50: "#FFFCF7",
-          100: "#FFF9F0",
-          200: "#FFF3E0",
-          300: "#FFEFD1",
-          400: "#FFEAC2",
-          500: "#FFE4B3",
-        },
-        warm: {
-          brown: "#6B5847",
-          gray: "#8B7355",
-        },
-      },
-    },
-  },
-  plugins: [],
-};
+Le Design System Paprika utilise **React Native StyleSheet natif** pour une stabilité maximale.
+
+**Structure à créer :**
+
+```bash
+mkdir -p src/theme
+mkdir -p src/components/ui
 ```
+
+**Configuration Babel :**
 
 ```javascript
 // babel.config.js
 module.exports = function (api) {
   api.cache(true);
   return {
-    presets: [
-      ["babel-preset-expo", { jsxImportSource: "nativewind" }],
-    ],
-    plugins: [
-      "nativewind/babel",
-    ],
+    presets: ["babel-preset-expo"],
   };
 };
 ```
 
-```typescript
-// global.css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-```
+**Création des tokens de design :**
+
+Les fichiers suivants sont à créer (voir [09-design-system.md](./09-design-system.md) pour le code complet) :
+
+- `src/theme/colors.ts` - Palette de couleurs "Warm & Cozy"
+- `src/theme/spacing.ts` - Système d'espacement (4px base)
+- `src/theme/typography.ts` - Tailles de police et poids
+- `src/theme/shadows.ts` - Ombres pour élévation
+- `src/theme/index.ts` - Export centralisé
+
+**Création des composants UI :**
+
+- `src/components/ui/Text.tsx` - Text avec variants (h1, h2, body, etc.)
+- `src/components/ui/Button.tsx` - Button avec variants (primary, secondary, etc.)
+- `src/components/ui/Container.tsx` - Conteneur principal
+- `src/components/ui/index.ts` - Export centralisé
+
+**Documentation complète :** Voir [docs/09-design-system.md](./09-design-system.md) pour les exemples et best practices.
 
 ### **Étape 1.5 : Configuration ESLint & Prettier**
 
@@ -839,7 +807,7 @@ npm run start
 [ ] Supabase connecté (tester auth)
 [ ] Drizzle peut query la DB
 [ ] Variables d'environnement chargées
-[ ] NativeWind applique les styles
+[ ] Design System applique les styles
 
 # APIs
 [ ] Anthropic répond (tester parseRecipe)
@@ -869,4 +837,4 @@ Votre environnement de développement Paprika est maintenant prêt !
 ---
 
 *Guide de Setup v1.0 - Paprika*
-*Dernière mise à jour : 3 novembre 2025*
+*Dernière mise à jour : 7 novembre 2025*

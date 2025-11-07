@@ -33,11 +33,17 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 | 📝 Documentation | ✅ Complète | 100% |
 | 🗄️ Base de Données | ⏳ À faire | 0% |
 | ⚙️ Backend | ⏳ À faire | 0% |
-| 📱 Frontend | ⏳ À faire | 0% |
+| 📱 Frontend | 🚧 En cours | 15% |
 | 🤖 Services IA | ⏳ À faire | 0% |
 | 💳 Paiements | ⏳ À faire | 0% |
 
-**Dernière mise à jour** : 5 novembre 2025
+**Phase 1 Setup complétée** ✅ :
+- Expo 54 + React Native 0.81 + TypeScript 5.9
+- Design System complet (StyleSheet natif + thème réutilisable)
+- Composants UI de base (Text, Button, Container)
+- Navigation Expo Router configurée
+
+**Dernière mise à jour** : 7 novembre 2025
 
 ---
 
@@ -95,9 +101,9 @@ eas build --platform all  # Build natif
 
 ```yaml
 Frontend:
-  Framework: React Native 0.76+ / Expo 52+
-  Langage: TypeScript 5.x (strict mode)
-  Styling: NativeWind (Tailwind CSS)
+  Framework: React Native 0.81+ / Expo 54+
+  Langage: TypeScript 5.9 (strict mode)
+  Styling: StyleSheet natif + Design System
   State: TanStack Query + Zustand
 
 Backend:

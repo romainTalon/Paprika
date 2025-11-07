@@ -17,14 +17,14 @@
 
 ## 📱 **Frontend**
 
-### **React Native 0.76+**
+### **React Native 0.81+**
 - **Pourquoi** : Code partagé iOS + Android
-- **Avantages** : 
+- **Avantages** :
   - Performance native
   - Écosystème mature
   - Hot reload excellent
 
-### **Expo 52+**
+### **Expo 54+**
 - **Pourquoi** : Simplification développement mobile
 - **Features utilisées** :
   - OTA Updates (déploiement sans stores)
@@ -42,22 +42,34 @@
 }
 ```
 
-### **NativeWind**
-- **Pourquoi** : Tailwind CSS pour React Native
+### **Design System - StyleSheet Natif**
+- **Pourquoi** : Stabilité maximale et performances optimales
 - **Avantages** :
-  - Syntax familière
-  - Léger (~50KB)
-  - Performance native
-  - Dark mode facile
+  - Zero setup, natif React Native
+  - Type-safety complète avec TypeScript
+  - Performance native optimale
+  - Pas de dépendances tierces
 
-**Exemple :**
+**Architecture :**
 ```typescript
-<View className="flex-1 bg-cream-50 p-4">
-  <Text className="text-2xl font-bold text-warm-brown">
+// src/theme/ - Tokens de design réutilisables
+import { colors, spacing, fontSizes, shadows } from "@/theme";
+
+// src/components/ui/ - Composants UI stylisés
+import { Text, Button, Container } from "@/components/ui";
+
+// Exemple d'utilisation
+<Container centered>
+  <Text variant="h1" color="primary">
     Mes Recettes
   </Text>
-</View>
+  <Button variant="primary" size="lg">
+    Ajouter une recette
+  </Button>
+</Container>
 ```
+
+**Documentation complète :** [docs/09-design-system.md](./09-design-system.md)
 
 ---
 
@@ -436,9 +448,8 @@ const useStore = create((set) => ({
     "clsx": "^2.1.0",
     "date-fns": "^3.0.0",
     "drizzle-orm": "^0.29.3",
-    "expo": "~52.0.0",
-    "expo-router": "~3.5.0",
-    "nativewind": "^4.0.0",
+    "expo": "~54.0.0",
+    "expo-router": "~4.0.0",
     "postgres": "^3.4.3",
     "react": "18.2.0",
     "react-native": "0.76.0",
@@ -456,8 +467,7 @@ const useStore = create((set) => ({
     "drizzle-kit": "^0.20.10",
     "eslint": "^8.56.0",
     "prettier": "^3.1.1",
-    "tailwindcss": "^3.4.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.9.0"
   }
 }
 ```
@@ -622,4 +632,4 @@ npm run test:e2e
 ---
 
 *Stack Technique v1.0 - Paprika*
-*Dernière mise à jour : 3 novembre 2025*
+*Dernière mise à jour : 7 novembre 2025*

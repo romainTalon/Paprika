@@ -2,7 +2,7 @@
 title: "Index de la Documentation"
 category: "Navigation"
 tags: ["index", "navigation", "documentation"]
-updated: "2025-11-05"
+updated: "2025-11-07"
 status: "✅ Complet"
 reading_time: "5 min"
 ---
@@ -44,8 +44,9 @@ reading_time: "5 min"
 | Document | Description | Temps |
 |----------|-------------|-------|
 | [UI Guidelines](./07-ui-guidelines.md) | Design System "Warm & Cozy" complet | 45 min |
+| [Design System](./09-design-system.md) | StyleSheet natif + composants réutilisables | 30 min |
 | [Frontend Guidelines](./08-frontend-guidelines.md) | React Native Best Practices | 1h |
-| [Stack Frontend](./02-tech-stack.md#frontend) | React Native + Expo + NativeWind | 15 min |
+| [Stack Frontend](./02-tech-stack.md#frontend) | React Native + Expo + Design System | 15 min |
 | [Composants UI](./08-frontend-guidelines.md#9-composants-ui) | Composants réutilisables | 20 min |
 
 **Quick Links Frontend :**
@@ -158,8 +159,9 @@ reading_time: "5 min"
 | [06](./06-freemium-strategy.md) | **Freemium Strategy** | Monétisation détaillée | 18 KB | 30 min |
 | [07](./07-ui-guidelines.md) | **UI Guidelines** | Design System | 15 KB | 45 min |
 | [08](./08-frontend-guidelines.md) | **Frontend Guidelines** | React Native Best Practices | 22 KB | 1h |
-| [09](./09-backend-guidelines.md) | **Backend Guidelines** | Backend Best Practices (à créer) | - | 30 min |
-| [10](./10-deployment-guide.md) | **Deployment** | CI/CD & Stores (à créer) | - | 30 min |
+| [09](./09-design-system.md) | **Design System** | StyleSheet natif + tokens + composants UI | 9 KB | 30 min |
+| [10](./10-backend-guidelines.md) | **Backend Guidelines** | Backend Best Practices (à créer) | - | 30 min |
+| [11](./11-deployment-guide.md) | **Deployment** | CI/CD & Stores (à créer) | - | 30 min |
 
 ---
 
@@ -190,10 +192,13 @@ reading_time: "5 min"
 
 | Sujet | Document | Section |
 |-------|----------|---------|
-| Design System | [UI Guidelines](./07-ui-guidelines.md) | - |
-| Couleurs | [UI Guidelines](./07-ui-guidelines.md#1-couleurs) | Design System |
+| Design System Concept | [UI Guidelines](./07-ui-guidelines.md) | - |
+| Design System Implémentation | [Design System](./09-design-system.md) | - |
+| Couleurs (tokens) | [Design System](./09-design-system.md#thème) | Thème |
+| Couleurs (specs) | [UI Guidelines](./07-ui-guidelines.md#1-couleurs) | Design System |
 | Typographie | [UI Guidelines](./07-ui-guidelines.md#2-typographie) | Design System |
-| Composants | [UI Guidelines](./07-ui-guidelines.md#6-composants-réutilisables) | Composants |
+| Composants UI | [Design System](./09-design-system.md#composants-ui) | Composants |
+| Composants réutilisables | [UI Guidelines](./07-ui-guidelines.md#6-composants-réutilisables) | Composants |
 | Accessibilité | [UI Guidelines](./07-ui-guidelines.md#5-accessibilité) | UX |
 | Responsive | [UI Guidelines](./07-ui-guidelines.md#4-responsive-design) | Layout |
 | Performance | [UI Guidelines](./07-ui-guidelines.md#7-performance) | Optimisation |
@@ -312,7 +317,7 @@ reading_time: "5 min"
 ---
 
 **Version** : 1.0
-**Dernière mise à jour** : 5 novembre 2025
+**Dernière mise à jour** : 7 novembre 2025
 **Mainteneur** : Équipe Paprika
 
 ---

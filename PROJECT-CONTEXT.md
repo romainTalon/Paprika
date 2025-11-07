@@ -1,7 +1,7 @@
 # Paprika - Context Rapide
 
 **Type**: Application mobile React Native (iOS/Android)
-**Statut**: 📝 Documentation complète - Code pas encore développé
+**Statut**: 📝 Documentation complète - Phase 1 (Setup) en cours (15%)
 **Stack**: React Native + Expo + Supabase + Drizzle + Claude AI
 **Modèle**: Freemium (€4.99/mois)
 
@@ -37,6 +37,7 @@
 
 ### Design & UI
 - **[docs/07-ui-guidelines.md](./docs/07-ui-guidelines.md)** 🎨 Design System "Warm & Cozy"
+- **[docs/09-design-system.md](./docs/09-design-system.md)** 🧩 Implémentation StyleSheet natif
 
 ---
 
@@ -47,12 +48,18 @@
 | 📝 Documentation | ✅ Complète | 100% |
 | 🗄️ Setup Base de Données | ⏳ À faire | 0% |
 | ⚙️ Backend (Supabase + Edge Functions) | ⏳ À faire | 0% |
-| 📱 Frontend (React Native + Expo) | ⏳ À faire | 0% |
+| 📱 Frontend (React Native + Expo) | 🚧 En cours | 15% |
 | 🤖 Services IA (Import, Nutrition) | ⏳ À faire | 0% |
 | 💳 Intégration Stripe | ⏳ À faire | 0% |
 | 🧪 Tests & QA | ⏳ À faire | 0% |
 
-**Dernière mise à jour** : 5 novembre 2025
+**Phase 1 Setup complétée** ✅ :
+- Expo 54 + React Native 0.81 + TypeScript 5.9
+- Design System complet (StyleSheet natif + thème réutilisable)
+- Composants UI de base (Text, Button, Container)
+- Navigation Expo Router configurée
+
+**Dernière mise à jour** : 7 novembre 2025
 
 ---
 
@@ -61,7 +68,7 @@
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    📱 React Native App                       │
-│              (Expo 52+ / TypeScript / NativeWind)            │
+│           (Expo 54+ / TypeScript / StyleSheet natif)         │
 └────────────────────────┬────────────────────────────────────┘
                          │
         ┌────────────────┼────────────────┐
