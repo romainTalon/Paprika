@@ -31,9 +31,9 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 | Composant | Statut | Progression |
 |-----------|--------|-------------|
 | 📝 Documentation | ✅ Complète | 100% |
-| 🗄️ Base de Données | ⏳ À faire | 0% |
-| ⚙️ Backend | ⏳ À faire | 0% |
-| 📱 Frontend | 🚧 En cours | 15% |
+| 🗄️ Base de Données | ✅ Opérationnelle | 85% |
+| ⚙️ Backend | 🚧 En cours | 30% |
+| 📱 Frontend | 🚧 En cours | 25% |
 | 🤖 Services IA | ⏳ À faire | 0% |
 | 💳 Paiements | ⏳ À faire | 0% |
 
@@ -43,7 +43,17 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 - Composants UI de base (Text, Button, Container)
 - Navigation Expo Router configurée
 
-**Dernière mise à jour** : 7 novembre 2025
+**Base de Données configurée** ✅ :
+- Schéma SQL complet (7 tables avec RLS policies)
+- Drizzle ORM configuré et testé
+- Services TypeScript (Cookbook, Recipe, MealPlan, GroceryList)
+- Limites freemium enforcées au niveau DB
+- Trigger auto-création utilisateur configuré
+- Edge Function reset mensuel déployée
+- Documentation complète (supabase/README.md)
+- Tests réussis (création user + cookbook)
+
+**Dernière mise à jour** : 11 novembre 2025
 
 ---
 
@@ -58,7 +68,7 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 2. 🎯 Lire [START-HERE.md](./START-HERE.md) (5 min) - Guide de démarrage
 3. 🚀 Suivre [docs/01-setup-guide.md](./docs/01-setup-guide.md) (4-6h) - Installation (quand ready)
 
-### Commandes (futures)
+### Commandes
 
 ```bash
 # Installation
@@ -69,13 +79,28 @@ npm run start           # Dev server
 npm run ios             # iOS simulator
 npm run android         # Android emulator
 
-# Base de données
-npx drizzle-kit generate  # Générer migrations
-npx drizzle-kit push      # Appliquer migrations
+# Base de données (Drizzle ORM)
+npm run db:studio       # Open Drizzle Studio (visual DB browser)
+npm run db:generate     # Generate migrations
+npm run db:push         # Apply migrations
+npm run db:introspect   # Sync schema from DB
 
-# Build production
+# Type checking & Linting
+npm run type-check      # TypeScript validation
+npm run lint            # ESLint
+
+# Build production (futur)
 eas build --platform all  # Build natif
 ```
+
+### Setup Initial de la Base de Données
+
+1. **Créer un projet Supabase** sur [supabase.com](https://supabase.com)
+2. **Copier vos credentials** dans `.env.local` (voir `.env.local.example`)
+3. **Exécuter le schéma SQL** dans Supabase SQL Editor (copier/coller `supabase/schema.sql`)
+4. **Tester la connexion** : `npm run db:studio`
+
+**📖 Guide détaillé** : Voir [supabase/README.md](./supabase/README.md)
 
 ---
 

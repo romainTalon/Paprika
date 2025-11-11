@@ -109,7 +109,11 @@ I've implemented the grocery list feature with auto-generation from meal plans
 
 **Paprika** is a React Native mobile application (iOS/Android) for recipe management powered by AI. It allows users to automatically import recipes from any website, organize them in themed cookbooks, plan weekly meals, and generate shopping lists with nutritional calculations.
 
-**Current Status**: Phase 1 Setup (15% complete) - Documentation complete, basic UI components implemented, app not yet fully functional.
+**Current Status**:
+- 📝 Documentation: 100% complete
+- 🗄️ Database: 85% complete (fully operational, tested)
+- ⚙️ Backend: 30% complete (services layer created)
+- 📱 Frontend: 25% complete (basic UI components)
 
 **Stack**: React Native 0.81 + Expo 54 + TypeScript 5.9 + Supabase + Drizzle ORM + Anthropic Claude AI
 
@@ -131,11 +135,15 @@ npm run type-check     # TypeScript type checking (tsc --noEmit)
 npm run lint           # ESLint code linting
 ```
 
-### Database (when implemented)
+### Database (Supabase + Drizzle ORM)
 ```bash
-npx drizzle-kit generate    # Generate migration files
-npx drizzle-kit push        # Push schema changes to database
+npm run db:studio           # Open Drizzle Studio (visual DB browser)
+npm run db:generate         # Generate migration files from schema
+npm run db:push             # Push schema changes to database
+npm run db:introspect       # Sync schema from existing database
 ```
+
+**Note**: The database is fully configured and operational. See `supabase/README.md` for detailed setup.
 
 ### Testing (when implemented)
 ```bash
@@ -264,9 +272,18 @@ import { spacing } from "@/theme";
 - **Impact**: Use design tokens from `src/theme/` and reusable UI components
 
 ### Database & Backend
-- **Supabase**: PostgreSQL database + Auth + Storage + Realtime
+- **Supabase**: PostgreSQL database + Auth + Storage + Edge Functions
 - **Drizzle ORM**: Type-safe ORM (40KB vs Prisma 300KB) - chosen for bundle size and TypeScript inference
-- **Schema**: Not yet implemented, see `docs/03-data-model.md` for planned schema
+- **Schema**: ✅ Fully implemented and operational
+  - 7 tables: users, cookbooks, recipes, meal_plans, grocery_lists, grocery_items, nutrition_cache
+  - 14 RLS policies for data isolation
+  - 11 triggers for freemium enforcement
+  - 8 PostgreSQL functions
+  - 13 performance indexes (full-text search, fuzzy search)
+  - Auto-user creation trigger (auth.users → public.users)
+  - Monthly import reset via Edge Function
+- **Services**: TypeScript service layer created (CookbookService, RecipeService, MealPlanService, GroceryListService)
+- **Detailed docs**: See `supabase/README.md` and `docs/03-data-model.md`
 
 ### AI Integration Strategy
 The app uses a **3-tier hybrid approach** for recipe imports:
