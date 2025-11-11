@@ -14,7 +14,8 @@
       "Bash(cp:*)",
       "Bash(npx tailwindcss init)",
       "Bash(npm run start)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []
