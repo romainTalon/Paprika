@@ -432,5 +432,149 @@ await db.insert(nutritionCache).values({ ... });
 
 ---
 
+## 2025-11-16 - Services IA exclus du bundle React Native
+
+**Contexte** : Les services IA (RecipeImportService, NutritionService, ImageService) ont été créés avec des dépendances Node.js (cheerio, axios) qui ne sont pas compatibles avec React Native.
+
+**Décision** : **Désactiver l'export des services IA** du fichier `src/services/index.ts` et **prévoir leur migration vers Supabase Edge Functions**
+
+**Raisons** :
+- ❌ **cheerio** utilise `node:stream` qui n'existe pas dans React Native runtime
+- ❌ **axios** peut fonctionner mais ajoute du poids inutile (fetch natif disponible)
+- ✅ **Edge Functions** = environnement Deno idéal pour scraping/parsing HTML
+- ✅ **Sécurité** : Les clés API (Anthropic, Unsplash) ne doivent pas être dans le bundle client
+- ✅ **Performance** : Parsing HTML lourd ne doit pas bloquer le UI thread
+- ✅ **Coûts** : Meilleur contrôle des appels AI côté serveur
+
+**Alternatives considérées** :
+- **react-native-cheerio** : N'existe pas, cheerio est fundamentalement incompatible
+- **xmldom + xpath** : Possible mais verbose, performances médiocres
+- **Regex parsing** : Fragile, non maintenable
+- **Fetch HTML + envoyer à Edge Function** : Meilleure approche (décision finale)
+
+**Architecture prévue** :
+```
+Mobile App (React Native)
+    ↓ URL de recette
+Supabase Edge Function (Deno)
+    ↓ Fetch + Parse (cheerio)
+    ↓ Claude AI si nécessaire
+    ↓ Return JSON structuré
+Mobile App
+    ↓ Affichage
+```
+
+**Conséquences** :
+- Services IA créés mais non utilisables en l'état
+- Nécessite refactoring vers Edge Functions (3-4h de travail)
+- Code actuel servira de référence pour la logique métier
+- Meilleure séparation frontend/backend
+
+**Statut** : ✅ Validée
+
+**Action items** :
+- [ ] Créer Edge Function `import-recipe` (reprendre logique RecipeImportService)
+- [ ] Créer Edge Function `calculate-nutrition` (reprendre logique NutritionService)
+- [ ] Créer Edge Function `search-images` (reprendre logique ImageService)
+- [ ] Mettre à jour les appels depuis le frontend (fetch vers Edge Functions)
+
+---
+
+## 2025-11-16 - Expo Router pour la navigation au lieu de React Navigation
+
+**Contexte** : Besoin de configurer la navigation dans l'app React Native
+
+**Décision** : Utiliser **Expo Router** (file-based routing) au lieu de React Navigation classique
+
+**Raisons** :
+- ✅ **File-based routing** : Structure intuitive similaire à Next.js/Remix
+- ✅ **TypeScript automatique** : Typage des routes et paramètres auto-généré
+- ✅ **Deep linking** : Configuration automatique, pas de setup manuel
+- ✅ **Code splitting** : Lazy loading natif des écrans
+- ✅ **Layouts partagés** : `_layout.tsx` pour structure commune
+- ✅ **Intégration Expo** : Support officiel, bien maintenu
+- ✅ **Moins de boilerplate** : Pas besoin de déclarer manuellement les stacks
+
+**Architecture implémentée** :
+```
+app/
+├── _layout.tsx              # Root layout (TanStack Query Provider)
+├── index.tsx                # Page d'accueil/splash
+└── (tabs)/                  # Tab navigation group
+    ├── _layout.tsx          # Tabs configuration
+    └── cookbooks/
+        └── index.tsx        # Liste des cookbooks
+```
+
+**Alternatives considérées** :
+- **React Navigation v6** : Plus verbeux, nécessite configuration manuelle extensive
+- **React Router Native** : Moins mature pour React Native, communauté plus petite
+
+**Conséquences** :
+- Convention de nommage stricte (dossiers entre parenthèses pour groups)
+- Courbe d'apprentissage si habitué à React Navigation classique
+- Meilleure DX globale
+
+**Statut** : ✅ Validée et implémentée
+
+---
+
+## 2025-11-16 - TanStack Query pour server state au lieu de Redux
+
+**Contexte** : Besoin de gérer l'état serveur (données Supabase) de manière efficace
+
+**Décision** : **TanStack Query v5** pour tout le server state (API calls, cache, mutations)
+
+**Raisons** :
+- ✅ **Cache automatique** : Pas besoin de Redux + middleware custom
+- ✅ **Optimistic updates** : Built-in, facile à implémenter
+- ✅ **Refetch automatique** : Sur focus, interval, etc.
+- ✅ **Loading/error states** : Gérés automatiquement par hook
+- ✅ **DevTools** : Inspection du cache en temps réel
+- ✅ **Bundle léger** : ~13KB vs Redux Toolkit ~45KB
+- ✅ **TypeScript first** : Inférence automatique des types
+
+**Implémentation** :
+```typescript
+// app/_layout.tsx
+const [queryClient] = useState(() => new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5,      // 5 min
+      gcTime: 1000 * 60 * 30,        // 30 min
+      retry: 3,
+      refetchOnWindowFocus: false,
+    },
+  },
+}));
+
+// src/hooks/useCookbooks.ts
+export function useCookbooks(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["cookbooks", userId],
+    queryFn: async () => {
+      const { data, error } = await CookbookService.getAll(userId);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!userId,
+  });
+}
+```
+
+**Alternatives considérées** :
+- **Redux Toolkit** : Overkill pour fetching, trop de boilerplate
+- **Zustand seul** : Bon pour client state, mais pas optimisé pour server state
+- **SWR** : Similaire mais moins features, moins populaire en React Native
+
+**Conséquences** :
+- Séparation claire server state (TanStack Query) vs client state (Zustand futur)
+- Cache automatique réduit les appels réseau
+- Code plus concis et maintenable
+
+**Statut** : ✅ Validée et implémentée
+
+---
+
 **Maintenu par** : Équipe Paprika
-**Dernière mise à jour** : 7 novembre 2025
+**Dernière mise à jour** : 16 novembre 2025

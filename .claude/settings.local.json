@@ -15,7 +15,16 @@
       "Bash(npx tailwindcss init)",
       "Bash(npm run start)",
       "Bash(taskkill:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(npx tsx:*)",
+      "Bash(timeout /t 10)",
+      "Bash(nul)",
+      "Bash(curl -s https://docs.anthropic.com/en/docs/about-claude/models 2)",
+      "Bash(findstr:*)",
+      "Bash(git -C \"C:\\Repositories\\Paprika\" status --short)",
+      "Bash(del SESSION_NOTES.md DATABASE_SETUP_COMPLETE.md SETUP-API-KEYS.md TROUBLESHOOTING.md nul 2)",
+      "Bash(npm run type-check:*)",
+      "Bash(powershell -Command \"Get-Content DECISION-LOG.md | Measure-Object -Line | Select-Object -ExpandProperty Lines\")"
     ],
     "deny": [],
     "ask": []

@@ -1,5 +1,6 @@
 import { Container, Text, Button } from "@/components/ui";
 import { spacing } from "@/theme";
+import { router } from "expo-router";
 
 export default function Index() {
   return (
@@ -15,7 +16,7 @@ export default function Index() {
         variant="primary"
         size="lg"
         style={{ marginTop: spacing.xl }}
-        onPress={() => console.log("Get Started pressed")}
+        onPress={() => router.push("/(tabs)/cookbooks")}
       >
         Commencer
       </Button>

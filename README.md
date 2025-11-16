@@ -32,16 +32,18 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 |-----------|--------|-------------|
 | 📝 Documentation | ✅ Complète | 100% |
 | 🗄️ Base de Données | ✅ Opérationnelle | 85% |
-| ⚙️ Backend | 🚧 En cours | 30% |
-| 📱 Frontend | 🚧 En cours | 25% |
-| 🤖 Services IA | ⏳ À faire | 0% |
+| ⚙️ Backend | 🚧 En cours | 40% |
+| 📱 Frontend | 🚧 En cours | 35% |
+| 🤖 Services IA | 🚧 En cours | 50% |
+| 🔐 Authentification | ⏳ À faire | 0% |
 | 💳 Paiements | ⏳ À faire | 0% |
 
 **Phase 1 Setup complétée** ✅ :
 - Expo 54 + React Native 0.81 + TypeScript 5.9
 - Design System complet (StyleSheet natif + thème réutilisable)
 - Composants UI de base (Text, Button, Container)
-- Navigation Expo Router configurée
+- Navigation Expo Router configurée (tabs + screens)
+- TanStack Query Provider configuré
 
 **Base de Données configurée** ✅ :
 - Schéma SQL complet (7 tables avec RLS policies)
@@ -53,7 +55,23 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 - Documentation complète (supabase/README.md)
 - Tests réussis (création user + cookbook)
 
-**Dernière mise à jour** : 11 novembre 2025
+**Services IA développés** 🚧 :
+- RecipeImportService avec stratégie 3-tier (JSON-LD → Claude → Vision)
+- NutritionService avec cache + OpenFoodFacts + fallback Claude
+- ImageService avec Unsplash + Supabase Storage
+- ⚠️ Services créés mais non exportés (dépendances Node.js incompatibles avec RN)
+- 📝 Solution: Migration vers Supabase Edge Functions prévue
+
+**Frontend fonctionnel** 🚧 :
+- ✅ CookbooksScreen avec liste, création, édition, suppression
+- ✅ CreateCookbookModal avec validation et gestion d'état
+- ✅ Hooks TanStack Query (useCookbooks, useCreateCookbook, etc.)
+- ✅ Navigation par onglets (Expo Router)
+- ✅ États vides, erreurs, chargement
+- ✅ UI freemium (limite 2 cookbooks affichée)
+- ⏳ Authentification manquante (userId mock temporaire)
+
+**Dernière mise à jour** : 16 novembre 2025
 
 ---
 

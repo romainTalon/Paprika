@@ -487,12 +487,22 @@ export function useAuth() {
 
 ### **Étape 4.1 : Anthropic Claude**
 
-```bash
-# Obtenir clé API
-# 1. Aller sur https://console.anthropic.com
-# 2. API Keys > Create Key
-# 3. Copier dans .env.local
-```
+**Obtenir la clé API** :
+1. Créer un compte sur https://console.anthropic.com/
+2. Aller dans "API Keys" → "Create Key"
+3. Nommer la clé : "Paprika Development"
+4. Copier la clé **COMPLÈTE** (commence par `sk-ant-api03-...`, ~100 caractères)
+5. Coller dans `.env.local` :
+   ```env
+   ANTHROPIC_API_KEY=sk-ant-api03-VOTRE_CLE_COMPLETE_ICI
+   ```
+
+**Crédits gratuits** : $5 offerts = ~300-500 imports de recettes
+
+**⚠️ Attention** :
+- Copier la clé ENTIÈRE (pas juste `sk-ant-api03-...`)
+- Ne JAMAIS committer cette clé dans Git
+- Modèle à utiliser : `claude-3-5-sonnet-20241022`
 
 ```typescript
 // src/services/ai/anthropic.ts
@@ -576,6 +586,24 @@ export async function searchIngredientNutrition(
 
 ### **Étape 4.3 : Unsplash**
 
+**Obtenir la clé API** :
+1. Créer un compte développeur sur https://unsplash.com/developers
+2. Cliquer sur "Your apps" → "New Application"
+3. Accepter les conditions (API Guidelines)
+4. Nommer l'app : "Paprika Recipe Manager"
+5. Copier **Access Key** (PAS Secret Key!)
+6. Coller dans `.env.local` :
+   ```env
+   UNSPLASH_ACCESS_KEY=VOTRE_ACCESS_KEY_ICI
+   ```
+
+**Limites gratuites** : 50 requêtes/heure (suffisant pour dev)
+
+**⚠️ Attention** :
+- Copier **Access Key**, PAS Secret Key
+- Access Key = ~30-40 caractères alphanumériques
+- Notre code respecte les guidelines Unsplash (tracking downloads, attributions)
+
 ```bash
 npm install unsplash-js
 ```
@@ -606,6 +634,21 @@ export async function searchIngredientImage(
   }
 }
 ```
+
+### **Étape 4.4 : Tester les APIs**
+
+Exécuter le script de test pour vérifier la configuration :
+
+```bash
+npx tsx scripts/test-simple.ts
+```
+
+Vous devriez voir ✅ pour les 4 APIs (Anthropic, Unsplash, Supabase, OpenFoodFacts).
+
+**En cas d'erreur** :
+- **Anthropic 404** : Vérifier que la clé est complète et valide
+- **Unsplash OAuth error** : Vérifier que c'est bien l'Access Key (pas Secret Key)
+- **Supabase error** : Vérifier URL et Anon Key dans `.env.local`
 
 ---
 
