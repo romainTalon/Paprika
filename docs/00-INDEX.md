@@ -46,6 +46,7 @@ reading_time: "5 min"
 | [UI Guidelines](./07-ui-guidelines.md) | Design System "Warm & Cozy" complet | 45 min |
 | [Design System](./09-design-system.md) | StyleSheet natif + composants réutilisables | 30 min |
 | [Frontend Guidelines](./08-frontend-guidelines.md) | React Native Best Practices | 1h |
+| [Authentication Implementation](./10-authentication-implementation.md) | Supabase Auth + Onboarding Flow | 30 min |
 | [Stack Frontend](./02-tech-stack.md#frontend) | React Native + Expo + Design System | 15 min |
 | [Composants UI](./08-frontend-guidelines.md#9-composants-ui) | Composants réutilisables | 20 min |
 

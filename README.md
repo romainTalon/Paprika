@@ -33,9 +33,9 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 | 📝 Documentation | ✅ Complète | 100% |
 | 🗄️ Base de Données | ✅ Opérationnelle | 85% |
 | ⚙️ Backend | 🚧 En cours | 40% |
-| 📱 Frontend | 🚧 En cours | 35% |
+| 📱 Frontend | 🚧 En cours | 45% |
 | 🤖 Services IA | 🚧 En cours | 50% |
-| 🔐 Authentification | ⏳ À faire | 0% |
+| 🔐 Authentification | ✅ Complète | 100% |
 | 💳 Paiements | ⏳ À faire | 0% |
 
 **Phase 1 Setup complétée** ✅ :
@@ -69,7 +69,18 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 - ✅ Navigation par onglets (Expo Router)
 - ✅ États vides, erreurs, chargement
 - ✅ UI freemium (limite 2 cookbooks affichée)
-- ⏳ Authentification manquante (userId mock temporaire)
+- ✅ Protection des routes (redirection vers login si non authentifié)
+
+**Authentification complète** ✅ :
+- ✅ AuthContext avec Supabase Auth (session persistence via AsyncStorage)
+- ✅ Écrans d'authentification (Login, Signup, Forgot Password)
+- ✅ Onboarding multi-étapes (3 écrans) pour nouveaux utilisateurs
+- ✅ Validation de formulaires avec Zod
+- ✅ Gestion d'erreurs détaillée (messages en français)
+- ✅ Déconnexion avec confirmation
+- ✅ Navigation automatique basée sur l'état d'authentification
+- ✅ Token refresh automatique (AppState listener)
+- ⏳ Deep links pour confirmation email (désactivée temporairement)
 
 **Dernière mise à jour** : 16 novembre 2025
 

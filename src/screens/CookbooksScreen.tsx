@@ -7,7 +7,7 @@
  * @module screens/CookbooksScreen
  */
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   FlatList,
@@ -17,6 +17,7 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+import { router } from "expo-router";
 import { Text, Button, Container } from "@/components/ui";
 import { colors, spacing, shadows, fontSizes } from "@/theme";
 import {
@@ -24,7 +25,7 @@ import {
   useDeleteCookbook,
   type Cookbook,
 } from "@/hooks/useCookbooks";
-import { getCurrentUserId } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
 import CreateCookbookModal from "@/components/modals/CreateCookbookModal";
 
 /**
@@ -147,21 +148,21 @@ function EmptyState({ onCreatePress }: { onCreatePress: () => void }) {
  * Main Cookbooks Screen Component
  */
 export default function CookbooksScreen() {
-  const [userId, setUserId] = useState<string | null>(null);
+  const { user, isAuthenticated, loading: authLoading, signOut } = useAuth();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingCookbook, setEditingCookbook] = useState<Cookbook | null>(null);
 
-  // Fetch current user ID on mount
-  React.useEffect(() => {
-    getCurrentUserId().then((id) => {
-      // TODO: Remove this mock userId once auth is implemented
-      // For now, use a test user ID if no auth user exists
-      setUserId(id || "00000000-0000-0000-0000-000000000001");
-    });
-  }, []);
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.replace("/(auth)/login");
+    }
+  }, [isAuthenticated, authLoading]);
+
+  const userId = user?.id;
 
   // Fetch cookbooks
-  const { data: cookbooks, isLoading, error, refetch } = useCookbooks(userId || undefined);
+  const { data: cookbooks, isLoading, error, refetch } = useCookbooks(userId);
 
   // Delete mutation
   const deleteCookbook = useDeleteCookbook();
@@ -219,10 +220,55 @@ export default function CookbooksScreen() {
     console.log("Open cookbook:", cookbook.id);
   }, []);
 
+  const handleSignOut = useCallback(async () => {
+    Alert.alert(
+      "Déconnexion",
+      "Voulez-vous vraiment vous déconnecter ?",
+      [
+        {
+          text: "Annuler",
+          style: "cancel",
+        },
+        {
+          text: "Déconnexion",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await signOut();
+              // Navigation handled by AuthContext + app/index.tsx
+            } catch (error) {
+              Alert.alert(
+                "Erreur",
+                "Impossible de se déconnecter. Veuillez réessayer."
+              );
+            }
+          },
+        },
+      ]
+    );
+  }, [signOut]);
+
   // Check freemium limit (2 cookbooks max for free users)
   const canCreateCookbook = cookbooks && cookbooks.length < 2; // TODO: Check premium status
 
-  // Loading state
+  // Auth loading state
+  if (authLoading) {
+    return (
+      <Container centered>
+        <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+        <Text variant="body" color="neutral" style={{ marginTop: spacing.md }}>
+          Vérification...
+        </Text>
+      </Container>
+    );
+  }
+
+  // Not authenticated (should be handled by redirect, but safety check)
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  // Loading cookbooks state
   if (isLoading) {
     return (
       <Container centered>
@@ -257,7 +303,18 @@ export default function CookbooksScreen() {
     return (
       <Container>
         <View style={styles.header}>
-          <Text variant="h1">Mes Livres</Text>
+          <View>
+            <Text variant="h1">Mes Livres</Text>
+          </View>
+          <TouchableOpacity
+            onPress={handleSignOut}
+            style={styles.logoutButton}
+            accessibilityLabel="Se déconnecter"
+          >
+            <Text variant="bodySmall" color="error">
+              Déconnexion
+            </Text>
+          </TouchableOpacity>
         </View>
         <EmptyState onCreatePress={handleCreatePress} />
 
@@ -276,10 +333,21 @@ export default function CookbooksScreen() {
     <Container>
       {/* Header */}
       <View style={styles.header}>
-        <Text variant="h1">Mes Livres</Text>
-        <Text variant="bodySmall" color="neutral">
-          {cookbooks.length} livre{cookbooks.length > 1 ? "s" : ""}
-        </Text>
+        <View>
+          <Text variant="h1">Mes Livres</Text>
+          <Text variant="bodySmall" color="neutral">
+            {cookbooks.length} livre{cookbooks.length > 1 ? "s" : ""}
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={handleSignOut}
+          style={styles.logoutButton}
+          accessibilityLabel="Se déconnecter"
+        >
+          <Text variant="bodySmall" color="error">
+            Déconnexion
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Cookbooks List */}
@@ -336,7 +404,15 @@ export default function CookbooksScreen() {
 
 const styles = StyleSheet.create({
   header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: spacing.lg,
+  },
+
+  logoutButton: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
   },
 
   listContent: {

@@ -24,7 +24,10 @@
       "Bash(git -C \"C:\\Repositories\\Paprika\" status --short)",
       "Bash(del SESSION_NOTES.md DATABASE_SETUP_COMPLETE.md SETUP-API-KEYS.md TROUBLESHOOTING.md nul 2)",
       "Bash(npm run type-check:*)",
-      "Bash(powershell -Command \"Get-Content DECISION-LOG.md | Measure-Object -Line | Select-Object -ExpandProperty Lines\")"
+      "Bash(powershell -Command \"Get-Content DECISION-LOG.md | Measure-Object -Line | Select-Object -ExpandProperty Lines\")",
+      "WebSearch",
+      "Bash(Get-Content \"C:\\Repositories\\Paprika\\app.json\")",
+      "Bash(powershell -Command \"Get-Content src\\screens\\CookbooksScreen.tsx | Select-String -Pattern ''const styles = StyleSheet.create'' -Context 0,5\")"
     ],
     "deny": [],
     "ask": []

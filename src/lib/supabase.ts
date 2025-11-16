@@ -9,6 +9,8 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AppState } from "react-native";
 
 // Environment variables validation
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -27,6 +29,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
  * This client uses the anon key for client-side operations and automatically
  * enforces Row Level Security (RLS) policies based on the authenticated user.
  *
+ * Session persistence uses AsyncStorage for better React Native compatibility.
+ * AppState listener ensures tokens refresh when app returns from background.
+ *
  * @example
  * ```typescript
  * import { supabase } from "@/lib/supabase";
@@ -39,13 +44,27 @@ if (!supabaseUrl || !supabaseAnonKey) {
  */
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
+    // Use AsyncStorage for session persistence (better than default for React Native)
+    storage: AsyncStorage,
     // Auto-refresh session before it expires
     autoRefreshToken: true,
-    // Persist session in local storage
+    // Persist session across app restarts
     persistSession: true,
     // Detect session from URL (for OAuth callbacks)
     detectSessionInUrl: true,
   },
+});
+
+/**
+ * AppState listener to refresh session when app becomes active
+ * This ensures tokens are refreshed when returning from background
+ */
+AppState.addEventListener("change", (state) => {
+  if (state === "active") {
+    supabase.auth.startAutoRefresh();
+  } else {
+    supabase.auth.stopAutoRefresh();
+  }
 });
 
 /**

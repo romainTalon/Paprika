@@ -1,13 +1,14 @@
 /**
  * Root Layout
  *
- * Wraps the entire app with necessary providers (TanStack Query, etc.)
+ * Wraps the entire app with necessary providers (Auth, TanStack Query, etc.)
  * and sets up the navigation structure.
  */
 
 import { Stack } from "expo-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 export default function RootLayout() {
   // Create QueryClient instance
@@ -31,11 +32,15 @@ export default function RootLayout() {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <Stack>
-        <Stack.Screen name="index" options={{ title: "Paprika" }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      </Stack>
-    </QueryClientProvider>
+    <AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="onboarding" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+        </Stack>
+      </QueryClientProvider>
+    </AuthProvider>
   );
 }

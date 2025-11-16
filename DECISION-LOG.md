@@ -576,5 +576,181 @@ export function useCookbooks(userId: string | undefined) {
 
 ---
 
+## 2025-11-16 - Authentification Supabase avec Email/Password
+
+**Contexte** : L'application nécessite un système d'authentification pour sécuriser les données utilisateur et activer les fonctionnalités liées au compte
+
+**Décision** : **Supabase Auth avec Email/Password uniquement** (pas d'OAuth initialement)
+
+**Raisons** :
+- ✅ **Simplicité** : Email/Password suffit pour MVP, OAuth peut être ajouté plus tard
+- ✅ **Contrôle** : Meilleure maîtrise du flow d'authentification
+- ✅ **Intégration native** : Supabase Auth s'intègre directement avec PostgreSQL RLS
+- ✅ **Gratuit** : Pas de coûts additionnels vs OAuth providers
+- ✅ **Session management** : Auto-refresh tokens, persistence via AsyncStorage
+- ✅ **Security** : Email confirmation, password reset inclus
+
+**Architecture implémentée** :
+```typescript
+// 1. Supabase Client avec AsyncStorage
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AppState } from "react-native";
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: AsyncStorage,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+  },
+});
+
+// Token refresh on app state changes
+AppState.addEventListener("change", (state) => {
+  if (state === "active") supabase.auth.startAutoRefresh();
+  else supabase.auth.stopAutoRefresh();
+});
+
+// 2. AuthContext pour state global
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const signIn = async ({ email, password }) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw error;
+  };
+
+  const signUp = async ({ email, password, fullName }) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: fullName } },
+    });
+    if (error) throw error;
+  };
+
+  const signOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+  };
+
+  // ... password reset methods
+}
+
+// 3. Onboarding flow (3 écrans)
+app/onboarding/
+├── step1.tsx    # Introduction
+├── step2.tsx    # Features preview
+└── step3.tsx    # CTA to signup
+
+// 4. Auth screens
+app/(auth)/
+├── login.tsx           # Login with error handling
+├── signup.tsx          # Signup with validation
+└── forgot-password.tsx # Password reset request
+
+// 5. Protected routes
+useEffect(() => {
+  if (!authLoading && !isAuthenticated) {
+    router.replace("/(auth)/login");
+  }
+}, [isAuthenticated, authLoading]);
+```
+
+**Fonctionnalités implémentées** :
+- ✅ Inscription (email, password, nom complet)
+- ✅ Connexion avec gestion d'erreurs détaillée
+- ✅ Déconnexion avec confirmation
+- ✅ Onboarding multi-étapes (flag AsyncStorage)
+- ✅ Validation Zod sur tous les formulaires
+- ✅ Messages d'erreur en français
+- ✅ Navigation automatique basée sur auth state
+- ✅ Protection des routes (redirect vers login si non auth)
+- ✅ Token refresh automatique (AppState listener)
+- ⏳ Deep links pour confirmation email (désactivée temporairement)
+
+**Alternatives considérées** :
+- **OAuth uniquement** : Meilleure UX mais complexe à setup, peut être ajouté plus tard
+- **Firebase Auth** : Vendor lock-in, coûts moins prévisibles
+- **Auth0** : Overkill, payant dès le départ
+- **Custom JWT** : Trop de maintenance, pas de features built-in
+
+**Validation des formulaires** :
+```typescript
+// Zod schema pour signup
+const signupSchema = z.object({
+  fullName: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
+  email: z.string().email("Email invalide"),
+  password: z.string().min(8, "Le mot de passe doit contenir au moins 8 caractères"),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Les mots de passe ne correspondent pas",
+  path: ["confirmPassword"],
+});
+```
+
+**Gestion d'erreurs** :
+```typescript
+// Parsing des erreurs Supabase
+if (msg.includes("email not confirmed")) {
+  errorMessage = "Veuillez confirmer votre email avant de vous connecter.";
+} else if (msg.includes("invalid login credentials")) {
+  errorMessage = "Email ou mot de passe incorrect.";
+} else if (msg.includes("email") && msg.includes("invalid")) {
+  errorMessage = "Format d'email invalide.";
+}
+```
+
+**Conséquences** :
+- Session persistante entre relances de l'app
+- Data isolation via RLS policies Supabase (user_id automatique)
+- Meilleure sécurité (tokens stockés en AsyncStorage sécurisé)
+- Onboarding fluide pour nouveaux utilisateurs
+- Base solide pour ajouter OAuth plus tard (Google, Apple)
+
+**Statut** : ✅ Validée et implémentée
+
+**Fichiers créés** :
+- `src/lib/supabase.ts` - Client Supabase configuré
+- `src/contexts/AuthContext.tsx` - Context global auth
+- `src/hooks/useAuth.ts` - Hook custom pour accéder au context
+- `src/types/auth.ts` - Types TypeScript auth
+- `app/index.tsx` - Entry point avec routing logique
+- `app/onboarding/*` - 3 écrans onboarding
+- `app/(auth)/*` - Login, Signup, Forgot Password
+- `src/components/auth/*` - AuthInput, AuthFormContainer
+
+**Action items futurs** :
+- [ ] Configurer deep links pour email confirmation (paprika://)
+- [ ] Ajouter OAuth Google (optionnel)
+- [ ] Ajouter OAuth Apple (requis pour App Store)
+- [ ] Implémenter 2FA (optionnel, premium feature)
+
+---
+
 **Maintenu par** : Équipe Paprika
 **Dernière mise à jour** : 16 novembre 2025
