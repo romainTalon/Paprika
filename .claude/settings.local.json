@@ -27,7 +27,9 @@
       "Bash(powershell -Command \"Get-Content DECISION-LOG.md | Measure-Object -Line | Select-Object -ExpandProperty Lines\")",
       "WebSearch",
       "Bash(Get-Content \"C:\\Repositories\\Paprika\\app.json\")",
-      "Bash(powershell -Command \"Get-Content src\\screens\\CookbooksScreen.tsx | Select-String -Pattern ''const styles = StyleSheet.create'' -Context 0,5\")"
+      "Bash(powershell -Command \"Get-Content src\\screens\\CookbooksScreen.tsx | Select-String -Pattern ''const styles = StyleSheet.create'' -Context 0,5\")",
+      "Bash(Get-Content \"C:\\Repositories\\Paprika\\.env.local.example\")",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

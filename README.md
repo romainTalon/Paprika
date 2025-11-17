@@ -33,7 +33,7 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 | 📝 Documentation | ✅ Complète | 100% |
 | 🗄️ Base de Données | ✅ Opérationnelle | 85% |
 | ⚙️ Backend | 🚧 En cours | 40% |
-| 📱 Frontend | 🚧 En cours | 45% |
+| 📱 Frontend | 🚧 En cours | 55% |
 | 🤖 Services IA | 🚧 En cours | 50% |
 | 🔐 Authentification | ✅ Complète | 100% |
 | 💳 Paiements | ⏳ À faire | 0% |
@@ -66,10 +66,13 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 - ✅ CookbooksScreen avec liste, création, édition, suppression
 - ✅ CreateCookbookModal avec validation et gestion d'état
 - ✅ Hooks TanStack Query (useCookbooks, useCreateCookbook, etc.)
-- ✅ Navigation par onglets (Expo Router)
+- ✅ Navigation complète configurée (4 tabs + écrans stack)
+- ✅ AppHeader custom avec profil cliquable
+- ✅ PlaceholderScreen pour écrans en développement
 - ✅ États vides, erreurs, chargement
 - ✅ UI freemium (limite 2 cookbooks affichée)
 - ✅ Protection des routes (redirection vers login si non authentifié)
+- ✅ SettingsScreen complet (profil, abonnement, déconnexion)
 
 **Authentification complète** ✅ :
 - ✅ AuthContext avec Supabase Auth (session persistence via AsyncStorage)
@@ -129,7 +132,9 @@ eas build --platform all  # Build natif
 3. **Exécuter le schéma SQL** dans Supabase SQL Editor (copier/coller `supabase/schema.sql`)
 4. **Tester la connexion** : `npm run db:studio`
 
-**📖 Guide détaillé** : Voir [supabase/README.md](./supabase/README.md)
+**📖 Guides détaillés** :
+- [supabase/README.md](./supabase/README.md) - Setup base de données
+- [docs/12-environment-secrets.md](./docs/12-environment-secrets.md) - 🔐 Sync secrets multi-devices (Google Drive + Symlink)
 
 ---
 

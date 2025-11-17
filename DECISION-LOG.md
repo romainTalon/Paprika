@@ -752,5 +752,57 @@ if (msg.includes("email not confirmed")) {
 
 ---
 
+## 2025-11-17 - Structure de Navigation (4 Tabs + Settings dans Header)
+
+**Contexte** : Besoin de définir la structure de navigation principale de l'application
+
+**Décision** : **4 tabs en bas** (Home, Cookbooks, Meal Plan, Grocery Lists) + **Settings accessible via profil dans header**
+
+**Raisons** :
+- ✅ **4 tabs optimaux** : Ni trop (surcharge), ni trop peu (manque de discoverability)
+- ✅ **Pas de tab Recipes global** : Les recettes sont accessibles via Cookbooks (évite duplication, encourage organisation)
+- ✅ **Settings dans header** : Libère un espace pour tab plus important, pattern UX standard
+- ✅ **AppHeader custom** : Logo + avatar cliquable pour accès rapide profil
+- ✅ **PlaceholderScreen** : Permet de tester navigation sans implémenter tous les écrans
+
+**Architecture implémentée** :
+```
+Tabs (Bottom)
+├── Home (Accueil) - Découverte et suggestions
+├── Cookbooks (Livres) - Gestion livres de recettes
+├── Meal Plan (Planning) - Calendrier hebdomadaire
+└── Grocery Lists (Courses) - Listes de courses
+
+Header (Top)
+└── Avatar → Settings (Profil, abonnement, déconnexion)
+
+Stack Navigation
+├── /cookbooks/[id] - Détail cookbook
+├── /recipes/[id] - Détail recette
+├── /recipes/create - Créer recette
+└── /recipes/import - Importer recette (IA)
+```
+
+**Alternatives considérées** :
+- **5 tabs avec Settings** : Trop de tabs, Settings peu utilisé
+- **Tab Recipes global** : Duplication avec accès via Cookbooks
+- **Drawer menu** : Moins accessible, moins mobile-first
+
+**Composants créés** :
+- `PlaceholderScreen` : Écran vide réutilisable pour développement incrémental
+- `AppHeader` : Header custom avec logo + avatar
+- 4 écrans tabs + 5 écrans stack (tous avec routing fonctionnel)
+
+**Conséquences** :
+- Navigation testable immédiatement (tous écrans accessibles)
+- Développement incrémental possible (placeholders → implémentation progressive)
+- UX cohérente et standard mobile
+
+**Statut** : ✅ Validée et implémentée
+
+**Documentation** : [NAVIGATION.md](./NAVIGATION.md)
+
+---
+
 **Maintenu par** : Équipe Paprika
-**Dernière mise à jour** : 16 novembre 2025
+**Dernière mise à jour** : 17 novembre 2025

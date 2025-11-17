@@ -47,10 +47,12 @@ reading_time: "5 min"
 | [Design System](./09-design-system.md) | StyleSheet natif + composants réutilisables | 30 min |
 | [Frontend Guidelines](./08-frontend-guidelines.md) | React Native Best Practices | 1h |
 | [Authentication Implementation](./10-authentication-implementation.md) | Supabase Auth + Onboarding Flow | 30 min |
+| [Navigation Structure](../NAVIGATION.md) | 🧭 Architecture navigation complète | 10 min |
 | [Stack Frontend](./02-tech-stack.md#frontend) | React Native + Expo + Design System | 15 min |
 | [Composants UI](./08-frontend-guidelines.md#9-composants-ui) | Composants réutilisables | 20 min |
 
 **Quick Links Frontend :**
+- [Navigation - Flow complet](../NAVIGATION.md)
 - [Design System - Couleurs](./07-ui-guidelines.md#1-couleurs)
 - [Composants Réutilisables](./07-ui-guidelines.md#6-composants-réutilisables)
 - [Accessibilité](./07-ui-guidelines.md#5-accessibilité)
@@ -161,8 +163,9 @@ reading_time: "5 min"
 | [07](./07-ui-guidelines.md) | **UI Guidelines** | Design System | 15 KB | 45 min |
 | [08](./08-frontend-guidelines.md) | **Frontend Guidelines** | React Native Best Practices | 22 KB | 1h |
 | [09](./09-design-system.md) | **Design System** | StyleSheet natif + tokens + composants UI | 9 KB | 30 min |
-| [10](./10-backend-guidelines.md) | **Backend Guidelines** | Backend Best Practices (à créer) | - | 30 min |
+| [10](./10-authentication-implementation.md) | **Authentication** | Supabase Auth + Onboarding Flow | 12 KB | 30 min |
 | [11](./11-deployment-guide.md) | **Deployment** | CI/CD & Stores (à créer) | - | 30 min |
+| [12](./12-environment-secrets.md) | **Environment Secrets** | Gestion sécurisée secrets (Google Drive + Symlink) | 18 KB | 15 min |
 
 ---
 
@@ -223,6 +226,7 @@ reading_time: "5 min"
 |-------|----------|---------|
 | Installation complète | [Setup Guide](./01-setup-guide.md) | - |
 | Variables d'environnement | [.env.example](../.env.example) | - |
+| Gestion secrets multi-devices | [Environment Secrets](./12-environment-secrets.md) | - |
 | Setup Supabase | [Setup Guide](./01-setup-guide.md#phase-2--supabase--drizzle-1-2h) | Backend |
 | Setup Drizzle | [Setup Guide](./01-setup-guide.md#étape-24--configuration-drizzle) | Database |
 | Setup Stripe | [Setup Guide](./01-setup-guide.md#phase-5--configuration-stripe-1h) | Paiements |
@@ -290,6 +294,7 @@ reading_time: "5 min"
 - [START-HERE.md](../START-HERE.md) - Guide de démarrage
 - [README.md](../README.md) - Introduction publique
 - [DECISION-LOG.md](../DECISION-LOG.md) - Décisions architecturales
+- [NAVIGATION.md](../NAVIGATION.md) - 🧭 Structure de navigation complète
 - [GLOSSARY.md](../GLOSSARY.md) - Glossaire des termes
 
 ### Liens Externes

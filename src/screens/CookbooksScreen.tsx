@@ -216,8 +216,8 @@ export default function CookbooksScreen() {
   );
 
   const handleCookbookPress = useCallback((cookbook: Cookbook) => {
-    // TODO: Navigate to cookbook detail screen
-    console.log("Open cookbook:", cookbook.id);
+    // Navigate to cookbook detail screen
+    router.push(`/cookbooks/${cookbook.id}`);
   }, []);
 
   const handleSignOut = useCallback(async () => {

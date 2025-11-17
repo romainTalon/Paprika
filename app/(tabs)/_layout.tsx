@@ -7,6 +7,7 @@
 import { Tabs } from "expo-router";
 import { Text } from "react-native";
 import { colors } from "@/theme";
+import { AppHeader } from "@/components/navigation";
 
 export default function TabLayout() {
   return (
@@ -18,26 +19,48 @@ export default function TabLayout() {
           backgroundColor: colors.white,
           borderTopColor: colors.gray[200],
           borderTopWidth: 1,
+          paddingBottom: 4,
+          height: 60,
         },
         headerStyle: {
-          backgroundColor: colors.white,
-          borderBottomColor: colors.gray[200],
-          borderBottomWidth: 1,
+          backgroundColor: colors.cream.DEFAULT,
         },
-        headerTintColor: colors.warm.brown,
-        headerTitleStyle: {
-          fontFamily: "Poppins",
-          fontWeight: "600",
-        },
+        header: () => <AppHeader />,
       }}
     >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: "Accueil",
+          tabBarIcon: ({ color }) => (
+            <Text style={{ fontSize: 24 }}>{color === colors.primary.DEFAULT ? "🏠" : "🏡"}</Text>
+          ),
+        }}
+      />
       <Tabs.Screen
         name="cookbooks"
         options={{
           title: "Livres",
           tabBarIcon: ({ color }) => (
-            // Using emoji for now - can replace with icon library later
             <Text style={{ fontSize: 24 }}>{color === colors.primary.DEFAULT ? "📚" : "📖"}</Text>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="meal-plan"
+        options={{
+          title: "Planning",
+          tabBarIcon: ({ color }) => (
+            <Text style={{ fontSize: 24 }}>{color === colors.primary.DEFAULT ? "📅" : "📆"}</Text>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="grocery-lists"
+        options={{
+          title: "Courses",
+          tabBarIcon: ({ color }) => (
+            <Text style={{ fontSize: 24 }}>{color === colors.primary.DEFAULT ? "🛒" : "🛍️"}</Text>
           ),
         }}
       />
