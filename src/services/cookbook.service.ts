@@ -6,6 +6,22 @@
 import { supabase } from "@/lib/supabase";
 import type { Cookbook, NewCookbook, ServiceResponse } from "@/types";
 
+/**
+ * Transform database row (snake_case) to Cookbook type (camelCase)
+ */
+function mapDbRowToCookbook(row: any): Cookbook {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    name: row.name,
+    description: row.description,
+    coverImageUrl: row.cover_image_url,
+    isDefault: row.is_default,
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+  };
+}
+
 export class CookbookService {
   /**
    * Get all cookbooks for a user
@@ -20,7 +36,10 @@ export class CookbookService {
 
       if (error) throw error;
 
-      return { data: data as Cookbook[], error: null };
+      // Transform snake_case to camelCase
+      const cookbooks = data?.map(mapDbRowToCookbook) || [];
+
+      return { data: cookbooks, error: null };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -40,7 +59,7 @@ export class CookbookService {
 
       if (error) throw error;
 
-      return { data: data as Cookbook, error: null };
+      return { data: mapDbRowToCookbook(data), error: null };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -60,7 +79,7 @@ export class CookbookService {
 
       if (error) throw error;
 
-      return { data: data as Cookbook, error: null };
+      return { data: mapDbRowToCookbook(data), error: null };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -107,9 +126,16 @@ export class CookbookService {
     updates: Partial<Omit<Cookbook, "id" | "userId" | "createdAt" | "updatedAt">>
   ): Promise<ServiceResponse<Cookbook>> {
     try {
+      // Transform camelCase to snake_case for DB
+      const dbUpdates: any = {};
+      if (updates.name !== undefined) dbUpdates.name = updates.name;
+      if (updates.description !== undefined) dbUpdates.description = updates.description;
+      if (updates.coverImageUrl !== undefined) dbUpdates.cover_image_url = updates.coverImageUrl;
+      if (updates.isDefault !== undefined) dbUpdates.is_default = updates.isDefault;
+
       const { data, error } = await supabase
         .from("cookbooks")
-        .update(updates)
+        .update(dbUpdates)
         .eq("id", cookbookId)
         .eq("user_id", userId)
         .select()
@@ -117,7 +143,7 @@ export class CookbookService {
 
       if (error) throw error;
 
-      return { data: data as Cookbook, error: null };
+      return { data: mapDbRowToCookbook(data), error: null };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -165,7 +191,7 @@ export class CookbookService {
 
       if (error) throw error;
 
-      return { data: data as Cookbook, error: null };
+      return { data: mapDbRowToCookbook(data), error: null };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -206,7 +232,7 @@ export class CookbookService {
 
       if (error) throw error;
 
-      return { data: data as Cookbook, error: null };
+      return { data: mapDbRowToCookbook(data), error: null };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -219,12 +245,31 @@ export class CookbookService {
     coverImageUrl?: string,
     isDefault?: boolean
   ): Promise<ServiceResponse<Cookbook>> {
-    return this.createCookbook(userId, {
-      name,
-      description,
-      coverImageUrl,
-      isDefault: isDefault || false,
-    });
+    try {
+      const { data, error } = await supabase
+        .from("cookbooks")
+        .insert({
+          user_id: userId,
+          name,
+          description: description || null,
+          cover_image_url: coverImageUrl || null,
+          is_default: isDefault || false,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        // Check if it's a freemium limit error
+        if (error.message?.includes("limit reached") || error.message?.includes("cookbook_limit")) {
+          throw new Error("Limite atteinte (2/2 livres gratuits). Passez à Premium pour des livres illimités.");
+        }
+        throw error;
+      }
+
+      return { data: mapDbRowToCookbook(data), error: null };
+    } catch (error) {
+      return { data: null, error: error as Error };
+    }
   }
 
   static async update(

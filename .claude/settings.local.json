@@ -29,7 +29,9 @@
       "Bash(Get-Content \"C:\\Repositories\\Paprika\\app.json\")",
       "Bash(powershell -Command \"Get-Content src\\screens\\CookbooksScreen.tsx | Select-String -Pattern ''const styles = StyleSheet.create'' -Context 0,5\")",
       "Bash(Get-Content \"C:\\Repositories\\Paprika\\.env.local.example\")",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(Get-Content \"C:\\Repositories\\Paprika\\supabase\\schema.sql\")",
+      "Bash(Select-String -Pattern \"cookbooks\" -Context 0,5)"
     ],
     "deny": [],
     "ask": []

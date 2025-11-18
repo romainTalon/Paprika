@@ -322,7 +322,7 @@ export default function CookbooksScreen() {
         <CreateCookbookModal
           visible={isModalVisible}
           cookbook={editingCookbook}
-          userId={userId}
+          userId={userId ?? null}
           onClose={() => setIsModalVisible(false)}
         />
       </Container>
@@ -395,7 +395,7 @@ export default function CookbooksScreen() {
       <CreateCookbookModal
         visible={isModalVisible}
         cookbook={editingCookbook}
-        userId={userId}
+        userId={userId ?? null}
         onClose={() => setIsModalVisible(false)}
       />
     </Container>
