@@ -5,3 +5,4 @@
  */
 
 export * from "./useCookbooks";
+export * from "./useRecipes";

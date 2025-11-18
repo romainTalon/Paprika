@@ -31,7 +31,8 @@
       "Bash(Get-Content \"C:\\Repositories\\Paprika\\.env.local.example\")",
       "Bash(cat:*)",
       "Bash(Get-Content \"C:\\Repositories\\Paprika\\supabase\\schema.sql\")",
-      "Bash(Select-String -Pattern \"cookbooks\" -Context 0,5)"
+      "Bash(Select-String -Pattern \"cookbooks\" -Context 0,5)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []

@@ -3,7 +3,7 @@
  * CRUD operations for recipes with JSONB handling (ingredients, steps, nutrition)
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 import type {
   Recipe,
   NewRecipe,
@@ -15,10 +15,34 @@ import type {
   ImportSource,
 } from "@/types";
 
-// Initialize Supabase client
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+/**
+ * Transform database row (snake_case) to Recipe type (camelCase)
+ */
+function mapDbRowToRecipe(row: any): Recipe {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    cookbookId: row.cookbook_id,
+    title: row.title,
+    description: row.description,
+    coverImageUrl: row.cover_image_url,
+    servings: row.servings,
+    prepTime: row.prep_time,
+    cookTime: row.cook_time,
+    difficulty: row.difficulty,
+    tags: row.tags,
+    ingredients: row.ingredients,
+    steps: row.steps,
+    nutrition: row.nutrition,
+    isFavorite: row.is_favorite,
+    isArchived: row.is_archived,
+    viewsCount: row.views_count,
+    importSource: row.import_source,
+    importUrl: row.import_url,
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+  };
+}
 
 export interface CreateRecipeInput {
   title: string;
@@ -61,7 +85,10 @@ export class RecipeService {
 
       if (error) throw error;
 
-      return { data: data as Recipe[], error: null };
+      // Transform snake_case to camelCase
+      const recipes = data?.map(mapDbRowToRecipe) || [];
+
+      return { data: recipes, error: null };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -90,7 +117,10 @@ export class RecipeService {
 
       if (error) throw error;
 
-      return { data: data as Recipe[], error: null };
+      // Transform snake_case to camelCase
+      const recipes = data?.map(mapDbRowToRecipe) || [];
+
+      return { data: recipes, error: null };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -111,7 +141,10 @@ export class RecipeService {
 
       if (error) throw error;
 
-      return { data: data as Recipe[], error: null };
+      // Transform snake_case to camelCase
+      const recipes = data?.map(mapDbRowToRecipe) || [];
+
+      return { data: recipes, error: null };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -137,7 +170,7 @@ export class RecipeService {
         .update({ views_count: (data.views_count || 0) + 1 })
         .eq("id", recipeId);
 
-      return { data: data as Recipe, error: null };
+      return { data: mapDbRowToRecipe(data), error: null };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -173,13 +206,13 @@ export class RecipeService {
 
       if (error) {
         // Check if it's a freemium limit error
-        if (error.message?.includes("limit reached")) {
-          throw new Error("You've reached the recipe limit (20/20). Upgrade to Premium for unlimited recipes.");
+        if (error.message?.includes("limit reached") || error.message?.includes("recipe_limit")) {
+          throw new Error("Limite atteinte (20/20 recettes). Passez à Premium pour des recettes illimitées.");
         }
         throw error;
       }
 
-      return { data: data as Recipe, error: null };
+      return { data: mapDbRowToRecipe(data), error: null };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -222,7 +255,7 @@ export class RecipeService {
 
       if (error) throw error;
 
-      return { data: data as Recipe, error: null };
+      return { data: mapDbRowToRecipe(data), error: null };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -273,7 +306,7 @@ export class RecipeService {
 
       if (error) throw error;
 
-      return { data: data as Recipe, error: null };
+      return { data: mapDbRowToRecipe(data), error: null };
     } catch (error) {
       return { data: null, error: error as Error };
     }
