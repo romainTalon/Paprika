@@ -285,6 +285,170 @@ import { spacing } from "@/theme";
 
 ---
 
+## 2025-11-18 - Mapping snake_case/camelCase dans les Services
+
+**Contexte** : Supabase/PostgreSQL utilise snake_case pour les noms de colonnes (`user_id`, `cover_image_url`) mais TypeScript/React utilise camelCase (`userId`, `coverImageUrl`). Les services renvoyaient des données brutes sans transformation, causant des erreurs.
+
+**Décision** : Implémenter des **fonctions de mapping** dans chaque service pour transformer automatiquement les données entre snake_case (DB) et camelCase (app).
+
+**Raisons** :
+- ✅ **Type safety** : Le code TypeScript attend des types camelCase cohérents
+- ✅ **Consistance** : Toute l'application utilise camelCase (convention React/JS)
+- ✅ **DX améliorée** : Autocomplétion fonctionne correctement
+- ✅ **Maintenance** : Un seul endroit pour gérer la transformation
+- ✅ **Évolutivité** : Facile d'ajouter de nouveaux champs transformés
+
+**Implémentation** :
+```typescript
+// Exemple dans CookbookService
+function mapDbRowToCookbook(row: any): Cookbook {
+  return {
+    id: row.id,
+    userId: row.user_id,  // snake_case → camelCase
+    name: row.name,
+    coverImageUrl: row.cover_image_url,  // snake_case → camelCase
+    isDefault: row.is_default,  // snake_case → camelCase
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+  };
+}
+
+// Utilisé dans chaque méthode de récupération
+const { data, error } = await supabase.from("cookbooks").select("*");
+return { data: data?.map(mapDbRowToCookbook) || [], error: null };
+```
+
+**Services impactés** :
+- ✅ CookbookService - `mapDbRowToCookbook()`
+- ✅ RecipeService - `mapDbRowToRecipe()`
+- ⏳ MealPlanService (à venir)
+- ⏳ GroceryListService (à venir)
+
+**Alternatives considérées** :
+- **Supabase PostgREST snake_case config** : Ne fonctionne pas avec RLS policies
+- **Drizzle camelCase plugin** : Pas encore stable pour Supabase
+- **Pas de transformation** : TypeScript errors partout, mauvaise DX
+
+**Conséquences** :
+- Légère overhead de transformation (~1-2ms par objet, négligeable)
+- Code plus maintenable et type-safe
+- Pattern à répéter pour chaque nouveau service
+
+**Statut** : ✅ Validée
+
+---
+
+## 2025-11-18 - Fix React Hooks Order dans RecipeListScreen
+
+**Contexte** : Erreur "Rendered more hooks than during the previous render" causée par des hooks (`useCallback`) appelés **après** des `return` conditionnels dans `CookbookDetailScreen`.
+
+**Décision** : **Déplacer tous les hooks avant les conditions de return**, respectant strictement les Rules of Hooks de React.
+
+**Raisons** :
+- ✅ **Règle fondamentale React** : Les hooks doivent TOUJOURS être appelés dans le même ordre
+- ✅ **Stabilité** : Évite les bugs de re-render imprévisibles
+- ✅ **Best practice** : Pattern standard React
+
+**Avant (❌ Incorrect)** :
+```typescript
+const data = useQuery(...)
+const mutation = useMutation(...)
+
+if (loading) return <Loading />  // ⚠️ Early return
+
+const handler = useCallback(...)  // ❌ Pas toujours appelé !
+```
+
+**Après (✅ Correct)** :
+```typescript
+const data = useQuery(...)
+const mutation = useMutation(...)
+const handler = useCallback(...)  // ✅ Toujours appelé
+
+// Conditional returns APRÈS tous les hooks
+if (loading) return <Loading />
+```
+
+**Pattern appliqué** :
+1. Tous les hooks au début (useState, useQuery, useMutation, useCallback, etc.)
+2. Logique et calculs
+3. Conditions de return (loading, error, empty state)
+4. Render principal
+
+**Conséquences** :
+- Pattern plus verbeux mais plus sûr
+- À appliquer systématiquement dans tous les composants
+- Ajouter ce pattern au linter/ESLint si possible
+
+**Statut** : ✅ Validée
+
+**Ressources** :
+- [Rules of Hooks - React Docs](https://react.dev/reference/rules/rules-of-hooks)
+
+---
+
+## 2025-11-18 - Validation Zod pour formulaires de recettes
+
+**Contexte** : Besoin de valider des formulaires complexes avec listes dynamiques (ingrédients, étapes) avant soumission à l'API.
+
+**Décision** : Utiliser **Zod** pour la validation côté client avec messages d'erreur en français.
+
+**Raisons** :
+- ✅ **Type inference** : Types TypeScript automatiques depuis les schémas
+- ✅ **Composabilité** : Schémas réutilisables (ingredient, step, recipe)
+- ✅ **DX excellente** : Erreurs claires et localisées
+- ✅ **Bundle size** : Léger (~8KB gzippé)
+- ✅ **Déjà installé** : Utilisé ailleurs dans le projet
+
+**Schémas créés** :
+```typescript
+// src/lib/validations/recipe.validation.ts
+export const recipeIngredientSchema = z.object({
+  name: z.string().min(1, "Le nom de l'ingrédient est requis"),
+  quantity: z.number().positive("La quantité doit être positive"),
+  unit: z.string().min(1, "L'unité est requise"),
+});
+
+export const recipeStepSchema = z.object({
+  order: z.number().int().positive(),
+  instruction: z.string().min(5, "L'instruction doit contenir au moins 5 caractères"),
+});
+
+export const createRecipeSchema = z.object({
+  title: z.string().min(1, "Le titre est requis").max(200),
+  ingredients: z.array(recipeIngredientSchema).min(1, "Au moins un ingrédient requis"),
+  steps: z.array(recipeStepSchema).min(1, "Au moins une étape requise"),
+  // ... autres champs
+});
+```
+
+**Utilisation** :
+```typescript
+try {
+  const validated = createRecipeSchema.parse(formData);
+  await createRecipe.mutateAsync(validated);
+} catch (error) {
+  if (error instanceof z.ZodError) {
+    Alert.alert("Validation", error.issues[0].message);
+  }
+}
+```
+
+**Alternatives considérées** :
+- **Yup** : Plus lourd, moins bon TypeScript inference
+- **Joi** : Pas adapté au frontend (trop gros)
+- **Validation manuelle** : Fastidieux, pas de types automatiques
+
+**Conséquences** :
+- Messages d'erreur clairs pour l'utilisateur
+- Moins d'appels API invalides
+- Types garantis à la compilation
+- Pattern à réutiliser pour tous les formulaires
+
+**Statut** : ✅ Validée
+
+---
+
 ## 2025-11-03 - Anthropic Claude au lieu d'OpenAI GPT
 
 **Contexte** : Choix du LLM pour parsing recettes et nutrition

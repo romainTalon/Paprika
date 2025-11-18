@@ -32,7 +32,8 @@
       "Bash(cat:*)",
       "Bash(Get-Content \"C:\\Repositories\\Paprika\\supabase\\schema.sql\")",
       "Bash(Select-String -Pattern \"cookbooks\" -Context 0,5)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(powershell -Command \"Get-Content ''C:\\Repositories\\Paprika\\DECISION-LOG.md'' | Measure-Object -Line | Select-Object -ExpandProperty Lines\")"
     ],
     "deny": [],
     "ask": []

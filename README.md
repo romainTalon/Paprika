@@ -32,10 +32,11 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 |-----------|--------|-------------|
 | 📝 Documentation | ✅ Complète | 100% |
 | 🗄️ Base de Données | ✅ Opérationnelle | 85% |
-| ⚙️ Backend | 🚧 En cours | 40% |
-| 📱 Frontend | 🚧 En cours | 55% |
+| ⚙️ Backend Services | ✅ Fonctionnels | 60% |
+| 📱 Frontend | 🚧 En cours | 70% |
 | 🤖 Services IA | 🚧 En cours | 50% |
 | 🔐 Authentification | ✅ Complète | 100% |
+| 📚 Gestion Recettes | ✅ Complète | 100% |
 | 💳 Paiements | ⏳ À faire | 0% |
 
 **Phase 1 Setup complétée** ✅ :
@@ -63,14 +64,32 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 - 📝 Solution: Migration vers Supabase Edge Functions prévue
 
 **Frontend fonctionnel** 🚧 :
+
+**Cookbooks** ✅ :
 - ✅ CookbooksScreen avec liste, création, édition, suppression
 - ✅ CreateCookbookModal avec validation et gestion d'état
 - ✅ Hooks TanStack Query (useCookbooks, useCreateCookbook, etc.)
+- ✅ UI freemium (limite 2 cookbooks affichée)
+
+**Recettes** ✅ (18 novembre 2025) :
+- ✅ RecipeListScreen - Affichage des recettes d'un cookbook
+- ✅ CreateRecipeScreen - Formulaire complet de création manuelle
+- ✅ RecipeCard - Composant réutilisable avec actions (favori, éditer, supprimer)
+- ✅ IngredientInput - Input dynamique pour ingrédients (nom, quantité, unité)
+- ✅ StepInput - Input dynamique pour étapes numérotées
+- ✅ Hooks TanStack Query (useRecipes, useCookbookRecipes, useCreateRecipe, etc.)
+- ✅ Validation Zod complète avec messages en français
+- ✅ Gestion toggle favori en temps réel
+- ✅ Suppression avec confirmation
+- ✅ Empty state, error state, loading state
+- ✅ FAB pour création rapide
+- ✅ Mapping snake_case ↔ camelCase (CookbookService + RecipeService)
+- ⏳ RecipeDetailScreen (placeholder - à implémenter)
+
+**Navigation & UI** :
 - ✅ Navigation complète configurée (4 tabs + écrans stack)
 - ✅ AppHeader custom avec profil cliquable
 - ✅ PlaceholderScreen pour écrans en développement
-- ✅ États vides, erreurs, chargement
-- ✅ UI freemium (limite 2 cookbooks affichée)
 - ✅ Protection des routes (redirection vers login si non authentifié)
 - ✅ SettingsScreen complet (profil, abonnement, déconnexion)
 
@@ -85,7 +104,14 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 - ✅ Token refresh automatique (AppState listener)
 - ⏳ Deep links pour confirmation email (désactivée temporairement)
 
-**Dernière mise à jour** : 16 novembre 2025
+**Dernière mise à jour** : 18 novembre 2025
+
+**Derniers changements** (18 novembre 2025) :
+- ✅ Implémentation complète de la gestion des recettes (liste + création)
+- ✅ 7 nouveaux fichiers créés (~2,000 lignes de code)
+- ✅ Correction bug hooks React (order of hooks)
+- ✅ Mapping snake_case/camelCase dans RecipeService
+- ✅ Flow complet : Cookbook → RecipeList → CreateRecipe → (RecipeDetail)
 
 ---
 
