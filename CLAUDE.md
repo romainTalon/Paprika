@@ -47,11 +47,13 @@ This project has a **sophisticated Claude Code setup** in the `.claude/` directo
 
 **You don't need to manually read system.md** - it's loaded automatically when you start a session.
 
-**⚠️ Note on Referenced Documentation**: The `system.md` file references several `docs/Paprika-*.md` files (Paprika-status-report.md, Paprika-data-model.md, Paprika-vision.md, Paprika-design-system.md) that **don't exist yet**. These were planned for an older project structure. Instead, use the actual documentation files:
-- **Status** → README.md (see "État du Projet" section)
+**✅ Automatic Session Initialization**: The `system.md` file is now correctly configured and references the actual documentation files:
+- **Status** → README.md (section "État du Projet")
 - **Data Model** → docs/03-data-model.md
 - **Vision** → docs/04-product-vision.md
 - **Design System** → docs/09-design-system.md
+- **Frontend Guidelines** → docs/08-frontend-guidelines.md
+- **Decision Log** → DECISION-LOG.md
 
 ### Available Slash Commands (Agents)
 

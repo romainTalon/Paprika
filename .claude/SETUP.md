@@ -36,10 +36,12 @@ Ce fichier est **automatiquement lu au démarrage de chaque nouvelle session** C
 - ✅ Rappel de mettre à jour le status report
 
 **Documents lus automatiquement:**
-1. `docs/Paprika-status-report.md` - État actuel du projet
-2. `docs/Paprika-data-model.md` - Schéma base de données
-3. `docs/Paprika-vision.md` - Vision et objectifs
-4. `docs/Paprika-design-system.md` - Design system
+1. `README.md` - État actuel du projet
+2. `docs/03-data-model.md` - Schéma base de données
+3. `docs/04-product-vision.md` - Vision et objectifs
+4. `docs/09-design-system.md` - Design system
+5. `docs/08-frontend-guidelines.md` - Frontend best practices
+6. `DECISION-LOG.md` - Décisions architecturales
 
 ### Pourquoi c'est utile ?
 
@@ -139,7 +141,7 @@ J'ai implémenté la feature grocery list
 **Fait:**
 - Analyse les changements
 - Calcule les nouveaux pourcentages de complétion
-- Met à jour `docs/Paprika-status-report.md`
+- Met à jour `README.md` (section "État du Projet")
 - Ajoute une section "Dernières Améliorations"
 - Ajuste les métriques de qualité
 
@@ -157,10 +159,12 @@ J'ai implémenté la feature grocery list
 
 Claude va automatiquement :
 1. Lire `system.md` (règles du projet)
-2. Lire `docs/Paprika-status-report.md` (état actuel)
-3. Lire `docs/Paprika-data-model.md` (schéma DB)
-4. Lire `docs/Paprika-vision.md` (contexte)
-5. Lire `docs/Paprika-design-system.md` (UI/UX)
+2. Lire `README.md` (état actuel)
+3. Lire `docs/03-data-model.md` (schéma DB)
+4. Lire `docs/04-product-vision.md` (contexte)
+5. Lire `docs/09-design-system.md` (UI/UX)
+6. Lire `docs/08-frontend-guidelines.md` (best practices)
+7. Lire `DECISION-LOG.md` (décisions techniques)
 
 Vous n'avez **rien à faire** - c'est automatique ! 🎉
 
@@ -258,10 +262,12 @@ Pour ajouter d'autres permissions :
 ```
 Claude lit automatiquement:
 ✅ system.md
-✅ Paprika-status-report.md (voit que export PDF est à 0%)
-✅ Paprika-data-model.md
-✅ Paprika-vision.md (voit que export PDF est dans le scope)
-✅ Paprika-design-system.md
+✅ README.md (voit que export PDF est à 0%)
+✅ docs/03-data-model.md
+✅ docs/04-product-vision.md (voit que export PDF est dans le scope)
+✅ docs/09-design-system.md
+✅ docs/08-frontend-guidelines.md
+✅ DECISION-LOG.md
 ```
 
 **User:**
@@ -315,9 +321,9 @@ Approuvez-vous ?
 **Claude:**
 ```
 ✅ Status report mis à jour!
-- Fichier: docs/Paprika-status-report.md
+- Fichier: README.md (section "État du Projet")
 - Date mise à jour: 24 octobre 2025 - 15h30
-- Section "Dernières Améliorations" ajoutée
+- Section "Derniers changements" ajoutée
 ```
 
 ---
@@ -374,8 +380,12 @@ R: Oui ! `/build-feature` orchestre les autres agents automatiquement.
 
 - **Documentation Agents:** `.claude/commands/README.md`
 - **Règles Système:** `.claude/system.md`
-- **Status Report:** `docs/Paprika-status-report.md`
-- **Data Model:** `docs/Paprika-data-model.md`
+- **État du Projet:** `README.md`
+- **Data Model:** `docs/03-data-model.md`
+- **Product Vision:** `docs/04-product-vision.md`
+- **Design System:** `docs/09-design-system.md`
+- **Frontend Guidelines:** `docs/08-frontend-guidelines.md`
+- **Decision Log:** `DECISION-LOG.md`
 
 ---
 

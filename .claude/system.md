@@ -4,52 +4,80 @@
 
 **IMPORTANT:** At the start of each new session, you MUST read the following documents to understand the current state of the project:
 
-### 1. **Project Status Report** (CRITICAL - READ FIRST)
+### 1. **Project Status & Overview** (CRITICAL - READ FIRST)
 ```
-docs/Paprika-status-report.md
+README.md
 ```
-**Why:** Contains current completion percentages, implemented features, what's missing, and priorities.
+**Why:** Contains current completion percentages, implemented features, what's missing, and recent changes.
 
 ### 2. **Database Schema** (ESSENTIAL)
 ```
-docs/Paprika-data-model.md
+docs/03-data-model.md
 ```
 **Why:** Defines all Supabase tables, relationships, RLS policies, and data structures.
 
 ### 3. **Project Vision & Objectives** (CONTEXT)
 ```
-docs/Paprika-vision.md
+docs/04-product-vision.md
 ```
 **Why:** Understanding user personas, competitive positioning, and product goals.
 
 ### 4. **Design System** (UI/UX REFERENCE)
 ```
-docs/Paprika-design-system.md
+docs/09-design-system.md
 ```
-**Why:** Defines theme, colors, typography, component patterns to follow.
+**Why:** Defines theme implementation, colors, typography, component patterns to follow.
+
+### 5. **Frontend Guidelines** (DEVELOPMENT STANDARDS)
+```
+docs/08-frontend-guidelines.md
+```
+**Why:** React Native best practices, component patterns, and code standards.
+
+### 6. **Decision Log** (ARCHITECTURAL CONTEXT)
+```
+DECISION-LOG.md
+```
+**Why:** Understand WHY technical decisions were made (critical for maintaining consistency).
 
 ---
 
 ## 🏗️ Project Architecture Overview
 
 ### Tech Stack
-- **Frontend:** React Native 0.81.5 + Expo 54.0.20
-- **Language:** TypeScript 5.9.2 (strict mode)
-- **Navigation:** React Navigation (Bottom Tabs + Stack)
-- **State:** Custom React Hooks
-- **Backend:** Supabase (PostgreSQL + Auth)
+- **Frontend:** React Native 0.81+ / Expo 54+
+- **Language:** TypeScript 5.9 (strict mode)
+- **Styling:** StyleSheet natif + Design System (NOT NativeWind)
+- **Navigation:** Expo Router (file-based routing)
+- **State:** TanStack Query v5 (server state) + Zustand (client state - future)
+- **Backend:** Supabase (PostgreSQL + Auth + Storage)
+- **ORM:** Drizzle (type-safe, 40KB)
 - **Testing:** Jest + React Native Testing Library (to be configured)
 
 ### Folder Structure
 ```
+app/                     # Expo Router - file-based navigation
+├── _layout.tsx         # Root layout with TanStack Query Provider
+├── index.tsx           # Entry point (routing logic based on auth state)
+├── onboarding/         # 3-step onboarding flow
+├── (auth)/             # Auth group (login, signup, forgot-password)
+└── (tabs)/             # Main app tabs
+    ├── cookbooks/      # Cookbooks management
+    ├── recipes/        # Recipe screens (create, import, detail)
+    ├── meal-plan/      # Meal planning
+    └── grocery/        # Grocery lists
+
 src/
-├── components/ui/      # Reusable UI components (Button, Card, PaprikaText)
-├── hooks/              # Custom hooks (useAuth, useRecipes, useCookbooks, useMealPlans)
-├── navigation/         # React Navigation setup (MainNavigator)
-├── screens/            # App screens (Auth, Cookbooks, Recipes, MealPlan, etc.)
-├── services/           # Backend API layer (auth, recipes, cookbooks, meal_plans)
-├── theme/              # Design system (colors, typography, spacing)
-└── types/              # TypeScript type definitions
+├── components/
+│   ├── ui/             # Reusable UI (Text, Button, Container)
+│   ├── auth/           # Auth components (AuthInput, AuthFormContainer)
+│   └── cookbook/       # Cookbook components (CookbookCard, CreateCookbookModal)
+├── contexts/           # React Contexts (AuthContext)
+├── hooks/              # TanStack Query hooks (useCookbooks, useRecipes, etc.)
+├── services/           # Backend services (CookbookService, RecipeService, etc.)
+├── theme/              # Design system tokens (colors, spacing, typography, shadows)
+├── types/              # TypeScript definitions
+└── lib/                # Utilities (supabase client, validations)
 ```
 
 ### Key Patterns to Follow
@@ -165,11 +193,14 @@ const styles = StyleSheet.create({
 
 ### Use Existing Components
 Before creating a new component, check if these exist:
-- `PaprikaText` - For all text (variants: heading, body, caption, label)
-- `Button` - For buttons (variants: solid, outline, ghost; sizes: xs, sm, md, lg)
-- `Card` - For containers (variants: elevated, outlined, filled)
+- `Text` (from `@/components/ui`) - For all text (variants: h1-h4, body, bodyLarge, bodySmall, caption)
+- `Button` (from `@/components/ui`) - For buttons (variants: primary, secondary, outline, ghost)
+- `Container` (from `@/components/ui`) - For layout containers (optional centered prop)
+- `CookbookCard` - For cookbook previews
 - `RecipeCard` - For recipe previews
-- `MealSlot` - For meal planning slots
+- `CreateCookbookModal` - For creating new cookbooks
+- `AuthInput` - For auth form inputs
+- `AuthFormContainer` - For auth screen layouts
 
 ---
 
@@ -255,40 +286,53 @@ Use these slash commands for specialized tasks:
 - ✅ Reuse existing components
 
 ### Database
-- ✅ Current status: **Partially configured** (see status report)
-- ✅ Some tables may be missing - check with user before assuming they exist
-- ✅ Always use RLS policies
+- ✅ Current status: **85% complete and operational** (see README.md)
+- ✅ Schema fully implemented with 7 tables, RLS policies, triggers, and indexes
+- ✅ Drizzle ORM configured and tested
+- ✅ Always use RLS policies for data isolation
 - ✅ Always reference auth.users for user_id
+- ✅ Use snake_case in DB, map to camelCase in services (see DECISION-LOG.md)
 
 ---
 
-## 🎯 Current Priorities (Check Status Report for Updates)
+## 🎯 Current Priorities (Check README.md for Latest Updates)
 
-Based on the last status report:
+Based on current project status (see README.md):
 
-### CRITICAL
-1. Complete Supabase database schema
-2. Implement RLS policies and triggers
+### COMPLETED ✅
+- Supabase database schema (85% - fully operational)
+- Authentication system (100% - Supabase Auth + Onboarding)
+- Cookbooks management (100% - CRUD operations)
+- Recipe management (100% - Create, list, toggle favorite, delete)
 
-### HIGH
-3. Finish grocery list functionality
-4. Implement recipe import from URL
+### IN PROGRESS 🚧
+1. RecipeDetailScreen (currently placeholder)
+2. Recipe import from URL (services created, needs Edge Functions migration)
+3. Nutritional calculations (services created, needs Edge Functions migration)
 
-### MEDIUM
-5. Add nutritional calculations
-6. Implement testing suite
+### HIGH PRIORITY
+4. Migrate IA services to Supabase Edge Functions
+5. Implement meal planning functionality
+6. Implement grocery list functionality
+7. Implement testing suite (Jest + Testing Library)
+
+### MEDIUM PRIORITY
+8. Stripe integration for payments
+9. Recipe sharing feature
+10. Export PDF functionality
 
 ---
 
 ## 🚀 Development Workflow
 
 When starting work:
-1. ✅ Read the 4 essential documents (status, data model, vision, design)
-2. ✅ Understand current project state
+1. ✅ Read the essential documents (README.md, data model, vision, design, decision log)
+2. ✅ Understand current project state from README.md
 3. ✅ Check what's already implemented
-4. ✅ Use appropriate agent for the task
-5. ✅ Follow established patterns
-6. ✅ Update status report when done
+4. ✅ Review DECISION-LOG.md to understand WHY decisions were made
+5. ✅ Use appropriate agent for the task
+6. ✅ Follow established patterns (see Frontend Guidelines)
+7. ✅ Update README.md when major features are completed
 
 ---
 
@@ -296,16 +340,21 @@ When starting work:
 
 | Need to... | Command/Path |
 |-----------|-------------|
-| Check project status | Read `docs/Paprika-status-report.md` |
-| See database schema | Read `docs/Paprika-data-model.md` |
+| Check project status | Read `README.md` |
+| See database schema | Read `docs/03-data-model.md` |
+| Understand a decision | Read `DECISION-LOG.md` |
+| Frontend best practices | Read `docs/08-frontend-guidelines.md` |
+| Design system specs | Read `docs/09-design-system.md` |
 | Create a screen | `/frontend-dev` |
 | Create database tables | `/supabase-dev` |
 | Add tests | `/test-dev` |
 | Review code | `/lead-review` |
 | Build complete feature | `/build-feature` |
-| Update documentation | `/update-status` |
-| Check theme values | `src/theme/index.ts` |
-| Check types | `src/types/index.ts` |
+| Update documentation | Update `README.md` manually or use `/update-status` |
+| Check theme values | `src/theme/` (colors, spacing, typography, shadows) |
+| Check types | `src/types/` |
+| Auth context | `src/contexts/AuthContext.tsx` |
+| Supabase client | `src/lib/supabase.ts` |
 
 ---
 
