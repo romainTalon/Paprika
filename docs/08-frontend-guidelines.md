@@ -403,6 +403,114 @@ const styles = StyleSheet.create({
 });
 ```
 
+### 2.4 Navigation & BackButton
+
+**Contexte :** Les écrans standalone (hors navigation par tabs) nécessitent un moyen visuel clair de revenir en arrière.
+
+**Composant BackButton :**
+```tsx
+import { BackButton } from "@/components/navigation";
+
+export default function StandaloneScreen() {
+  return (
+    <Container useSafeArea>
+      <BackButton />
+      {/* Contenu de l'écran */}
+    </Container>
+  );
+}
+```
+
+**Props Disponibles :**
+- `onPress?`: Handler personnalisé (défaut : `router.back()`)
+- `label?`: Texte du bouton (défaut : "← Retour")
+- `style?`: Style override
+
+**Quand utiliser BackButton ?**
+
+| Type d'Écran | BackButton ? | Raison |
+|--------------|--------------|--------|
+| **Écrans dans les tabs** | ❌ Non | Navigation gérée par la TabBar |
+| **Écrans standalone** | ✅ Oui | Aucun autre moyen visuel de navigation |
+| **Modals** | ⚠️ Optionnel | Bouton "X" souvent préféré |
+| **Écrans auth/onboarding** | ❌ Non | Navigation linéaire sans retour |
+
+**Exemples d'utilisation :**
+
+```tsx
+// ✅ CORRECT - Écran cookbook detail (standalone)
+export default function CookbookDetailScreen() {
+  return (
+    <Container useSafeArea>
+      <BackButton />
+      <FlatList data={recipes} />
+    </Container>
+  );
+}
+
+// ✅ CORRECT - Écran settings (standalone)
+export default function SettingsScreen() {
+  return (
+    <SafeAreaView edges={["top"]}>
+      <ScrollView>
+        <BackButton />
+        {/* Settings content */}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+// ✅ CORRECT - Formulaire création recette
+export default function CreateRecipeScreen() {
+  return (
+    <SafeAreaView edges={["top"]}>
+      <ScrollView>
+        <BackButton />
+        <View>{/* Form fields */}</View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+// ❌ INCORRECT - Tab screen (doublon avec TabBar)
+export default function CookbooksTabScreen() {
+  return (
+    <Container>
+      <BackButton /> {/* ❌ Pas nécessaire, TabBar présent */}
+      <FlatList data={cookbooks} />
+    </Container>
+  );
+}
+
+// ✅ CORRECT - Handler personnalisé
+export default function CustomScreen() {
+  const handleBack = () => {
+    // Sauvegarder les données avant de partir
+    saveData();
+    router.back();
+  };
+
+  return (
+    <Container useSafeArea>
+      <BackButton onPress={handleBack} />
+      {/* Content */}
+    </Container>
+  );
+}
+```
+
+**Design System :**
+- Couleur : `colors.primary.DEFAULT`
+- Padding : `spacing.xs` (vertical), `spacing.sm` (horizontal)
+- Font weight : `600`
+- Alignement : `flex-start` (gauche)
+- Espacement bas : `spacing.sm`
+
+**Accessibilité :**
+- `accessibilityLabel="Retour"`
+- `accessibilityRole="button"`
+- Zone tactile : 44×44px minimum (iOS HIG)
+
 ---
 
 ## 3. Responsive Design

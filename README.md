@@ -107,14 +107,24 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 **Dernière mise à jour** : 19 novembre 2025
 
 **Derniers changements** (19 novembre 2025) :
-- ✅ **Gestion complète des Safe Areas iOS/Android** (17 fichiers modifiés)
+
+**Navigation inter-écrans** :
+- ✅ **BackButton component** - Bouton "← Retour" réutilisable pour écrans standalone
+- ✅ Ajouté à cookbooks/[id].tsx (tous les états : loading, error, empty, main)
+- ✅ Ajouté à app/settings/index.tsx
+- ✅ Ajouté à app/recipes/create.tsx
+- ✅ Props flexibles (onPress personnalisé, label personnalisé)
+- ✅ Accessible (accessibilityLabel, accessibilityRole)
+- ✅ Documentation complète (DECISION-LOG.md + docs/08-frontend-guidelines.md section 2.4)
+
+**Gestion des Safe Areas iOS/Android** (17 fichiers modifiés) :
 - ✅ SafeAreaProvider global configuré dans app/_layout.tsx
 - ✅ AppHeader avec SafeAreaView (respect notch/Dynamic Island)
 - ✅ Container avec support useSafeArea (prop flexible)
 - ✅ AuthFormContainer avec useSafeArea par défaut
 - ✅ Tous les écrans standalone (Settings, Create Recipe, Recipe List) corrigés
 - ✅ **Correction emojis croppés** - lineHeight ajouté partout (48px→56px, 64px→72px, 80px→88px)
-- ✅ Documentation complète (DECISION-LOG.md + docs/08-frontend-guidelines.md)
+- ✅ Documentation complète (DECISION-LOG.md + docs/08-frontend-guidelines.md section 3.3)
 - ✅ Pattern clair selon type d'écran (tabs vs standalone)
 - 📱 Support complet iPhone X/11/12/13/14/15 (notch + Dynamic Island)
 - 📱 Support complet Android (status bar + navigation bar)

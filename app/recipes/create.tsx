@@ -21,6 +21,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Text, Button } from "@/components/ui";
+import { BackButton } from "@/components/navigation";
 import IngredientInput from "@/components/recipe/IngredientInput";
 import StepInput from "@/components/recipe/StepInput";
 import { colors, spacing, fontSizes, fontWeights, shadows } from "@/theme";
@@ -218,6 +219,7 @@ export default function CreateRecipeScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        <BackButton />
         {/* Header */}
         <View style={styles.header}>
           <Text variant="h1">Nouvelle Recette</Text>

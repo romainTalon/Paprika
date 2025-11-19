@@ -20,6 +20,77 @@
 
 ---
 
+## 2025-11-19 - Ajout du Composant BackButton pour Navigation Inter-Écrans
+
+**Contexte** : Après implémentation de la navigation Safe Areas, feedback utilisateur concernant l'absence d'indicateurs visuels pour la navigation :
+- Aucun moyen visuel clair de revenir en arrière quand on navigue dans un cookbook
+- Même problème sur l'écran de paramètres (Settings)
+- Idem sur l'écran de création de recette
+- Navigation confuse pour utilisateurs peu familiers avec les gestes iOS/Android
+
+**Décision** : **Créer un composant BackButton réutilisable** pour tous les écrans standalone
+
+**Implémentation** :
+
+1. **Nouveau Composant** : `src/components/navigation/BackButton.tsx`
+   - Bouton "← Retour" avec style cohérent du design system
+   - Comportement par défaut : `router.back()`
+   - Props optionnelles :
+     - `onPress?` : Handler personnalisé
+     - `label?` : Texte personnalisé (défaut : "← Retour")
+     - `style?` : Style override
+   - Accessibilité complète (`accessibilityLabel`, `accessibilityRole`)
+
+2. **Intégration dans les Écrans** :
+   - `app/cookbooks/[id].tsx` : Tous les états (loading, error, empty, main)
+   - `app/settings/index.tsx` : En haut du ScrollView
+   - `app/recipes/create.tsx` : En haut du formulaire
+
+3. **Export** : Ajouté dans `src/components/navigation/index.ts`
+
+**Raisons** :
+- ✅ **UX améliorée** : Indicateur visuel clair pour revenir en arrière
+- ✅ **Cohérence** : Même comportement sur tous les écrans standalone
+- ✅ **Accessibilité** : Support des lecteurs d'écran
+- ✅ **Maintenabilité** : Composant réutilisable, pas de duplication
+- ✅ **Design System** : Utilise les tokens (colors, spacing) existants
+- ✅ **Flexibilité** : Props permettent la personnalisation si nécessaire
+
+**Alternatives considérées** :
+- **Bouton natif iOS/Android** : Pas de contrôle sur le style, inconsistant cross-platform
+- **Header personnalisé par écran** : Duplication de code, maintenance difficile
+- **Geste swipe uniquement** : Non découvrable, pas accessible
+- **Icône sans texte** : Moins clair pour utilisateurs non techniques
+
+**Pattern d'Utilisation** :
+```tsx
+// Pattern recommandé pour écrans standalone
+import { BackButton } from "@/components/navigation";
+
+export default function StandaloneScreen() {
+  return (
+    <Container useSafeArea>
+      <BackButton />
+      {/* Contenu de l'écran */}
+    </Container>
+  );
+}
+```
+
+**Conséquences** :
+- Navigation inter-écrans plus intuitive et claire
+- Réduction du taux d'abandon sur écrans standalone
+- Pattern établi pour tous les futurs écrans
+- Code facilement testable et maintenable
+
+**Statut** : ✅ Validée
+
+**Ressources** :
+- [Expo Router Navigation](https://docs.expo.dev/router/navigating-pages/)
+- [docs/08-frontend-guidelines.md](./docs/08-frontend-guidelines.md) - Section Navigation
+
+---
+
 ## 2025-11-19 - Gestion des Safe Areas et Responsive iOS/Android
 
 **Contexte** : Après implémentation des premiers écrans, plusieurs problèmes de responsive identifiés :

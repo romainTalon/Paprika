@@ -9,6 +9,7 @@ import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from "react-nat
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Text, Container } from "@/components/ui";
+import { BackButton } from "@/components/navigation";
 import { colors, spacing } from "@/theme";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -43,6 +44,7 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView edges={["top"]} style={styles.safeArea}>
       <ScrollView style={styles.container}>
+      <BackButton />
       {/* Profile Section */}
       <View style={styles.section}>
         <Text variant="h2" style={styles.sectionTitle}>

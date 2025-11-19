@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Text, Button, Container } from "@/components/ui";
+import { BackButton } from "@/components/navigation";
 import RecipeCard from "@/components/recipe/RecipeCard";
 import { colors, spacing, shadows } from "@/theme";
 import {
@@ -169,6 +170,7 @@ export default function CookbookDetailScreen() {
   if (isCookbookLoading || isRecipesLoading) {
     return (
       <Container centered useSafeArea>
+        <BackButton />
         <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
         <Text variant="body" color="neutral" style={{ marginTop: spacing.md }}>
           Chargement...
@@ -181,6 +183,7 @@ export default function CookbookDetailScreen() {
   if (cookbookError || recipesError) {
     return (
       <Container useSafeArea>
+        <BackButton />
         <ErrorState
           error={(cookbookError || recipesError) as Error}
           onRetry={() => refetch()}
@@ -193,6 +196,7 @@ export default function CookbookDetailScreen() {
   if (!recipes || recipes.length === 0) {
     return (
       <Container useSafeArea>
+        <BackButton />
         <View style={styles.header}>
           <View>
             <Text variant="h1">{cookbook?.name || "Livre de Recettes"}</Text>
@@ -209,6 +213,7 @@ export default function CookbookDetailScreen() {
 
   return (
     <Container useSafeArea>
+      <BackButton />
       <FlatList
         data={recipes}
         renderItem={renderRecipe}

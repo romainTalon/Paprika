@@ -19,21 +19,32 @@ export default function TabLayout() {
           backgroundColor: colors.white,
           borderTopColor: colors.gray[200],
           borderTopWidth: 1,
-          paddingBottom: 4,
-          height: 60,
+          paddingBottom: 8,
+          paddingTop: 8,
+          height: 70,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+          marginTop: 4,
+        },
+        tabBarItemStyle: {
+          paddingHorizontal: 4,
         },
         headerStyle: {
           backgroundColor: colors.cream.DEFAULT,
         },
         header: () => <AppHeader />,
+        headerShown: true,
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: "Accueil",
+          tabBarLabel: "Accueil",
           tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 24 }}>{color === colors.primary.DEFAULT ? "🏠" : "🏡"}</Text>
+            <Text style={{ fontSize: 24, lineHeight: 28 }}>🏠</Text>
           ),
         }}
       />
@@ -41,8 +52,9 @@ export default function TabLayout() {
         name="cookbooks"
         options={{
           title: "Livres",
+          tabBarLabel: "Livres",
           tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 24 }}>{color === colors.primary.DEFAULT ? "📚" : "📖"}</Text>
+            <Text style={{ fontSize: 24, lineHeight: 28 }}>📚</Text>
           ),
         }}
       />
@@ -50,8 +62,9 @@ export default function TabLayout() {
         name="meal-plan"
         options={{
           title: "Planning",
+          tabBarLabel: "Planning",
           tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 24 }}>{color === colors.primary.DEFAULT ? "📅" : "📆"}</Text>
+            <Text style={{ fontSize: 24, lineHeight: 28 }}>📅</Text>
           ),
         }}
       />
@@ -59,8 +72,9 @@ export default function TabLayout() {
         name="grocery-lists"
         options={{
           title: "Courses",
+          tabBarLabel: "Courses",
           tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 24 }}>{color === colors.primary.DEFAULT ? "🛒" : "🛍️"}</Text>
+            <Text style={{ fontSize: 24, lineHeight: 28 }}>🛒</Text>
           ),
         }}
       />
