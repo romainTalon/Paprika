@@ -441,6 +441,7 @@ const styles = StyleSheet.create({
 
   placeholderIcon: {
     fontSize: 48,
+    lineHeight: 56, // Line height plus grande pour éviter le clip vertical
   },
 
   cardContent: {
@@ -485,6 +486,7 @@ const styles = StyleSheet.create({
   emptyStateIcon: {
     fontSize: 80,
     marginBottom: spacing.lg,
+    lineHeight: 88, // Line height plus grande pour éviter le clip vertical
   },
 
   emptyStateTitle: {
@@ -505,6 +507,7 @@ const styles = StyleSheet.create({
   errorIcon: {
     fontSize: 64,
     marginBottom: spacing.md,
+    lineHeight: 72, // Line height plus grande pour éviter le clip vertical
   },
 
   errorTitle: {

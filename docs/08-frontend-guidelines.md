@@ -130,6 +130,60 @@ fontFamily: {
 - ⛔ **JAMAIS** : `fontSize: 16`
 - ✅ **TOUJOURS** : `fontSize: fontSizes.md`
 
+#### Emojis - Gestion du Crop Vertical ⚠️
+
+Les emojis ont tendance à être croppés (coupés) verticalement sans `lineHeight` approprié.
+
+**Règle OBLIGATOIRE** : `lineHeight` doit être supérieur au `fontSize` pour les emojis.
+
+**Ratio recommandé** : `lineHeight = fontSize + 8px minimum`
+
+```typescript
+// ❌ MAUVAIS - Emoji coupé
+const styles = StyleSheet.create({
+  emoji: {
+    fontSize: 64,
+    // Pas de lineHeight → emoji coupé en haut et en bas
+  },
+});
+
+// ✅ BON - Emoji complet
+const styles = StyleSheet.create({
+  emoji: {
+    fontSize: 64,
+    lineHeight: 72,  // +8px minimum pour éviter le clip
+  },
+});
+```
+
+**Table de référence** :
+| fontSize | lineHeight | Ratio |
+|----------|------------|-------|
+| 48px | 56px | 1.17 |
+| 64px | 72px | 1.125 |
+| 80px | 88px | 1.1 |
+
+**Exemples d'application** :
+```typescript
+// Petit emoji (placeholder, icons)
+placeholderIcon: {
+  fontSize: 48,
+  lineHeight: 56,
+}
+
+// Emoji moyen (écrans d'auth)
+emoji: {
+  fontSize: 64,
+  lineHeight: 72,
+}
+
+// Grand emoji (onboarding, empty states)
+emptyStateIcon: {
+  fontSize: 80,
+  lineHeight: 88,
+}
+```
+
 ### 1.3 Espacement (Spacing)
 
 **Système basé sur multiples de 4px :**
@@ -397,26 +451,171 @@ const styles = StyleSheet.create({
 });
 ```
 
-### 3.3 SafeArea Management
+### 3.3 SafeArea Management ⭐ IMPORTANT
 
-**Toujours utiliser SafeAreaView pour les écrans :**
+**Package utilisé** : `react-native-safe-area-context` v5.6.2
+
+#### Configuration Globale (OBLIGATOIRE)
+
+Le `SafeAreaProvider` **DOIT** wrapper toute l'application dans `app/_layout.tsx` :
+
+```tsx
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+export default function RootLayout() {
+  return (
+    <SafeAreaProvider>
+      {/* Toute votre app ici */}
+    </SafeAreaProvider>
+  );
+}
+```
+
+#### Règles par Type d'Écran
+
+| Type d'écran | Solution | Edges | Exemple |
+|--------------|----------|-------|---------|
+| **Écrans dans les Tabs** | ❌ PAS de SafeAreaView | N/A | `app/(tabs)/cookbooks/index.tsx` |
+| **Header AppHeader** | ✅ SafeAreaView | `["top"]` | `src/components/navigation/AppHeader.tsx` |
+| **Auth/Onboarding** | ✅ Container useSafeArea | `["top", "right", "bottom", "left"]` | `app/(auth)/login.tsx` |
+| **Standalone Screens** | ✅ Container useSafeArea OU SafeAreaView | `["top"]` ou tous | `app/settings/index.tsx` |
+
+#### Pattern 1: Container avec useSafeArea (RECOMMANDÉ)
+
+Pour les écrans qui utilisent déjà le composant `Container` :
+
+```tsx
+import { Container } from '@/components/ui';
+
+export default function MyScreen() {
+  return (
+    <Container useSafeArea>
+      {/* Content */}
+    </Container>
+  );
+}
+```
+
+**Options du Container** :
+```tsx
+interface ContainerProps {
+  useSafeArea?: boolean;  // Activer SafeAreaView (défaut: false)
+  safeAreaEdges?: ("top" | "right" | "bottom" | "left")[]; // Edges (défaut: tous)
+  centered?: boolean;     // Centrer le contenu
+  padding?: keyof typeof spacing; // Padding (défaut: "md")
+}
+```
+
+#### Pattern 2: SafeAreaView Direct
+
+Pour les écrans avec layout custom (ScrollView, etc.) :
+
 ```tsx
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function MyScreen() {
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      {/* Content */}
+    <SafeAreaView edges={["top"]} style={styles.safeArea}>
+      <ScrollView style={styles.scroll}>
+        {/* Content */}
+      </ScrollView>
     </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.cream.DEFAULT,
+  },
+  scroll: {
+    flex: 1,
+  },
+});
+```
+
+#### Exemples Concrets
+
+**❌ MAUVAIS - Écran dans les tabs avec useSafeArea** :
+```tsx
+// app/(tabs)/cookbooks/index.tsx
+export default function CookbooksScreen() {
+  return (
+    <Container useSafeArea> {/* ❌ Double SafeArea car AppHeader déjà présent */}
+      {/* Content */}
+    </Container>
   );
 }
 ```
 
-**Options edges :**
-- `['top']` : Uniquement le haut (pour écrans sans header)
-- `['top', 'left', 'right']` : Tout sauf le bas (pour écrans avec tabs)
-- `['bottom']` : Uniquement le bas
-- Omis : Tous les bords (défaut)
+**✅ BON - Écran dans les tabs SANS useSafeArea** :
+```tsx
+// app/(tabs)/cookbooks/index.tsx
+export default function CookbooksScreen() {
+  return (
+    <Container> {/* ✅ AppHeader gère déjà le SafeArea top */}
+      {/* Content */}
+    </Container>
+  );
+}
+```
+
+**✅ BON - Écran standalone avec useSafeArea** :
+```tsx
+// app/cookbooks/[id].tsx (HORS tabs)
+export default function CookbookDetailScreen() {
+  return (
+    <Container useSafeArea> {/* ✅ Pas de AppHeader, donc useSafeArea nécessaire */}
+      <FlatList
+        data={recipes}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <Text variant="h1">{cookbook?.name}</Text>
+          </View>
+        }
+      />
+    </Container>
+  );
+}
+```
+
+**✅ BON - Écran Auth avec SafeAreaView automatique** :
+```tsx
+// app/(auth)/login.tsx
+export default function LoginScreen() {
+  return (
+    <AuthFormContainer> {/* ✅ AuthFormContainer a useSafeArea=true par défaut */}
+      {/* Form content */}
+    </AuthFormContainer>
+  );
+}
+```
+
+#### Résumé des Edges
+
+- `edges={["top"]}` : **AppHeader uniquement** - Respect du notch/status bar
+- `edges={["top", "right", "bottom", "left"]}` : **Par défaut** - Tous les bords (auth, onboarding, standalone)
+- Omis dans Container avec `useSafeArea` : Équivalent à tous les edges
+
+#### Debugging Safe Areas
+
+Si vous voyez du contenu coupé sous la status bar :
+
+1. **Vérifier** : L'écran est-il dans les tabs ?
+   - ✅ OUI → Ne PAS ajouter `useSafeArea` (AppHeader le gère)
+   - ❌ NON → Ajouter `useSafeArea` ou SafeAreaView
+
+2. **Vérifier** : `SafeAreaProvider` est-il présent dans `app/_layout.tsx` ?
+   - Si absent, les SafeAreaView ne fonctionneront pas
+
+3. **Vérifier** : Y a-t-il un double wrapping (SafeAreaView dans SafeAreaView) ?
+   - Symptôme : Trop d'espace en haut
+   - Solution : Retirer un des deux SafeAreaView
+
+#### Ressources
+
+- [react-native-safe-area-context Documentation](https://github.com/th3rdwave/react-native-safe-area-context)
+- [DECISION-LOG.md - Gestion des Safe Areas](../DECISION-LOG.md#2025-11-19---gestion-des-safe-areas-et-responsive-iosandroid)
 
 ### 3.4 Orientation Handling
 

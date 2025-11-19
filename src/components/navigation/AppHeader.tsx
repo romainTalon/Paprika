@@ -6,6 +6,7 @@
 
 import React from "react";
 import { View, StyleSheet, TouchableOpacity } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Text } from "@/components/ui";
 import { colors, spacing, fontSizes } from "@/theme";
@@ -19,37 +20,42 @@ export function AppHeader() {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Logo/Title */}
-      <View style={styles.titleContainer}>
-        <Text style={styles.logo}>Paprika</Text>
-      </View>
+    <SafeAreaView edges={["top"]} style={styles.safeArea}>
+      <View style={styles.container}>
+        {/* Logo/Title */}
+        <View style={styles.titleContainer}>
+          <Text style={styles.logo}>Paprika</Text>
+        </View>
 
-      {/* Profile Icon */}
-      <TouchableOpacity
-        onPress={handleProfilePress}
-        style={styles.profileButton}
-        accessibilityLabel="Open profile and settings"
-      >
-        {user?.user_metadata?.avatar_url ? (
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {user.user_metadata.full_name?.[0]?.toUpperCase() || "?"}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {user?.email?.[0]?.toUpperCase() || "?"}
-            </Text>
-          </View>
-        )}
-      </TouchableOpacity>
-    </View>
+        {/* Profile Icon */}
+        <TouchableOpacity
+          onPress={handleProfilePress}
+          style={styles.profileButton}
+          accessibilityLabel="Open profile and settings"
+        >
+          {user?.user_metadata?.avatar_url ? (
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {user.user_metadata.full_name?.[0]?.toUpperCase() || "?"}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {user?.email?.[0]?.toUpperCase() || "?"}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    backgroundColor: colors.cream.DEFAULT,
+  },
   container: {
     flexDirection: "row",
     alignItems: "center",

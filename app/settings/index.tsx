@@ -6,6 +6,7 @@
 
 import React from "react";
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Text, Container } from "@/components/ui";
 import { colors, spacing } from "@/theme";
@@ -40,7 +41,8 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <SafeAreaView edges={["top"]} style={styles.safeArea}>
+      <ScrollView style={styles.container}>
       {/* Profile Section */}
       <View style={styles.section}>
         <Text variant="h2" style={styles.sectionTitle}>
@@ -131,11 +133,16 @@ export default function SettingsScreen() {
       </TouchableOpacity>
 
       <View style={{ height: spacing.xl }} />
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.cream.DEFAULT,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.cream.DEFAULT,

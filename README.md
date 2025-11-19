@@ -104,14 +104,20 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 - ✅ Token refresh automatique (AppState listener)
 - ⏳ Deep links pour confirmation email (désactivée temporairement)
 
-**Dernière mise à jour** : 18 novembre 2025
+**Dernière mise à jour** : 19 novembre 2025
 
-**Derniers changements** (18 novembre 2025) :
-- ✅ Implémentation complète de la gestion des recettes (liste + création)
-- ✅ 7 nouveaux fichiers créés (~2,000 lignes de code)
-- ✅ Correction bug hooks React (order of hooks)
-- ✅ Mapping snake_case/camelCase dans RecipeService
-- ✅ Flow complet : Cookbook → RecipeList → CreateRecipe → (RecipeDetail)
+**Derniers changements** (19 novembre 2025) :
+- ✅ **Gestion complète des Safe Areas iOS/Android** (17 fichiers modifiés)
+- ✅ SafeAreaProvider global configuré dans app/_layout.tsx
+- ✅ AppHeader avec SafeAreaView (respect notch/Dynamic Island)
+- ✅ Container avec support useSafeArea (prop flexible)
+- ✅ AuthFormContainer avec useSafeArea par défaut
+- ✅ Tous les écrans standalone (Settings, Create Recipe, Recipe List) corrigés
+- ✅ **Correction emojis croppés** - lineHeight ajouté partout (48px→56px, 64px→72px, 80px→88px)
+- ✅ Documentation complète (DECISION-LOG.md + docs/08-frontend-guidelines.md)
+- ✅ Pattern clair selon type d'écran (tabs vs standalone)
+- 📱 Support complet iPhone X/11/12/13/14/15 (notch + Dynamic Island)
+- 📱 Support complet Android (status bar + navigation bar)
 
 ---
 

@@ -54,7 +54,7 @@ export default function Index() {
   // Show loading screen while checking
   if (loading || checking) {
     return (
-      <Container centered>
+      <Container centered useSafeArea>
         <View style={styles.loadingContainer}>
           <Text style={styles.emoji}>🍳</Text>
           <ActivityIndicator size="large" color={colors.primary.DEFAULT} style={styles.spinner} />
@@ -78,6 +78,7 @@ const styles = StyleSheet.create({
   emoji: {
     fontSize: 80,
     marginBottom: spacing.lg,
+    lineHeight: 88, // Line height plus grande pour éviter le clip vertical
   },
 
   spinner: {

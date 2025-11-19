@@ -17,11 +17,12 @@ import { spacing } from "@/theme";
 
 interface AuthFormContainerProps {
   children: ReactNode;
+  useSafeArea?: boolean;
 }
 
-export function AuthFormContainer({ children }: AuthFormContainerProps) {
+export function AuthFormContainer({ children, useSafeArea = true }: AuthFormContainerProps) {
   return (
-    <Container>
+    <Container useSafeArea={useSafeArea}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
@@ -46,7 +47,8 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: "center",
-    paddingVertical: spacing.xl,
+    paddingVertical: spacing["2xl"], // Plus d'espace vertical pour éviter le crop
+    paddingTop: spacing["3xl"], // Espace supplémentaire en haut pour l'emoji
   },
 
   formContainer: {

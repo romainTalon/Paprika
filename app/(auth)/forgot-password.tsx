@@ -128,6 +128,8 @@ const styles = StyleSheet.create({
   emoji: {
     fontSize: 64,
     marginBottom: spacing.md,
+    marginTop: spacing.xs, // Petit espace pour éviter le crop en haut
+    lineHeight: 72, // Line height plus grande pour éviter le clip vertical
   },
 
   title: {

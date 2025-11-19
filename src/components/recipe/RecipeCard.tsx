@@ -229,6 +229,7 @@ const styles = StyleSheet.create({
 
   placeholderIcon: {
     fontSize: 64,
+    lineHeight: 72, // Line height plus grande pour éviter le clip vertical
   },
 
   favoriteBadge: {

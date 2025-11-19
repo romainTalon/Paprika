@@ -33,7 +33,9 @@
       "Bash(Get-Content \"C:\\Repositories\\Paprika\\supabase\\schema.sql\")",
       "Bash(Select-String -Pattern \"cookbooks\" -Context 0,5)",
       "Bash(ls:*)",
-      "Bash(powershell -Command \"Get-Content ''C:\\Repositories\\Paprika\\DECISION-LOG.md'' | Measure-Object -Line | Select-Object -ExpandProperty Lines\")"
+      "Bash(powershell -Command \"Get-Content ''C:\\Repositories\\Paprika\\DECISION-LOG.md'' | Measure-Object -Line | Select-Object -ExpandProperty Lines\")",
+      "Bash(find:*)",
+      "Bash(powershell -Command \"Get-Content ''docs\\08-frontend-guidelines.md'' | Select-String -Pattern ''^## '' | Select-Object -First 15\")"
     ],
     "deny": [],
     "ask": []

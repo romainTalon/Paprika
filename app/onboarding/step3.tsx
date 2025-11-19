@@ -20,7 +20,7 @@ export default function OnboardingStep3() {
   };
 
   return (
-    <Container centered>
+    <Container centered useSafeArea>
       <View style={styles.content}>
         {/* Emoji Icon */}
         <Text style={styles.emoji}>📚</Text>
@@ -87,6 +87,7 @@ const styles = StyleSheet.create({
   emoji: {
     fontSize: 80,
     marginBottom: spacing.lg,
+    lineHeight: 88, // Line height plus grande pour éviter le clip vertical
   },
 
   title: {

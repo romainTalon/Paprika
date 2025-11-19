@@ -168,7 +168,7 @@ export default function CookbookDetailScreen() {
   // Loading state
   if (isCookbookLoading || isRecipesLoading) {
     return (
-      <Container centered>
+      <Container centered useSafeArea>
         <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
         <Text variant="body" color="neutral" style={{ marginTop: spacing.md }}>
           Chargement...
@@ -180,7 +180,7 @@ export default function CookbookDetailScreen() {
   // Error state
   if (cookbookError || recipesError) {
     return (
-      <Container>
+      <Container useSafeArea>
         <ErrorState
           error={(cookbookError || recipesError) as Error}
           onRetry={() => refetch()}
@@ -192,7 +192,7 @@ export default function CookbookDetailScreen() {
   // Empty state
   if (!recipes || recipes.length === 0) {
     return (
-      <Container>
+      <Container useSafeArea>
         <View style={styles.header}>
           <View>
             <Text variant="h1">{cookbook?.name || "Livre de Recettes"}</Text>
@@ -208,7 +208,7 @@ export default function CookbookDetailScreen() {
   }
 
   return (
-    <Container>
+    <Container useSafeArea>
       <FlatList
         data={recipes}
         renderItem={renderRecipe}
@@ -268,6 +268,7 @@ const styles = StyleSheet.create({
   emptyIcon: {
     fontSize: 80,
     marginBottom: spacing.lg,
+    lineHeight: 88, // Line height plus grande pour éviter le clip vertical
   },
 
   emptyTitle: {
@@ -296,6 +297,7 @@ const styles = StyleSheet.create({
   errorIcon: {
     fontSize: 64,
     marginBottom: spacing.lg,
+    lineHeight: 72, // Line height plus grande pour éviter le clip vertical
   },
 
   errorTitle: {

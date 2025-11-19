@@ -26,7 +26,7 @@ export function PlaceholderScreen({
   onAction,
 }: PlaceholderScreenProps) {
   return (
-    <Container centered>
+    <Container centered useSafeArea>
       <Text style={styles.icon}>{icon}</Text>
       <Text variant="h1" style={styles.title}>
         {title}
@@ -58,6 +58,7 @@ const styles = StyleSheet.create({
   icon: {
     fontSize: 80,
     marginBottom: spacing.lg,
+    lineHeight: 88, // Line height plus grande pour éviter le clip vertical
   },
   title: {
     marginBottom: spacing.sm,

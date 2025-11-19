@@ -18,6 +18,7 @@ import {
   Alert,
   TouchableOpacity,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Text, Button } from "@/components/ui";
 import IngredientInput from "@/components/recipe/IngredientInput";
@@ -206,10 +207,11 @@ export default function CreateRecipeScreen() {
     steps.some((step) => step.instruction.trim().length >= 5);
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
-    >
+    <SafeAreaView edges={["top"]} style={styles.safeArea}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.container}
+      >
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -491,11 +493,16 @@ export default function CreateRecipeScreen() {
           Créer la recette
         </Button>
       </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.cream.DEFAULT,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.white,

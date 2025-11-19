@@ -1,18 +1,40 @@
 import React from "react";
 import { View, ViewProps, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, spacing } from "@/theme";
 
 export interface ContainerProps extends ViewProps {
   padding?: keyof typeof spacing;
   centered?: boolean;
+  /** Whether to use SafeAreaView (default: false for screens with custom header) */
+  useSafeArea?: boolean;
+  /** Which edges to apply safe area insets to (default: all) */
+  safeAreaEdges?: ("top" | "right" | "bottom" | "left")[];
 }
 
-export function Container({ padding = "md", centered = false, style, ...props }: ContainerProps) {
+export function Container({
+  padding = "md",
+  centered = false,
+  useSafeArea = false,
+  safeAreaEdges = ["top", "right", "bottom", "left"],
+  style,
+  ...props
+}: ContainerProps) {
+  const containerStyle = [
+    styles.base,
+    { padding: spacing[padding] },
+    centered && styles.centered,
+    style
+  ];
+
+  if (useSafeArea) {
+    return (
+      <SafeAreaView edges={safeAreaEdges} style={containerStyle} {...props} />
+    );
+  }
+
   return (
-    <View
-      style={[styles.base, { padding: spacing[padding] }, centered && styles.centered, style]}
-      {...props}
-    />
+    <View style={containerStyle} {...props} />
   );
 }
 

@@ -20,6 +20,92 @@
 
 ---
 
+## 2025-11-19 - Gestion des Safe Areas et Responsive iOS/Android
+
+**Contexte** : Après implémentation des premiers écrans, plusieurs problèmes de responsive identifiés :
+- Header AppHeader affiché sous la status bar iPhone (icônes wifi/batterie/heure recouvrant le logo)
+- Écrans Settings, Create Recipe, et Recipe List avec contenu coupé en haut
+- Emojis croppés (coupés verticalement) partout dans l'application
+
+**Décision** : **Standardisation de la gestion des Safe Areas** avec `react-native-safe-area-context`
+
+**Solutions Implémentées** :
+
+1. **SafeAreaProvider Global** (app/_layout.tsx)
+   - Wrapper racine obligatoire pour tout le reste
+   - Active les safe areas pour toute l'app
+
+2. **AppHeader avec SafeAreaView** (src/components/navigation/AppHeader.tsx)
+   - SafeAreaView avec `edges={["top"]}` uniquement
+   - Respecte le notch/Dynamic Island/status bar iOS
+
+3. **Container avec Support SafeAreaView** (src/components/ui/Container.tsx)
+   - Nouveau prop `useSafeArea?: boolean` (défaut: false)
+   - Nouveau prop `safeAreaEdges?: ("top" | "right" | "bottom" | "left")[]`
+   - Rendu conditionnel : SafeAreaView ou View selon le contexte
+
+4. **Règle de Gestion par Type d'Écran** :
+   - **Écrans dans les tabs** → PAS de useSafeArea (header AppHeader géré)
+   - **Écrans auth/onboarding** → useSafeArea={true} (tous edges)
+   - **Écrans standalone** → useSafeArea={true} OU SafeAreaView direct
+
+5. **Correction Emojis Croppés** :
+   - Ajout de `lineHeight` supérieur au `fontSize` pour tous les emojis
+   - Ratio appliqué : lineHeight = fontSize + 8px minimum
+   - 48px → 56px | 64px → 72px | 80px → 88px
+
+**Raisons** :
+- ✅ **Support iPhone moderne** : Notch, Dynamic Island, status bar
+- ✅ **Support Android** : Status bar, navigation bar
+- ✅ **Cohérence visuelle** : Tous les écrans respectent les zones sûres
+- ✅ **Maintenabilité** : Pattern clair selon le type d'écran
+- ✅ **Performance** : Pas de double wrapping inutile (tabs)
+- ✅ **Flexibilité** : Container avec props optionnelles pour cas spéciaux
+
+**Alternatives considérées** :
+- **SafeAreaView partout** : Surcharge inutile dans les tabs (double safe area)
+- **Padding manuel** : Non responsive, ne s'adapte pas aux devices
+- **StatusBar height calculation** : Complexe, fragile, non maintenable
+
+**Structure Finale** :
+```
+SafeAreaProvider (app/_layout.tsx)
+  ├─ Tab Navigation
+  │   ├─ AppHeader (SafeAreaView edges:["top"])
+  │   └─ Tab Screens (Container sans useSafeArea)
+  │
+  ├─ Auth/Onboarding (Container useSafeArea)
+  │
+  └─ Standalone Screens
+      ├─ Settings (SafeAreaView direct)
+      ├─ Create Recipe (SafeAreaView direct)
+      └─ Recipe List (Container useSafeArea)
+```
+
+**Écrans Corrigés** (17 fichiers) :
+- AppHeader (SafeAreaView)
+- Container (support useSafeArea)
+- AuthFormContainer (useSafeArea par défaut)
+- PlaceholderScreen (useSafeArea)
+- 3 écrans auth (login, signup, forgot-password)
+- 3 écrans onboarding (step1, step2, step3)
+- 4 écrans standalone (index, settings, create recipe, recipe list)
+- 3 composants UI (RecipeCard, CookbooksScreen emojis, PlaceholderScreen)
+
+**Conséquences** :
+- Interface parfaitement responsive sur tous les devices
+- Expérience utilisateur cohérente iOS/Android
+- Pattern clair pour futurs écrans (voir docs/08-frontend-guidelines.md)
+- Maintenance facilitée
+
+**Statut** : ✅ Validée
+
+**Ressources** :
+- [react-native-safe-area-context](https://github.com/th3rdwave/react-native-safe-area-context)
+- [docs/08-frontend-guidelines.md](./docs/08-frontend-guidelines.md) - Section Safe Areas
+
+---
+
 ## 2025-11-03 - Choix de Drizzle ORM au lieu de Prisma
 
 **Contexte** : Besoin d'un ORM type-safe pour interagir avec PostgreSQL de manière sécurisée
