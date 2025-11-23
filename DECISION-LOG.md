@@ -20,6 +20,109 @@
 
 ---
 
+## 2025-11-23 - Correction Emojis Croppés et Responsivité Écrans Onboarding
+
+**Contexte** : Après review des écrans d'onboarding, plusieurs problèmes de qualité visuelle identifiés :
+- **Emojis dans illustrations croppés** : Les emojis 📱✨, 🔗📋, et 📅🛒 étaient coupés verticalement dans les boxes d'illustration
+- **Tailles fixes non responsives** : Les emojis et illustrations utilisaient des tailles hardcodées (80px, 200px) qui ne s'adaptaient pas aux petits écrans (iPhone SE, Android compact)
+- **Fix précédent incomplet** : Le fix du 19 novembre avait corrigé les emojis principaux mais pas ceux des illustrations
+
+**Décision** : **Appliquer le fix emoji à TOUS les emojis + rendre les écrans responsive avec `useWindowDimensions`**
+
+**Implémentation** :
+
+1. **Fix Emoji Cropping** (6 emojis corrigés) :
+   - **step1.tsx** : `illustrationEmoji` (📱✨) → `fontSize: 64, lineHeight: 72` (ajouté)
+   - **step2.tsx** : `illustrationEmoji` (🔗📋) → `fontSize: 48, lineHeight: 56` (ajouté)
+   - **step3.tsx** : `illustrationEmoji` (📅🛒) → `fontSize: 48, lineHeight: 56` (ajouté)
+   - **Règle appliquée** : `lineHeight = fontSize + 8px minimum` (docs/08-frontend-guidelines.md)
+
+2. **Responsive Design avec `useWindowDimensions`** :
+   ```typescript
+   const { width, height } = useWindowDimensions();
+
+   // Seuil : hauteur < 700px (iPhone SE = 667px)
+   const isSmallScreen = height < 700;
+   const emojiSize = isSmallScreen ? 64 : 80;
+   const illustrationSize = isSmallScreen ? 160 : 200;
+   const illustrationEmojiSize = isSmallScreen ? 40/48 : 48/64;
+   ```
+
+3. **Styles Dynamiques** :
+   - Tailles emoji calculées en runtime : `fontSize: emojiSize, lineHeight: emojiSize + 8`
+   - Illustrations adaptatives : `width: illustrationSize, height: illustrationSize`
+   - Suppression des tailles hardcodées dans StyleSheet
+
+**Raisons** :
+- ✅ **Qualité visuelle** : Emojis complets, non croppés sur tous les écrans
+- ✅ **Responsive** : Adaptation automatique iPhone SE, iPhone 8, petits Android
+- ✅ **Cohérence** : Même règle emoji appliquée partout (principal + illustrations)
+- ✅ **Performance** : `useWindowDimensions` hook natif React Native (0 overhead)
+- ✅ **Maintenabilité** : Tailles centralisées dans constantes, facile à ajuster
+- ✅ **Conformité Guidelines** : Suit docs/08-frontend-guidelines.md section 3.2 "Responsive Design"
+
+**Alternatives considérées** :
+- **Augmenter lineHeight statiquement** : Ne résout pas le problème de responsivité
+- **Media queries CSS** : Non supporté nativement par React Native
+- **Dimensions.get('window')** : Ne se met pas à jour lors de rotation/changement
+- **useWindowDimensions** (choisi) : Hook natif, reactive, optimal
+
+**Tailles Adaptatives** :
+
+| Élément | Écran Normal (≥700px) | Petit Écran (<700px) | Économie |
+|---------|----------------------|---------------------|----------|
+| Emoji principal | 80px + lineHeight 88 | 64px + lineHeight 72 | -20% |
+| Illustration (box) | 200×200px | 160×160px | -20% |
+| Emoji illustration (step1) | 64px + lineHeight 72 | 48px + lineHeight 56 | -25% |
+| Emoji illustration (step2/3) | 48px + lineHeight 56 | 40px + lineHeight 48 | -17% |
+
+**Fichiers Modifiés** :
+- `app/onboarding/step1.tsx` : Import hook + responsive logic + styles dynamiques
+- `app/onboarding/step2.tsx` : Import hook + responsive logic + styles dynamiques
+- `app/onboarding/step3.tsx` : Import hook + responsive logic + styles dynamiques
+
+**Pattern d'Utilisation** :
+```tsx
+// Pattern recommandé pour styles responsive avec emojis
+import { useWindowDimensions } from "react-native";
+
+export default function Screen() {
+  const { width, height } = useWindowDimensions();
+  const isSmallScreen = height < 700;
+  const emojiSize = isSmallScreen ? 64 : 80;
+
+  return (
+    <Text style={{
+      fontSize: emojiSize,
+      lineHeight: emojiSize + 8, // Toujours +8px minimum
+    }}>
+      🍳
+    </Text>
+  );
+}
+```
+
+**Conséquences** :
+- Expérience onboarding améliorée sur tous les formats d'écran
+- Standard établi pour tous les futurs écrans avec emojis
+- Conformité totale avec guidelines design system
+- Pattern réutilisable pour autres écrans (RecipeDetailScreen, etc.)
+
+**Tests Recommandés** :
+- iPhone SE (667 × 375px) → Devrait utiliser tailles réduites
+- iPhone 14 (844 × 390px) → Devrait utiliser tailles normales
+- Android Pixel 3a (720 × 360px) → Devrait utiliser tailles réduites
+- Vérification visuelle : emojis complets, pas de débordement
+
+**Statut** : ✅ Validée
+
+**Ressources** :
+- [React Native useWindowDimensions](https://reactnative.dev/docs/usewindowdimensions)
+- [docs/08-frontend-guidelines.md](./docs/08-frontend-guidelines.md) - Section 2.1.4 "Emojis - Gestion du Crop Vertical"
+- [docs/08-frontend-guidelines.md](./docs/08-frontend-guidelines.md) - Section 3.2 "Responsive Design"
+
+---
+
 ## 2025-11-19 - Ajout du Composant BackButton pour Navigation Inter-Écrans
 
 **Contexte** : Après implémentation de la navigation Safe Areas, feedback utilisateur concernant l'absence d'indicateurs visuels pour la navigation :

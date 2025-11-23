@@ -96,7 +96,7 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 **Authentification complète** ✅ :
 - ✅ AuthContext avec Supabase Auth (session persistence via AsyncStorage)
 - ✅ Écrans d'authentification (Login, Signup, Forgot Password)
-- ✅ Onboarding multi-étapes (3 écrans) pour nouveaux utilisateurs
+- ✅ Onboarding multi-étapes (3 écrans) responsive avec emojis optimisés (23 novembre 2025)
 - ✅ Validation de formulaires avec Zod
 - ✅ Gestion d'erreurs détaillée (messages en français)
 - ✅ Déconnexion avec confirmation
@@ -104,9 +104,19 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 - ✅ Token refresh automatique (AppState listener)
 - ⏳ Deep links pour confirmation email (désactivée temporairement)
 
-**Dernière mise à jour** : 19 novembre 2025
+**Dernière mise à jour** : 23 novembre 2025
 
-**Derniers changements** (19 novembre 2025) :
+**Derniers changements** (23 novembre 2025) :
+
+**Écrans d'Onboarding Optimisés** :
+- ✅ **Correction emojis croppés dans illustrations** - lineHeight ajouté aux 6 emojis manquants (📱✨, 🔗📋, 📅🛒)
+- ✅ **Responsive design avec useWindowDimensions** - Adaptation automatique aux petits écrans (iPhone SE, Android compact)
+- ✅ **Tailles adaptatives** - Emojis 80px→64px (-20%), illustrations 200px→160px (-20%) sur petits écrans
+- ✅ **Pattern établi** - useWindowDimensions + lineHeight dynamique (fontSize + 8px) pour tous les futurs écrans
+- ✅ **Documentation complète** - DECISION-LOG.md + docs/08-frontend-guidelines.md (sections 1.2.4 et 3.2)
+- 📱 Testé sur iPhone SE (667px), iPhone 14 (844px), grands écrans
+
+**Changements précédents** (19 novembre 2025) :
 
 **Navigation inter-écrans** :
 - ✅ **BackButton component** - Bouton "← Retour" réutilisable pour écrans standalone

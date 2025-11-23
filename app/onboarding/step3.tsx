@@ -4,7 +4,7 @@
  * Third and final onboarding slide explaining organization features
  */
 
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, useWindowDimensions } from "react-native";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Container, Text, Button } from "@/components/ui";
@@ -13,6 +13,13 @@ import { colors, spacing } from "@/theme";
 const ONBOARDING_COMPLETE_KEY = "@paprika_onboarding_complete";
 
 export default function OnboardingStep3() {
+  const { width, height } = useWindowDimensions();
+
+  // Responsive sizing
+  const isSmallScreen = height < 700;
+  const emojiSize = isSmallScreen ? 64 : 80;
+  const illustrationSize = isSmallScreen ? 160 : 200;
+  const illustrationEmojiSize = isSmallScreen ? 40 : 48;
   const handleStart = async () => {
     // Mark onboarding as complete
     await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, "true");
@@ -23,7 +30,17 @@ export default function OnboardingStep3() {
     <Container centered useSafeArea>
       <View style={styles.content}>
         {/* Emoji Icon */}
-        <Text style={styles.emoji}>📚</Text>
+        <Text
+          style={[
+            styles.emoji,
+            {
+              fontSize: emojiSize,
+              lineHeight: emojiSize + 8,
+            },
+          ]}
+        >
+          📚
+        </Text>
 
         {/* Title */}
         <Text variant="h1" color="primary" style={styles.title}>
@@ -36,8 +53,26 @@ export default function OnboardingStep3() {
         </Text>
 
         {/* Illustration placeholder */}
-        <View style={styles.illustration}>
-          <Text style={styles.illustrationEmoji}>📅🛒</Text>
+        <View
+          style={[
+            styles.illustration,
+            {
+              width: illustrationSize,
+              height: illustrationSize,
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.illustrationEmoji,
+              {
+                fontSize: illustrationEmojiSize,
+                lineHeight: illustrationEmojiSize + 8,
+              },
+            ]}
+          >
+            📅🛒
+          </Text>
           <Text variant="bodySmall" style={styles.illustrationText}>
             Meal plans{"\n"}Liste de courses{"\n"}Nutrition
           </Text>
@@ -85,9 +120,8 @@ const styles = StyleSheet.create({
   },
 
   emoji: {
-    fontSize: 80,
     marginBottom: spacing.lg,
-    lineHeight: 88, // Line height plus grande pour éviter le clip vertical
+    // fontSize et lineHeight définis dynamiquement pour la responsivité
   },
 
   title: {
@@ -102,8 +136,7 @@ const styles = StyleSheet.create({
   },
 
   illustration: {
-    width: 200,
-    height: 200,
+    // width et height définis dynamiquement pour la responsivité
     borderRadius: spacing.lg,
     backgroundColor: colors.cream[100],
     justifyContent: "center",
@@ -112,7 +145,7 @@ const styles = StyleSheet.create({
   },
 
   illustrationEmoji: {
-    fontSize: 48,
+    // fontSize et lineHeight définis dynamiquement pour la responsivité
     marginBottom: spacing.sm,
   },
 

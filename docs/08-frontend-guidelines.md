@@ -184,6 +184,65 @@ emptyStateIcon: {
 }
 ```
 
+**Exemple Complet : Écran Onboarding avec Responsive** :
+```typescript
+// app/onboarding/step1.tsx
+import { useWindowDimensions } from "react-native";
+
+export default function OnboardingStep1() {
+  const { width, height } = useWindowDimensions();
+
+  // Responsive sizing pour petits écrans (iPhone SE = 667px)
+  const isSmallScreen = height < 700;
+  const emojiSize = isSmallScreen ? 64 : 80;
+  const illustrationEmojiSize = isSmallScreen ? 48 : 64;
+
+  return (
+    <Container centered useSafeArea>
+      {/* Emoji principal - Taille responsive + lineHeight obligatoire */}
+      <Text
+        style={{
+          fontSize: emojiSize,
+          lineHeight: emojiSize + 8, // Toujours +8px minimum
+          marginBottom: spacing.lg,
+        }}
+      >
+        🍳
+      </Text>
+
+      <Text variant="h1" color="primary">Bienvenue dans Paprika</Text>
+
+      {/* Illustration avec emoji plus petit */}
+      <View
+        style={{
+          width: isSmallScreen ? 160 : 200,
+          height: isSmallScreen ? 160 : 200,
+          backgroundColor: colors.cream[100],
+          borderRadius: spacing.lg,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: illustrationEmojiSize,
+            lineHeight: illustrationEmojiSize + 8, // Obligatoire aussi !
+          }}
+        >
+          📱✨
+        </Text>
+      </View>
+    </Container>
+  );
+}
+```
+
+**Résultat** :
+- ✅ Emojis complets (pas de crop vertical)
+- ✅ Adaptation automatique aux petits écrans
+- ✅ Tailles calculées dynamiquement
+- ✅ Conformité design system
+
+**⚠️ Note** : Appliquer `lineHeight = fontSize + 8` à **TOUS** les emojis, même les petits dans les illustrations !
+
 ### 1.3 Espacement (Spacing)
 
 **Système basé sur multiples de 4px :**
@@ -558,6 +617,63 @@ const styles = StyleSheet.create({
   },
 });
 ```
+
+**useWindowDimensions Hook (Recommandé) :**
+```tsx
+import { useWindowDimensions } from "react-native";
+
+export default function ResponsiveScreen() {
+  const { width, height } = useWindowDimensions();
+
+  // Adaptation basée sur la hauteur (petits écrans)
+  const isSmallScreen = height < 700; // iPhone SE = 667px
+  const emojiSize = isSmallScreen ? 64 : 80;
+  const illustrationSize = isSmallScreen ? 160 : 200;
+
+  return (
+    <View>
+      <Text style={{
+        fontSize: emojiSize,
+        lineHeight: emojiSize + 8, // Toujours +8px pour emojis
+      }}>
+        🍳
+      </Text>
+
+      <View style={{
+        width: illustrationSize,
+        height: illustrationSize,
+      }}>
+        {/* Content */}
+      </View>
+    </View>
+  );
+}
+```
+
+**Avantages useWindowDimensions :**
+- ✅ Hook natif React Native (0 overhead)
+- ✅ Reactive : Se met à jour lors de rotation/changement
+- ✅ Calculs dynamiques possibles
+- ✅ Simplicité d'utilisation
+
+**Breakpoints Mobile Recommandés :**
+```tsx
+// Basés sur hauteur pour adaptation verticale
+const MOBILE_BREAKPOINTS = {
+  small: 700,    // iPhone SE (667px), iPhone 8
+  medium: 844,   // iPhone 14 (844px)
+  large: 926,    // iPhone 14 Pro Max (926px)
+};
+
+const isSmallScreen = height < MOBILE_BREAKPOINTS.small;
+const isMediumScreen = height >= MOBILE_BREAKPOINTS.small && height < MOBILE_BREAKPOINTS.medium;
+const isLargeScreen = height >= MOBILE_BREAKPOINTS.medium;
+```
+
+**Cas d'Usage : Écrans Onboarding** (voir `app/onboarding/step1.tsx`) :
+- Emojis 80px → 64px sur petits écrans (-20%)
+- Illustrations 200px → 160px sur petits écrans (-20%)
+- Évite débordement vertical sur iPhone SE
 
 ### 3.3 SafeArea Management ⭐ IMPORTANT
 
@@ -1547,9 +1663,11 @@ Avant de considérer un écran terminé :
 
 - [ ] ✅ Utilise les composants UI existants
 - [ ] ✅ Respecte le design system (couleurs, spacing, etc.)
+- [ ] ✅ **Emojis avec lineHeight** : Tous les emojis ont `lineHeight = fontSize + 8px minimum`
 - [ ] ✅ TypeScript strict (pas de `any`)
 - [ ] ✅ Accessibilité (labels, touch targets, contraste)
-- [ ] ✅ Responsive (fonctionne sur tous les écrans)
+- [ ] ✅ **Responsive** : Testé sur iPhone SE (667px), iPhone 14 (844px), et grand écran
+- [ ] ✅ **useWindowDimensions** : Utiliser pour tailles dynamiques si nécessaire
 - [ ] ✅ Performance (FlatList, memoization, etc.)
 - [ ] ✅ States gérés (loading, error, empty)
 - [ ] ✅ Navigation intégrée et testée

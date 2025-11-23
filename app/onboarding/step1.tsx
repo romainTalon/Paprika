@@ -4,17 +4,34 @@
  * First onboarding slide introducing Paprika
  */
 
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, useWindowDimensions } from "react-native";
 import { router } from "expo-router";
 import { Container, Text, Button } from "@/components/ui";
 import { colors, spacing } from "@/theme";
 
 export default function OnboardingStep1() {
+  const { width, height } = useWindowDimensions();
+
+  // Responsive sizing
+  const isSmallScreen = height < 700;
+  const emojiSize = isSmallScreen ? 64 : 80;
+  const illustrationSize = isSmallScreen ? 160 : 200;
+  const illustrationEmojiSize = isSmallScreen ? 48 : 64;
   return (
     <Container centered useSafeArea>
       <View style={styles.content}>
         {/* Emoji Icon */}
-        <Text style={styles.emoji}>🍳</Text>
+        <Text
+          style={[
+            styles.emoji,
+            {
+              fontSize: emojiSize,
+              lineHeight: emojiSize + 8,
+            },
+          ]}
+        >
+          🍳
+        </Text>
 
         {/* Title */}
         <Text variant="h1" color="primary" style={styles.title}>
@@ -27,8 +44,26 @@ export default function OnboardingStep1() {
         </Text>
 
         {/* Illustration placeholder */}
-        <View style={styles.illustration}>
-          <Text style={styles.illustrationEmoji}>📱✨</Text>
+        <View
+          style={[
+            styles.illustration,
+            {
+              width: illustrationSize,
+              height: illustrationSize,
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.illustrationEmoji,
+              {
+                fontSize: illustrationEmojiSize,
+                lineHeight: illustrationEmojiSize + 8,
+              },
+            ]}
+          >
+            📱✨
+          </Text>
         </View>
       </View>
 
@@ -73,9 +108,8 @@ const styles = StyleSheet.create({
   },
 
   emoji: {
-    fontSize: 80,
     marginBottom: spacing.lg,
-    lineHeight: 88, // Line height plus grande pour éviter le clip vertical
+    // fontSize et lineHeight définis dynamiquement pour la responsivité
   },
 
   title: {
@@ -90,8 +124,7 @@ const styles = StyleSheet.create({
   },
 
   illustration: {
-    width: 200,
-    height: 200,
+    // width et height définis dynamiquement pour la responsivité
     borderRadius: spacing.lg,
     backgroundColor: colors.cream[100],
     justifyContent: "center",
@@ -99,7 +132,7 @@ const styles = StyleSheet.create({
   },
 
   illustrationEmoji: {
-    fontSize: 64,
+    // fontSize et lineHeight définis dynamiquement pour la responsivité
   },
 
   navigation: {
