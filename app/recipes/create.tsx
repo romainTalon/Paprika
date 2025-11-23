@@ -22,8 +22,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Text, Button } from "@/components/ui";
 import { BackButton } from "@/components/navigation";
-import IngredientInput from "@/components/recipe/IngredientInput";
-import StepInput from "@/components/recipe/StepInput";
+import { IngredientInput, StepInput, TimeStepper } from "@/components/recipe";
 import { colors, spacing, fontSizes, fontWeights, shadows } from "@/theme";
 import { useCreateRecipe } from "@/hooks/useRecipes";
 import { useAuth } from "@/hooks/useAuth";
@@ -51,7 +50,7 @@ export default function CreateRecipeScreen() {
 
   // Ingredients
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([
-    { name: "", quantity: 0, unit: "" },
+    { name: "", quantity: 0 },
   ]);
 
   // Steps
@@ -59,9 +58,38 @@ export default function CreateRecipeScreen() {
     { order: 1, instruction: "" },
   ]);
 
+  // Validation Errors (Real-time)
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Validate a single field in real-time
+  const validateField = useCallback((fieldName: string, value: any) => {
+    try {
+      // Get the field schema
+      const fieldSchema = createRecipeSchema.shape[fieldName as keyof typeof createRecipeSchema.shape];
+
+      if (fieldSchema) {
+        fieldSchema.parse(value);
+        // Clear error if validation passes
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[fieldName];
+          return newErrors;
+        });
+      }
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        // Set error message
+        setErrors(prev => ({
+          ...prev,
+          [fieldName]: error.issues[0].message,
+        }));
+      }
+    }
+  }, []);
+
   // Ingredient Handlers
   const handleAddIngredient = useCallback(() => {
-    setIngredients([...ingredients, { name: "", quantity: 0, unit: "" }]);
+    setIngredients([...ingredients, { name: "", quantity: 0 }]);
   }, [ingredients]);
 
   const handleRemoveIngredient = useCallback(
@@ -240,16 +268,26 @@ export default function CreateRecipeScreen() {
               Titre <Text style={styles.required}>*</Text>
             </Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, errors.title && styles.inputError]}
               value={title}
-              onChangeText={setTitle}
+              onChangeText={(text) => {
+                setTitle(text);
+                validateField("title", text);
+              }}
+              onBlur={() => validateField("title", title)}
               placeholder="Ex: Pâtes Carbonara"
               placeholderTextColor={colors.gray[400]}
               maxLength={200}
             />
-            <Text variant="caption" color="neutral" style={styles.hint}>
-              {title.length}/200 caractères
-            </Text>
+            {errors.title ? (
+              <Text variant="caption" style={styles.errorText}>
+                {errors.title}
+              </Text>
+            ) : (
+              <Text variant="caption" color="neutral" style={styles.hint}>
+                {title.length}/200 caractères
+              </Text>
+            )}
           </View>
 
           {/* Description */}
@@ -314,47 +352,21 @@ export default function CreateRecipeScreen() {
             />
           </View>
 
-          {/* Prep Time */}
+          {/* Prep Time with Stepper */}
           <View style={styles.field}>
-            <Text variant="bodySmall" style={styles.label}>
-              Temps de préparation (minutes)
-            </Text>
-            <TextInput
-              style={[styles.input, styles.numberInput]}
-              value={prepTime ? String(prepTime) : ""}
-              onChangeText={(text) => {
-                if (text === "") {
-                  setPrepTime(undefined);
-                } else {
-                  const num = parseInt(text);
-                  if (!isNaN(num) && num > 0) setPrepTime(num);
-                }
-              }}
-              placeholder="30"
-              placeholderTextColor={colors.gray[400]}
-              keyboardType="number-pad"
+            <TimeStepper
+              label="Temps de préparation"
+              value={prepTime}
+              onChange={setPrepTime}
             />
           </View>
 
-          {/* Cook Time */}
+          {/* Cook Time with Stepper */}
           <View style={styles.field}>
-            <Text variant="bodySmall" style={styles.label}>
-              Temps de cuisson (minutes)
-            </Text>
-            <TextInput
-              style={[styles.input, styles.numberInput]}
-              value={cookTime ? String(cookTime) : ""}
-              onChangeText={(text) => {
-                if (text === "") {
-                  setCookTime(undefined);
-                } else {
-                  const num = parseInt(text);
-                  if (!isNaN(num) && num > 0) setCookTime(num);
-                }
-              }}
-              placeholder="20"
-              placeholderTextColor={colors.gray[400]}
-              keyboardType="number-pad"
+            <TimeStepper
+              label="Temps de cuisson"
+              value={cookTime}
+              onChange={setCookTime}
             />
           </View>
 
@@ -568,6 +580,16 @@ const styles = StyleSheet.create({
   hint: {
     marginTop: spacing.xs,
     textAlign: "right",
+  },
+
+  inputError: {
+    borderColor: colors.error,
+    borderWidth: 2,
+  },
+
+  errorText: {
+    color: colors.error,
+    marginTop: spacing.xs,
   },
 
   difficultyButtons: {

@@ -22,8 +22,9 @@ export const recipeIngredientSchema = z.object({
     .positive("La quantité doit être positive"),
   unit: z
     .string()
-    .min(1, "L'unité est requise")
-    .max(20, "L'unité ne doit pas dépasser 20 caractères"),
+    .max(20, "L'unité ne doit pas dépasser 20 caractères")
+    .optional()
+    .or(z.literal("")),
   notes: z.string().max(200, "Les notes ne doivent pas dépasser 200 caractères").optional(),
   imageUrl: z.string().url("URL invalide").optional().or(z.literal("")),
 });

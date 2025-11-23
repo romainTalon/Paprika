@@ -23,7 +23,7 @@ export type NutritionSource = "openfoodfacts" | "ai_estimate" | "manual";
 export interface RecipeIngredient {
   name: string;
   quantity: number;
-  unit: string;
+  unit?: string; // Optional: can be empty for items like "1 carrot"
   notes?: string;
   imageUrl?: string;
 }

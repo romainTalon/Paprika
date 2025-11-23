@@ -1555,7 +1555,77 @@ const styles = StyleSheet.create({
 />
 ```
 
-### 9.2 Créer un Nouveau Composant
+### 9.2 Composants Spécialisés Recipe
+
+#### TimeStepper - Saisie Temps avec Steppers
+
+**Utilisation** :
+```tsx
+import { TimeStepper } from "@/components/recipe";
+
+<TimeStepper
+  label="Temps de préparation"
+  value={prepTime}        // number | undefined (minutes)
+  onChange={setPrepTime}
+  disabled={false}
+/>
+```
+
+**Caractéristiques** :
+- ✅ Interface intuitive : Heures + Minutes séparés
+- ✅ Incréments : Heures (+/- 1h), Minutes (+/- 15min)
+- ✅ Conversion automatique en minutes pour stockage DB
+- ✅ Touch targets 44×44px (iOS HIG compliant)
+- ✅ Accessibilité complète (ARIA labels)
+
+**Cas d'usage** : Formulaires de création/édition recettes (prepTime, cookTime)
+
+#### Utilitaire fractionParser - Support Fractions Cuisine
+
+**Import** :
+```tsx
+import { parseFraction, formatFraction } from "@/utils/fractionParser";
+```
+
+**parseFraction - String → Number** :
+```tsx
+parseFraction("1/2")      // → 0.5
+parseFraction("3/4")      // → 0.75
+parseFraction("1 1/2")    // → 1.5
+parseFraction("½")        // → 0.5 (unicode)
+parseFraction("2")        // → 2
+parseFraction("invalid")  // → null
+```
+
+**formatFraction - Number → String** :
+```tsx
+formatFraction(0.5)   // → "1/2"
+formatFraction(0.75)  // → "3/4"
+formatFraction(1.5)   // → "1 1/2"
+formatFraction(2)     // → "2"
+```
+
+**Intégration dans IngredientInput** :
+```tsx
+const [quantityText, setQuantityText] = useState("");
+
+const handleQuantityChange = (text: string) => {
+  setQuantityText(text);
+  const parsed = parseFraction(text);
+  if (parsed !== null) {
+    onChange({ ...ingredient, quantity: parsed });
+  }
+};
+```
+
+**Formats supportés** :
+- Fractions simples : `1/2`, `3/4`, `2/3`
+- Mixed numbers : `1 1/2`, `2 3/4`
+- Unicode : `½`, `¼`, `¾`, `⅓`, `⅔`, `⅛`, `⅜`, `⅝`, `⅞`
+- Décimaux : `0.5`, `2.5`
+- Entiers : `1`, `2`, `10`
+
+### 9.3 Créer un Nouveau Composant
 
 **Template :**
 ```tsx

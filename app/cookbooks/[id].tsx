@@ -340,5 +340,6 @@ const styles = StyleSheet.create({
     fontSize: 32,
     color: colors.white,
     fontWeight: "bold",
+    lineHeight: 36, // Centrage vertical du symbole "+"
   },
 });

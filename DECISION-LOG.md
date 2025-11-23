@@ -20,6 +20,145 @@
 
 ---
 
+## 2025-11-23 - Amélioration UX Création de Recettes Manuelles
+
+**Contexte** : Après feedback utilisateur sur le formulaire de création de recettes, plusieurs problèmes UX critiques identifiés :
+- **FAB croix décentrée** : Le bouton "+" flottant avait sa croix visuellement décalée verticalement
+- **Temps seulement en minutes** : Saisir "120" pour 2 heures était contre-intuitif et source d'erreurs
+- **Unité obligatoire** : Impossible de saisir "1 carotte" sans unité awkward ("pièce", "unité", etc.)
+- **Pas de support fractions** : Saisir "0.5" au lieu de "1/2" peu naturel en cuisine
+- **Validation différée** : Erreurs visibles seulement à la soumission, pas de feedback immédiat
+
+**Décision** : **Refonte complète de l'UX du formulaire avec 5 améliorations majeures**
+
+**Implémentation** :
+
+1. **Fix FAB Icon Centering** (bug CSS)
+   - Ajout `lineHeight: 36` au style `fabIcon` dans `app/cookbooks/[id].tsx`
+   - Application du pattern existant déjà présent dans `CookbooksScreen.tsx`
+
+2. **TimeStepper Component** (nouveau composant)
+   - Fichier : `src/components/recipe/TimeStepper.tsx` (220 lignes)
+   - Interface : 2 lignes de steppers (Heures / Minutes)
+   - Boutons +/- : Heures (+/- 1h), Minutes (+/- 15min)
+   - Conversion automatique : 2h30 → 150 minutes (stockage DB)
+   - Design System complet + Accessibilité (ARIA labels, touch targets 44×44px)
+   - Intégré dans `CreateRecipeScreen` pour `prepTime` et `cookTime`
+
+3. **Unité Optionnelle pour Ingrédients**
+   - **Validation** : `src/lib/validations/recipe.validation.ts`
+     - `unit: z.string().max(20).optional().or(z.literal(""))`
+   - **Interface** : `src/types/database.ts`
+     - `unit?: string` (TypeScript optional)
+   - **Composant** : `src/components/recipe/IngredientInput.tsx`
+     - Placeholder changé : "Unité" → "Unité (opt.)"
+     - Gestion `unit || undefined` pour stockage propre
+   - **Initialisation** : `app/recipes/create.tsx`
+     - `{ name: "", quantity: 0 }` (sans `unit: ""`)
+   - Exemples valides : "1 carotte" (sans unité), "200 g farine" (avec unité)
+
+4. **Support Fractions pour Quantités**
+   - **Utilitaire** : `src/utils/fractionParser.ts` (140 lignes)
+     - `parseFraction()` : "1/2" → 0.5, "1 1/2" → 1.5, "3/4" → 0.75
+     - `formatFraction()` : 0.5 → "1/2", 1.5 → "1 1/2"
+     - Support unicode (½, ¼, ¾, ⅓, ⅔, etc.)
+     - Validation robuste (division par zéro, valeurs négatives)
+   - **Intégration** : `IngredientInput.tsx`
+     - State local `quantityText` pour saisie utilisateur
+     - Parsing en temps réel avec `parseFraction()`
+     - `keyboardType="default"` pour permettre "/"
+     - Stockage en nombre décimal dans la DB
+
+5. **Validation en Temps Réel**
+   - **CreateRecipeScreen** : Ajout state `errors: Record<string, string>`
+   - **Fonction** : `validateField(fieldName, value)` avec Zod
+   - **Events** : `onChangeText` + `onBlur` pour validation immédiate
+   - **UI** : Bordure rouge (`inputError`) + message d'erreur sous le champ
+   - **Implémenté sur** : Champ titre (extensible à tous les champs)
+
+**Ajustements UI** (feedback utilisateur) :
+- Retrait hints inutiles sous champs ingrédients (conversion fractions, suggestions unités)
+- Alignement hauteur inputs : `alignItems: "center"` pour ligne horizontale parfaite
+- Suppression affichage "Total : X minutes" sous TimeStepper (redondant)
+
+**Raisons** :
+- ✅ **UX cuisine-friendly** : Fractions (1/2, 3/4) naturelles en cuisine
+- ✅ **Temps intuitifs** : Stepper évite erreurs de calcul mental (120 min → 2h)
+- ✅ **Flexibilité ingrédients** : "1 carotte" sans unité awkward
+- ✅ **Feedback immédiat** : Validation temps réel réduit frustration utilisateur
+- ✅ **Accessibilité** : Touch targets 44×44px, ARIA labels, keyboard-friendly
+- ✅ **Performance** : Validation locale (pas d'appels réseau)
+- ✅ **Maintenabilité** : Composants réutilisables (TimeStepper, fractionParser)
+
+**Alternatives considérées** :
+- **Temps : Champ texte intelligent ("2h30")** : Parsing ambigu ("230" = 2h30 ou 230min ?)
+- **Temps : Dropdown prédéfini** : Limitant pour recettes longues (pain, mijotés)
+- **Unité : Liste prédéfinie uniquement** : Rigide, ne couvre pas tous les cas
+- **Unité : Autocomplete** : Plus complexe à implémenter, bénéfice marginal
+- **Fractions : Boutons ½ ¼ ¾** : Limité aux fractions communes
+- **Validation : Seulement à la soumission** : Mauvaise UX moderne
+
+**Fichiers Créés** (2) :
+- `src/utils/fractionParser.ts` (140 lignes)
+- `src/components/recipe/TimeStepper.tsx` (220 lignes)
+
+**Fichiers Modifiés** (7) :
+- `app/cookbooks/[id].tsx` : Fix FAB lineHeight
+- `src/lib/validations/recipe.validation.ts` : Unit optional
+- `src/types/database.ts` : Interface unit optional
+- `src/components/recipe/IngredientInput.tsx` : Fractions + unit optional + UI cleanup
+- `src/components/recipe/index.ts` : Export TimeStepper
+- `app/recipes/create.tsx` : TimeStepper integration + validation temps réel + unit initialization fix
+
+**Pattern d'Utilisation - TimeStepper** :
+```tsx
+import { TimeStepper } from "@/components/recipe";
+
+<TimeStepper
+  label="Temps de préparation"
+  value={prepTime} // number | undefined (minutes)
+  onChange={setPrepTime}
+/>
+```
+
+**Pattern d'Utilisation - Fractions** :
+```tsx
+import { parseFraction } from "@/utils/fractionParser";
+
+const handleQuantityChange = (text: string) => {
+  const parsed = parseFraction(text); // "1/2" → 0.5
+  if (parsed !== null) {
+    setQuantity(parsed);
+  }
+};
+```
+
+**Conséquences** :
+- Expérience création recettes significativement améliorée
+- Réduction taux d'abandon formulaire (feedback immédiat)
+- Données plus cohérentes (fractions converties en décimales)
+- Pattern établi pour futurs formulaires (EditRecipeScreen, etc.)
+- Compatibilité ascendante : recettes existantes avec unité fonctionnent toujours
+
+**Tests Effectués** :
+- ✅ FAB croix centrée (iOS + Android)
+- ✅ Stepper temps : incréments/décréments corrects
+- ✅ Conversion temps : 2h30 = 150 min en DB
+- ✅ Ingrédient sans unité : "1 carotte" sauvegarde OK
+- ✅ Ingrédient avec unité : "200 g farine" sauvegarde OK
+- ✅ Fractions : "1/2" → 0.5, "3/4" → 0.75 en DB
+- ✅ Validation temps réel : erreur affichée immédiatement
+- ✅ Bouton submit : activé quand formulaire valide (unit optional pris en compte)
+
+**Statut** : ✅ Validée et déployée
+
+**Ressources** :
+- [React Native useWindowDimensions](https://reactnative.dev/docs/usewindowdimensions) (pour responsive futur)
+- [Zod Validation](https://zod.dev/) (validation temps réel)
+- [iOS Human Interface Guidelines - Touch Targets](https://developer.apple.com/design/human-interface-guidelines/ios/visual-design/adaptivity-and-layout/)
+
+---
+
 ## 2025-11-23 - Correction Emojis Croppés et Responsivité Écrans Onboarding
 
 **Contexte** : Après review des écrans d'onboarding, plusieurs problèmes de qualité visuelle identifiés :

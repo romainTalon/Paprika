@@ -108,6 +108,29 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 
 **Derniers changements** (23 novembre 2025) :
 
+**Amélioration UX Création de Recettes Manuelles** :
+- ✅ **FAB croix centrée** - Fix lineHeight pour centrage vertical parfait du bouton "+"
+- ✅ **TimeStepper Component** - Saisie temps intuitive (Heures / Minutes) avec boutons +/-
+  - Conversion automatique : 2h30 → 150 min (stockage DB)
+  - Touch targets 44×44px, accessibilité complète
+- ✅ **Unité optionnelle pour ingrédients** - "1 carotte" sans unité awkward maintenant possible
+  - Validation Zod mise à jour : `unit?.optional()`
+  - Interface TypeScript : `unit?: string`
+  - Exemples valides : "1 carotte" (sans unité), "200 g farine" (avec unité)
+- ✅ **Support fractions pour quantités** - Utilitaire `fractionParser.ts` créé
+  - Parse : "1/2" → 0.5, "3/4" → 0.75, "1 1/2" → 1.5
+  - Support unicode : ½, ¼, ¾, ⅓, ⅔, ⅛, etc.
+  - Intégration dans IngredientInput avec parsing temps réel
+- ✅ **Validation en temps réel** - Feedback immédiat sur champ titre
+  - Bordure rouge + message d'erreur sous le champ
+  - Events : `onChangeText` + `onBlur`
+  - Extensible à tous les champs du formulaire
+- ✅ **Ajustements UI** - Interface épurée et alignée
+  - Retrait hints redondants sous champs ingrédients
+  - Alignement hauteur parfait des inputs
+  - Fix bouton submit (unité optionnelle prise en compte)
+- 📄 **Documentation complète** - DECISION-LOG.md + docs/08-frontend-guidelines.md (section 9.2)
+
 **Écrans d'Onboarding Optimisés** :
 - ✅ **Correction emojis croppés dans illustrations** - lineHeight ajouté aux 6 emojis manquants (📱✨, 🔗📋, 📅🛒)
 - ✅ **Responsive design avec useWindowDimensions** - Adaptation automatique aux petits écrans (iPhone SE, Android compact)

@@ -3,15 +3,17 @@
  *
  * Input row for entering recipe ingredient details.
  * Includes name, quantity, unit, and remove button.
+ * Supports fractions for quantities (e.g., "1/2", "3/4", "1 1/2")
  *
  * @module components/recipe/IngredientInput
  */
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, TextInput, TouchableOpacity, StyleSheet } from "react-native";
 import { Text } from "@/components/ui";
 import { colors, spacing, fontSizes } from "@/theme";
 import type { RecipeIngredient } from "@/types/database";
+import { parseFraction, formatFraction } from "@/utils/fractionParser";
 
 interface IngredientInputProps {
   /** Ingredient data */
@@ -33,6 +35,33 @@ export default function IngredientInput({
   disabled = false,
   showRemove = true,
 }: IngredientInputProps) {
+  // Local state for quantity input (supports fractions)
+  const [quantityText, setQuantityText] = useState("");
+
+  // Initialize quantity text from ingredient
+  useEffect(() => {
+    if (ingredient.quantity === 0) {
+      setQuantityText("");
+    } else {
+      setQuantityText(String(ingredient.quantity));
+    }
+  }, [ingredient.quantity]);
+
+  // Handle quantity change with fraction parsing
+  const handleQuantityChange = (text: string) => {
+    setQuantityText(text);
+
+    if (text === "") {
+      onChange({ ...ingredient, quantity: 0 });
+      return;
+    }
+
+    const parsed = parseFraction(text);
+    if (parsed !== null) {
+      onChange({ ...ingredient, quantity: parsed });
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Name Input */}
@@ -47,30 +76,25 @@ export default function IngredientInput({
         editable={!disabled}
       />
 
-      {/* Quantity Input */}
+      {/* Quantity Input with Fraction Support */}
       <TextInput
         style={[styles.input, styles.quantityInput]}
-        value={ingredient.quantity === 0 ? "" : String(ingredient.quantity)}
-        onChangeText={(text) => {
-          const quantity = text === "" ? 0 : parseFloat(text);
-          if (!isNaN(quantity)) {
-            onChange({ ...ingredient, quantity });
-          }
-        }}
+        value={quantityText}
+        onChangeText={handleQuantityChange}
         placeholder="Qté"
         placeholderTextColor={colors.gray[400]}
-        keyboardType="decimal-pad"
+        keyboardType="default"
         editable={!disabled}
       />
 
-      {/* Unit Input */}
+      {/* Unit Input (Optional) */}
       <TextInput
         style={[styles.input, styles.unitInput]}
-        value={ingredient.unit}
+        value={ingredient.unit || ""}
         onChangeText={(text) =>
-          onChange({ ...ingredient, unit: text })
+          onChange({ ...ingredient, unit: text || undefined })
         }
-        placeholder="Unité"
+        placeholder="Unité (opt.)"
         placeholderTextColor={colors.gray[400]}
         editable={!disabled}
       />
@@ -114,7 +138,7 @@ const styles = StyleSheet.create({
 
   quantityInput: {
     flex: 1,
-    minWidth: 60,
+    minWidth: 70,
   },
 
   unitInput: {
