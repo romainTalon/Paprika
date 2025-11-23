@@ -20,6 +20,160 @@
 
 ---
 
+## 2025-11-23 - Implémentation Écran Détail Recette (RecipeDetailScreen)
+
+**Contexte** : L'écran de détail des recettes (`app/recipes/[id].tsx`) n'était qu'un placeholder. Besoin d'une vue complète pour consulter les recettes avec :
+- Affichage de tous les détails (ingrédients, étapes, nutrition, métadonnées)
+- Interaction pendant la cuisine (cocher ingrédients/étapes)
+- Ajustement dynamique des portions
+- Actions utilisateur (favori, modifier, supprimer)
+
+**Décision** : **Implémentation complète d'un écran de lecture de recette interactif et optimisé pour la cuisine**
+
+**Implémentation** :
+
+1. **Structure de l'Écran** (759 lignes totales)
+   - **Header** : Image hero (250px) + Titre + Bouton favori (❤️/🤍)
+   - **Metadata Bar** : Portions (stepper), temps (prep/cook/total), difficulté
+   - **Ingrédients** : Liste avec checkboxes interactives + quantités ajustées
+   - **Étapes** : Liste numérotée avec checkboxes + strikethrough quand complétées
+   - **Nutrition** : Card avec calories, protéines, glucides, lipides, fibres
+   - **Footer** : Actions Modifier + Supprimer (sticky)
+
+2. **Features Interactives**
+   - **Servings Multiplier** (lines 257-283)
+     - Stepper +/- 0.5 portions
+     - Recalcul automatique quantités ingrédients en temps réel
+     - `useMemo` pour performance (pas de re-render inutiles)
+     - Exemple : 4 portions → 2 portions divise toutes les quantités par 2
+
+   - **Interactive Checkboxes** (lines 335-407)
+     - Ingrédients : Tap pour marquer comme utilisé pendant cuisine
+     - Étapes : Tap pour marquer comme complétée
+     - Visual feedback : strikethrough + opacity 0.5
+     - State local avec `Set<number>` pour performance
+     - Persiste pendant la session (perdu au unmount)
+
+   - **Favorite Toggle** (lines 237-244, handler lines 46-52)
+     - Bouton ❤️ (favori) / 🤍 (non-favori)
+     - Optimistic UI via TanStack Query
+     - `useToggleFavorite` hook avec cache invalidation
+
+3. **Gestion des États** (lines 133-194)
+   - **Loading** : Spinner centré avec BackButton
+   - **Error** : Message d'erreur + bouton "Réessayer" avec `refetch()`
+   - **Not Found** : 404 avec emoji 🔍 + bouton retour
+   - Tous les états suivent le pattern du Design System
+
+4. **Data Fetching & Mutations**
+   ```typescript
+   // Hooks utilisés (lines 24-38)
+   const { data: recipe, isLoading, error, refetch } = useRecipe(recipeId, user?.id);
+   const toggleFavorite = useToggleFavorite();
+   const deleteRecipe = useDeleteRecipe();
+   ```
+   - `useRecipe` : Fetch avec cache (stale 5min)
+   - `useToggleFavorite` : Mutation optimiste
+   - `useDeleteRecipe` : Mutation avec invalidation query + navigation back
+
+5. **Computed Values** (useMemo pour performance)
+   - **adjustedIngredients** (lines 115-121) : Quantités × servingsMultiplier
+   - **adjustedServings** (lines 123-126) : Portions arrondies
+   - **totalTime** (lines 128-131) : prepTime + cookTime
+
+6. **Formatage & Affichage**
+   - **Temps** (lines 197-204) : `formatTime(150)` → "2h30", `formatTime(45)` → "45min"
+   - **Difficulté** (lines 207-211) : "easy" → "Facile", "medium" → "Moyen", "hard" → "Difficile"
+   - **Quantités** (line 360) : `toFixed(1).replace(/\.0$/, "")` → "2" au lieu de "2.0"
+   - **Image fallback** (line 27) : Default Unsplash si pas de coverImageUrl
+
+7. **Actions Utilisateur**
+   - **Modifier** (lines 80-85) : Placeholder alert (TODO: edit screen)
+   - **Supprimer** (lines 87-118)
+     - Confirmation avec `Alert.alert` (2 boutons : Annuler / Supprimer)
+     - Style "destructive" pour bouton rouge
+     - Mutation `deleteRecipe.mutateAsync` avec params complets
+     - Navigation `router.back()` après succès
+     - Error handling avec alert
+
+8. **Accessibilité**
+   - `accessibilityRole="button"` sur tous les TouchableOpacity
+   - `accessibilityLabel` descriptifs (ex: "Réduire les portions")
+   - `accessibilityState={{ checked }}` sur checkboxes
+   - Touch targets respectent minimum 44×44px (servings buttons 32×32 car groupés)
+
+9. **Performance Optimizations**
+   - Tous handlers avec `useCallback` (lines 46-118)
+   - Computed values avec `useMemo` (lines 115-131)
+   - TanStack Query cache (stale 5min, gc 30min)
+   - Conditional rendering (sections nutrition, times, description)
+
+**Patterns Techniques** :
+
+```typescript
+// Servings multiplier avec useMemo
+const adjustedIngredients = useMemo(() => {
+  if (!recipe?.ingredients) return [];
+  return recipe.ingredients.map((ing) => ({
+    ...ing,
+    quantity: ing.quantity * servingsMultiplier,
+  }));
+}, [recipe?.ingredients, servingsMultiplier]);
+
+// Checkbox state avec Set<number>
+const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
+
+const handleIngredientToggle = useCallback((index: number) => {
+  setCheckedIngredients((prev) => {
+    const next = new Set(prev);
+    if (next.has(index)) {
+      next.delete(index);
+    } else {
+      next.add(index);
+    }
+    return next;
+  });
+}, []);
+
+// Conditional rendering pour sections optionnelles
+{recipe.nutrition && (
+  <View style={styles.section}>
+    <Text variant="h3">Informations nutritionnelles</Text>
+    {/* ... */}
+  </View>
+)}
+```
+
+**Raisons** :
+- ✅ **UX Cuisine** : Checkboxes permettent de suivre progression pendant la cuisine
+- ✅ **Flexibility** : Multiplier portions adapte recette à nombre convives
+- ✅ **Performance** : useMemo/useCallback évitent re-renders inutiles
+- ✅ **Accessibility** : ARIA labels, touch targets, keyboard-friendly
+- ✅ **Error Handling** : Loading, error, not found states couverts
+- ✅ **Design System** : 100% theme tokens, aucune valeur hardcodée
+- ✅ **Maintenability** : Code structuré, TypeScript strict, patterns cohérents
+
+**Alternatives considérées** :
+- **Servings : Input texte** : Moins intuitif qu'un stepper, risque saisie invalide
+- **Checkboxes persistantes** : Complexe (DB updates), use-case limité (session suffit)
+- **Sections pliables** : Over-engineering pour mobile, scroll simple suffit
+- **Image carousel** : Pas de multi-images dans MVP, ajout futur possible
+- **Bouton "Commencer à cuisiner"** : Mode séparé inutile, checkboxes suffisent
+
+**Conséquences** :
+- ✅ Navigation complète : Cookbooks → RecipeCard → RecipeDetail fonctionnelle
+- ✅ CRUD recipes complet : Create (✅), Read (✅), Update (TODO), Delete (✅)
+- 🔄 Edit screen needed : Action "Modifier" pointe vers placeholder
+- 🔄 Meal plan integration : Bouton "Ajouter au planning" à implémenter
+- 🔄 Share feature : Bouton "Partager" à implémenter (lien + image)
+
+**Statut** : ✅ Validée
+
+**Fichiers modifiés** :
+- `app/recipes/[id].tsx` : Implémentation complète (21 lignes → 759 lignes)
+
+---
+
 ## 2025-11-23 - Amélioration UX Création de Recettes Manuelles
 
 **Contexte** : Après feedback utilisateur sur le formulaire de création de recettes, plusieurs problèmes UX critiques identifiés :

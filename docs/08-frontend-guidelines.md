@@ -1625,6 +1625,196 @@ const handleQuantityChange = (text: string) => {
 - Décimaux : `0.5`, `2.5`
 - Entiers : `1`, `2`, `10`
 
+#### Patterns RecipeDetailScreen - Lecture Interactive de Recettes
+
+**Servings Multiplier avec Recalcul Automatique** :
+```tsx
+// State pour le multiplicateur
+const [servingsMultiplier, setServingsMultiplier] = useState(1);
+
+// Computed values avec useMemo pour performance
+const adjustedIngredients = useMemo(() => {
+  if (!recipe?.ingredients) return [];
+  return recipe.ingredients.map((ing) => ({
+    ...ing,
+    quantity: ing.quantity * servingsMultiplier,
+  }));
+}, [recipe?.ingredients, servingsMultiplier]);
+
+const adjustedServings = useMemo(() => {
+  if (!recipe?.servings) return 0;
+  return Math.round(recipe.servings * servingsMultiplier);
+}, [recipe?.servings, servingsMultiplier]);
+
+// Handler avec useCallback
+const handleServingsChange = useCallback((delta: number) => {
+  setServingsMultiplier((prev) => Math.max(0.5, prev + delta));
+}, []);
+
+// UI Stepper
+<View style={styles.servingsStepper}>
+  <TouchableOpacity
+    style={styles.servingsButton}
+    onPress={() => handleServingsChange(-0.5)}
+    disabled={servingsMultiplier <= 0.5}
+  >
+    <Text style={styles.servingsButtonText}>−</Text>
+  </TouchableOpacity>
+  <Text variant="body">{adjustedServings}</Text>
+  <TouchableOpacity
+    style={styles.servingsButton}
+    onPress={() => handleServingsChange(0.5)}
+  >
+    <Text style={styles.servingsButtonText}>+</Text>
+  </TouchableOpacity>
+</View>
+```
+
+**Checkboxes Interactives (Ingrédients/Étapes)** :
+```tsx
+// State avec Set<number> pour performance O(1) lookup
+const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
+const [checkedSteps, setCheckedSteps] = useState<Set<number>>(new Set());
+
+// Handler toggle avec Set immutable pattern
+const handleIngredientToggle = useCallback((index: number) => {
+  setCheckedIngredients((prev) => {
+    const next = new Set(prev);
+    if (next.has(index)) {
+      next.delete(index);
+    } else {
+      next.add(index);
+    }
+    return next;
+  });
+}, []);
+
+// UI avec conditional styling
+<TouchableOpacity
+  style={styles.ingredientRow}
+  onPress={() => handleIngredientToggle(index)}
+  accessibilityRole="checkbox"
+  accessibilityState={{ checked: checkedIngredients.has(index) }}
+>
+  <View style={styles.checkbox}>
+    {checkedIngredients.has(index) && (
+      <Text style={styles.checkmark}>✓</Text>
+    )}
+  </View>
+  <Text
+    variant="body"
+    style={[
+      styles.ingredientText,
+      checkedIngredients.has(index) && styles.checkedText,
+    ]}
+  >
+    {ingredient.quantity > 0 && `${ingredient.quantity} `}
+    {ingredient.unit && `${ingredient.unit} `}
+    {ingredient.name}
+  </Text>
+</TouchableOpacity>
+
+// Styles pour feedback visuel
+const styles = StyleSheet.create({
+  checkedText: {
+    textDecorationLine: "line-through",
+    opacity: 0.5,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: spacing.xs,
+    borderWidth: 2,
+    borderColor: colors.primary.DEFAULT,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+});
+```
+
+**Formatage Temps Humain** :
+```tsx
+// Utilitaire pour affichage temps
+const formatTime = (minutes: number | undefined) => {
+  if (!minutes) return null;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h > 0 && m > 0) return `${h}h${m}`;
+  if (h > 0) return `${h}h`;
+  return `${m}min`;
+};
+
+// Usage
+<Text>{formatTime(150)}</Text>  // → "2h30"
+<Text>{formatTime(45)}</Text>   // → "45min"
+<Text>{formatTime(120)}</Text>  // → "2h"
+```
+
+**États Loading/Error/NotFound** :
+```tsx
+// Pattern complet avec refetch
+const { data: recipe, isLoading, error, refetch } = useRecipe(recipeId, userId);
+
+if (isLoading) {
+  return (
+    <SafeAreaView edges={["top"]} style={styles.safeArea}>
+      <View style={styles.container}>
+        <BackButton />
+        <View style={styles.centered}>
+          <Text variant="body" color="neutral">Chargement...</Text>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+if (error) {
+  return (
+    <SafeAreaView edges={["top"]} style={styles.safeArea}>
+      <View style={styles.container}>
+        <BackButton />
+        <View style={styles.centered}>
+          <Text variant="h2">Erreur</Text>
+          <Text variant="body" color="neutral">
+            Impossible de charger la recette
+          </Text>
+          <Button variant="primary" onPress={() => refetch()}>
+            Réessayer
+          </Button>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+if (!recipe) {
+  return (
+    <SafeAreaView edges={["top"]} style={styles.safeArea}>
+      <View style={styles.container}>
+        <BackButton />
+        <View style={styles.centered}>
+          <Text variant="h1" style={{ fontSize: 64, lineHeight: 72 }}>
+            🔍
+          </Text>
+          <Text variant="h2">Recette introuvable</Text>
+          <Button variant="primary" onPress={() => router.back()}>
+            Retour
+          </Button>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+```
+
+**Pourquoi ces patterns** :
+- ✅ **Set pour checkboxes** : O(1) lookup vs O(n) avec array.includes()
+- ✅ **useMemo pour computed** : Évite re-calcul à chaque render
+- ✅ **useCallback pour handlers** : Évite re-render enfants
+- ✅ **Conditional rendering** : Affiche uniquement sections avec données
+- ✅ **Refetch sur error** : UX recovery sans reload complet
+- ✅ **Image fallback** : Pas de broken image si URL invalide
+
 ### 9.3 Créer un Nouveau Composant
 
 **Template :**

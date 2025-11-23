@@ -33,7 +33,7 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 | 📝 Documentation | ✅ Complète | 100% |
 | 🗄️ Base de Données | ✅ Opérationnelle | 85% |
 | ⚙️ Backend Services | ✅ Fonctionnels | 60% |
-| 📱 Frontend | 🚧 En cours | 70% |
+| 📱 Frontend | 🚧 En cours | 75% |
 | 🤖 Services IA | 🚧 En cours | 50% |
 | 🔐 Authentification | ✅ Complète | 100% |
 | 📚 Gestion Recettes | ✅ Complète | 100% |
@@ -71,20 +71,22 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 - ✅ Hooks TanStack Query (useCookbooks, useCreateCookbook, etc.)
 - ✅ UI freemium (limite 2 cookbooks affichée)
 
-**Recettes** ✅ (18 novembre 2025) :
+**Recettes** ✅ (23 novembre 2025) :
 - ✅ RecipeListScreen - Affichage des recettes d'un cookbook
-- ✅ CreateRecipeScreen - Formulaire complet de création manuelle
+- ✅ CreateRecipeScreen - Formulaire complet de création manuelle avec TimeStepper et fractions
+- ✅ RecipeDetailScreen - Lecture interactive avec checkboxes et multiplier portions (23 nov)
 - ✅ RecipeCard - Composant réutilisable avec actions (favori, éditer, supprimer)
-- ✅ IngredientInput - Input dynamique pour ingrédients (nom, quantité, unité)
+- ✅ IngredientInput - Input dynamique avec support fractions et unité optionnelle
 - ✅ StepInput - Input dynamique pour étapes numérotées
-- ✅ Hooks TanStack Query (useRecipes, useCookbookRecipes, useCreateRecipe, etc.)
+- ✅ TimeStepper - Composant stepper heures/minutes pour temps de préparation/cuisson
+- ✅ Hooks TanStack Query (useRecipes, useCookbookRecipes, useCreateRecipe, useRecipe, etc.)
 - ✅ Validation Zod complète avec messages en français
-- ✅ Gestion toggle favori en temps réel
+- ✅ Gestion toggle favori en temps réel (optimistic UI)
 - ✅ Suppression avec confirmation
-- ✅ Empty state, error state, loading state
+- ✅ Empty state, error state, loading state, not found state
 - ✅ FAB pour création rapide
 - ✅ Mapping snake_case ↔ camelCase (CookbookService + RecipeService)
-- ⏳ RecipeDetailScreen (placeholder - à implémenter)
+- ⏳ RecipeEditScreen (à implémenter)
 
 **Navigation & UI** :
 - ✅ Navigation complète configurée (4 tabs + écrans stack)
@@ -107,6 +109,24 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 **Dernière mise à jour** : 23 novembre 2025
 
 **Derniers changements** (23 novembre 2025) :
+
+**Écran Détail Recette (RecipeDetailScreen)** :
+- ✅ **Implémentation complète** - Remplacement du placeholder par écran fonctionnel complet (759 lignes)
+- ✅ **Header interactif** - Image hero + titre + bouton favori (❤️/🤍) avec optimistic UI
+- ✅ **Metadata bar** - Portions, temps (prep/cook/total formatés "2h30"), difficulté
+- ✅ **Servings multiplier** - Stepper +/- 0.5 portions avec recalcul automatique ingrédients
+  - useMemo pour performance (pas de re-calcul inutile)
+  - Quantités ajustées en temps réel (4 portions → 2 portions divise tout par 2)
+- ✅ **Checkboxes interactives** - Ingrédients et étapes cochables pendant la cuisine
+  - State avec Set<number> pour performance O(1)
+  - Visual feedback : strikethrough + opacity 0.5
+  - Persiste pendant la session (réinitialise au unmount)
+- ✅ **Sections optionnelles** - Description, nutrition (calories, protéines, glucides, lipides, fibres)
+- ✅ **États complets** - Loading, error avec retry, not found (404 avec 🔍)
+- ✅ **Actions utilisateur** - Modifier (placeholder), Supprimer (confirmation + navigation back)
+- ✅ **Patterns avancés** - useCallback, useMemo, conditional rendering, formatTime utility
+- ✅ **Accessibilité** - ARIA labels, touch targets 44×44px, accessibilityState pour checkboxes
+- 📄 **Documentation complète** - DECISION-LOG.md (153 lignes) + docs/08-frontend-guidelines.md (section RecipeDetailScreen patterns)
 
 **Amélioration UX Création de Recettes Manuelles** :
 - ✅ **FAB croix centrée** - Fix lineHeight pour centrage vertical parfait du bouton "+"
