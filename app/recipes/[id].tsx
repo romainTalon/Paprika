@@ -80,9 +80,9 @@ export default function RecipeDetailScreen() {
   }, []);
 
   const handleEdit = useCallback(() => {
-    // TODO: Navigate to edit screen when implemented
-    Alert.alert("Modifier", "L'écran de modification sera bientôt disponible");
-  }, []);
+    if (!recipe) return;
+    router.push(`/recipes/${recipe.id}/edit`);
+  }, [recipe]);
 
   const handleDelete = useCallback(() => {
     if (!recipe || !user?.id) return;

@@ -3,13 +3,8 @@
  * Manage weekly meal plans with JSONB meals structure
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 import type { MealPlan, NewMealPlan, ServiceResponse, WeekMeals, MealSlot, MealType, WeekDay, getMealSlotKey } from "@/types";
-
-// Initialize Supabase client
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 export class MealPlanService {
   /**

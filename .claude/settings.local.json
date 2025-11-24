@@ -38,7 +38,16 @@
       "Bash(powershell -Command \"Get-Content ''docs\\08-frontend-guidelines.md'' | Select-String -Pattern ''^## '' | Select-Object -First 15\")",
       "Bash(powershell -Command \"npm run type-check 2>&1 | Select-String ''app/recipes''\")",
       "Bash(powershell -Command \"Get-Content ''docs\\08-frontend-guidelines.md'' | Measure-Object -Line | Select-Object -ExpandProperty Lines\")",
-      "Bash(powershell -Command \"Get-Content ''docs\\08-frontend-guidelines.md'' | Select-String -Pattern ''9\\.2'' -Context 2,5\")"
+      "Bash(powershell -Command \"Get-Content ''docs\\08-frontend-guidelines.md'' | Select-String -Pattern ''9\\.2'' -Context 2,5\")",
+      "Bash(Select-String \"recipes\")",
+      "Bash(Select-Object -First 20)",
+      "Bash(powershell -Command \"npm run type-check 2>&1 | Select-String ''recipes''\")",
+      "Bash(powershell -Command \"npm run type-check 2>&1 | Select-String ''edit.tsx''\")",
+      "Bash(powershell -Command \"npm run type-check 2>&1 | Select-String ''useMealPlans|meal''\")",
+      "Bash(powershell -Command \"npm run type-check 2>&1 | Select-String ''meal|Meal'' | Select-Object -First 30\")",
+      "Bash(npm start)",
+      "Bash(powershell -Command \"npm run type-check 2>&1 | Select-String ''meal-plan.tsx'' | Select-Object -First 10\")",
+      "Bash(powershell -Command \"Get-Content package.json | Select-String ''date-fns''\")"
     ],
     "deny": [],
     "ask": []

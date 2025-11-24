@@ -33,10 +33,11 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 | 📝 Documentation | ✅ Complète | 100% |
 | 🗄️ Base de Données | ✅ Opérationnelle | 85% |
 | ⚙️ Backend Services | ✅ Fonctionnels | 60% |
-| 📱 Frontend | 🚧 En cours | 75% |
+| 📱 Frontend | 🚧 En cours | 80% |
 | 🤖 Services IA | 🚧 En cours | 50% |
 | 🔐 Authentification | ✅ Complète | 100% |
 | 📚 Gestion Recettes | ✅ Complète | 100% |
+| 📅 Meal Planning | ✅ Complète | 100% |
 | 💳 Paiements | ⏳ À faire | 0% |
 
 **Phase 1 Setup complétée** ✅ :
@@ -71,22 +72,56 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 - ✅ Hooks TanStack Query (useCookbooks, useCreateCookbook, etc.)
 - ✅ UI freemium (limite 2 cookbooks affichée)
 
-**Recettes** ✅ (23 novembre 2025) :
+**Recettes** ✅ (24 novembre 2025) :
 - ✅ RecipeListScreen - Affichage des recettes d'un cookbook
 - ✅ CreateRecipeScreen - Formulaire complet de création manuelle avec TimeStepper et fractions
+- ✅ RecipeEditScreen - Édition complète de recettes (735 lignes, réutilise CreateRecipeScreen) (24 nov)
 - ✅ RecipeDetailScreen - Lecture interactive avec checkboxes et multiplier portions (23 nov)
 - ✅ RecipeCard - Composant réutilisable avec actions (favori, éditer, supprimer)
 - ✅ IngredientInput - Input dynamique avec support fractions et unité optionnelle
 - ✅ StepInput - Input dynamique pour étapes numérotées
 - ✅ TimeStepper - Composant stepper heures/minutes pour temps de préparation/cuisson
-- ✅ Hooks TanStack Query (useRecipes, useCookbookRecipes, useCreateRecipe, useRecipe, etc.)
+- ✅ Hooks TanStack Query (useRecipes, useCookbookRecipes, useCreateRecipe, useUpdateRecipe, useRecipe, etc.)
 - ✅ Validation Zod complète avec messages en français
 - ✅ Gestion toggle favori en temps réel (optimistic UI)
 - ✅ Suppression avec confirmation
 - ✅ Empty state, error state, loading state, not found state
 - ✅ FAB pour création rapide
 - ✅ Mapping snake_case ↔ camelCase (CookbookService + RecipeService)
-- ⏳ RecipeEditScreen (à implémenter)
+
+**Meal Planning** ✅ (24 novembre 2025) :
+- ✅ MealPlanScreen - Interface complète de planification hebdomadaire (527 lignes)
+  - Grille 7 jours × 4 types de repas (petit-déj, déjeuner, dîner, snack)
+  - Navigation semaine par semaine (← / → avec date-fns)
+  - Bouton "Semaine actuelle" pour revenir à aujourd'hui
+  - Bouton "Effacer la semaine" avec confirmation
+  - Layout optimisé avec espacements réduits (88% hauteur d'écran)
+- ✅ MealSlotCard - Composant carte repas avec deux états (269 lignes)
+  - État vide : Bouton "+" pour ajouter un repas
+  - État rempli : Image recette + nom + portions + checkbox "Cuisiné"
+  - Actions : Éditer, Marquer cuisiné, Supprimer
+  - Design "Warm & Cozy" avec shadows et borders
+- ✅ RecipePickerModal - Modal de sélection de recettes (734 lignes)
+  - Navigation à 2 niveaux : Cookbooks → Recettes (UX optimisée)
+  - Structure fixe : Header (avec retour + fermeture) → Contenu scrollable → Footer fixe
+  - Affichage par livre avec compteur de recettes
+  - Ajustement portions [−] 1-50 [+] avec stepper custom
+  - Bottom sheet modal 88% hauteur avec FlatList optimisée
+  - Loading/error/empty states pour cookbooks ET recettes
+- ✅ Hooks TanStack Query (useMealPlans.ts - 263 lignes)
+  - useMealPlan - Fetch planning semaine avec auto-création si inexistant
+  - useUpdateMealSlot - Mutation ajout/édition repas avec invalidation cache
+  - useClearMealSlot - Suppression slot individuel
+  - useMarkMealCooked - Toggle statut cuisiné/à cuisiner
+  - useClearWeekMealPlan - Effacer toute la semaine
+- ✅ Date Management avec date-fns v4.1.0
+  - getMondayOfWeek helper (start of week = Monday)
+  - Format français "Semaine du 18 Nov - 24 Nov 2025" (locale fr)
+  - Navigation prev/next week avec startOfWeek ISO
+- ✅ JSONB Storage - Slots stockés comme `{"monday-breakfast": {...}, ...}`
+- ✅ Bug Fix - Supabase client centralisé (mealPlan.service.ts + groceryList.service.ts)
+- ✅ États complets - Loading, error avec retry, empty state ("Aucune recette pour cette semaine")
+- ✅ Optimistic UI - Invalidation cache TanStack Query après chaque mutation
 
 **Navigation & UI** :
 - ✅ Navigation complète configurée (4 tabs + écrans stack)
@@ -106,9 +141,45 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 - ✅ Token refresh automatique (AppState listener)
 - ⏳ Deep links pour confirmation email (désactivée temporairement)
 
-**Dernière mise à jour** : 23 novembre 2025
+**Dernière mise à jour** : 24 novembre 2025
 
-**Derniers changements** (23 novembre 2025) :
+**Derniers changements** (24 novembre 2025) :
+
+**Meal Planning - Implémentation Complète** :
+- ✅ **MealPlanScreen** - Interface de planification hebdomadaire 7×4 (527 lignes)
+  - Grille responsive avec header de types de repas (🍳 Petit-déj, 🍽️ Déjeuner, 🍲 Dîner, 🍎 Snack)
+  - Navigation semaine (prev/next/current) avec date-fns et format français
+  - Fetch automatique avec auto-création si planning inexistant (MealPlanService.getWeekMealPlan)
+  - Bouton "Effacer la semaine" avec Alert confirmation
+  - Layout optimisé : header/actionBar avec padding réduit (paddingVertical: spacing.xs)
+- ✅ **RecipePickerModal refactorée** - Navigation 2 niveaux optimisée (734 lignes)
+  - Niveau 1 : Sélection cookbook avec compteur recettes ("12 recettes")
+  - Niveau 2 : Recettes du cookbook avec bouton retour (← Retour)
+  - Structure fixe : Header (titleText + closeButton ✕) + ScrollableContent (flex: 1) + Footer fixe (buttons)
+  - Modal height: 88% (équilibre parfait entre espace et visibilité)
+  - Servings adjuster intégré dans scrollContent avec border/background cream
+  - FlatList optimisée (removeClippedSubviews, windowSize: 10)
+- ✅ **MealSlotCard** - Composant carte repas (269 lignes)
+  - Empty state : Dashed border + icône "+" + texte "Ajouter"
+  - Filled state : Image recipe + title + servings + checkbox "Cuisiné"
+  - Actions : onPress (edit), onToggleCooked (checkbox), onRemove (✕ button)
+  - Height fixe 120px, responsive dans grille
+- ✅ **Hooks TanStack Query** (useMealPlans.ts - 263 lignes)
+  - useMealPlan(userId, weekStart) avec staleTime 5min
+  - useUpdateMealSlot, useClearMealSlot, useMarkMealCooked, useClearWeekMealPlan
+  - Invalidation cache queryKey: ["meal-plan", userId, weekStart]
+  - Optimistic UI pour toutes mutations
+- ✅ **Bug Fix Critique** - Supabase client centralisé
+  - MealPlanService.ts : `import { supabase } from "@/lib/supabase"` au lieu de `createClient()`
+  - GroceryListService.ts : Même fix appliqué
+  - Résout erreur "impossible de charger le planning" (auth context manquant)
+- ✅ **RecipeEditScreen** - CRUD complet (735 lignes)
+  - Duplication intelligente de CreateRecipeScreen avec modifications edit
+  - useRecipe hook pour fetch + pre-population formulaire via useEffect
+  - useUpdateRecipe mutation avec route `/recipes/[id]/edit`
+  - Fix TypeScript : `cookbookId: recipe?.cookbookId ?? undefined`
+
+**Changements du 23 novembre 2025** :
 
 **Écran Détail Recette (RecipeDetailScreen)** :
 - ✅ **Implémentation complète** - Remplacement du placeholder par écran fonctionnel complet (759 lignes)

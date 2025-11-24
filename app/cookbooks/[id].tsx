@@ -115,7 +115,7 @@ export default function CookbookDetailScreen() {
   }, []);
 
   const handleEditRecipe = useCallback((recipeId: string) => {
-    router.push(`/recipes/edit/${recipeId}`);
+    router.push(`/recipes/${recipeId}/edit`);
   }, []);
 
   const handleToggleFavorite = useCallback(
