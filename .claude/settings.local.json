@@ -47,9 +47,21 @@
       "Bash(powershell -Command \"npm run type-check 2>&1 | Select-String ''meal|Meal'' | Select-Object -First 30\")",
       "Bash(npm start)",
       "Bash(powershell -Command \"npm run type-check 2>&1 | Select-String ''meal-plan.tsx'' | Select-Object -First 10\")",
-      "Bash(powershell -Command \"Get-Content package.json | Select-String ''date-fns''\")"
+      "Bash(powershell -Command \"Get-Content package.json | Select-String ''date-fns''\")",
+      "SlashCommand(/frontend-dev)",
+      "Bash(Select-String:*)",
+      "Bash(powershell -Command \"npm run type-check 2>&1 | Select-String ''meal-plan''\")",
+      "Bash(echo:*)",
+      "mcp__supabase__apply_migration",
+      "Bash(powershell -Command \"Get-Content ''C:\\Repositories\\Paprika\\app\\(tabs)\\meal-plan.tsx'' | Select-String ''export'' | Select-Object -Last 5\")",
+      "Bash(npm uninstall:*)",
+      "Bash(powershell:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
 }

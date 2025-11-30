@@ -27,7 +27,13 @@ function getColor(color: string): string {
   // Check if it's a color key
   if (color in colors) {
     const colorValue = colors[color as keyof typeof colors];
-    return typeof colorValue === "string" ? colorValue : colorValue.DEFAULT || colorValue[500];
+    if (typeof colorValue === "string") {
+      return colorValue;
+    }
+    // Handle nested color objects (e.g., colors.warm.brown)
+    if (typeof colorValue === "object") {
+      return (colorValue as any).DEFAULT || (colorValue as any)[500] || color;
+    }
   }
 
   return color;

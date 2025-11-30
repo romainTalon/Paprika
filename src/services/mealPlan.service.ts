@@ -5,6 +5,7 @@
 
 import { supabase } from "@/lib/supabase";
 import type { MealPlan, NewMealPlan, ServiceResponse, WeekMeals, MealSlot, MealType, WeekDay, getMealSlotKey } from "@/types";
+import { MAX_RECIPES_PER_SLOT } from "@/types";
 
 export class MealPlanService {
   /**
@@ -79,7 +80,8 @@ export class MealPlanService {
   }
 
   /**
-   * Update a specific meal slot
+   * Update a specific meal slot (replaces entire slot with single recipe)
+   * @deprecated Use addRecipeToSlot for multi-recipe support
    * @param mealPlanId Meal plan ID
    * @param day Day of the week
    * @param meal Meal type (breakfast, lunch, dinner, snack)
@@ -103,10 +105,10 @@ export class MealPlanService {
 
       if (fetchError) throw fetchError;
 
-      // Update meals JSONB
+      // Update meals JSONB (replace entire slot with single recipe in array)
       const meals = (currentPlan.meals as WeekMeals) || {};
       const slotKey = `${day}-${meal}`;
-      meals[slotKey] = mealSlot;
+      meals[slotKey] = [mealSlot]; // Now stores as array
 
       // Save updated meal plan
       const { data, error } = await supabase
@@ -169,6 +171,7 @@ export class MealPlanService {
 
   /**
    * Mark a meal as cooked
+   * @deprecated Use updateRecipeInSlot to mark individual recipes as cooked
    */
   static async markMealCooked(
     mealPlanId: string,
@@ -188,12 +191,12 @@ export class MealPlanService {
 
       if (fetchError) throw fetchError;
 
-      // Update cooked status
+      // Update cooked status for ALL recipes in slot
       const meals = (currentPlan.meals as WeekMeals) || {};
       const slotKey = `${day}-${meal}`;
 
       if (meals[slotKey]) {
-        meals[slotKey]!.isCooked = isCooked;
+        meals[slotKey] = meals[slotKey]!.map((slot) => ({ ...slot, isCooked }));
       }
 
       // Save updated meal plan
@@ -256,6 +259,157 @@ export class MealPlanService {
   }
 
   /**
+   * Add a recipe to an existing meal slot
+   * Supports multiple recipes per slot (max 5)
+   */
+  static async addRecipeToSlot(
+    mealPlanId: string,
+    userId: string,
+    day: WeekDay,
+    meal: MealType,
+    newRecipe: MealSlot
+  ): Promise<ServiceResponse<MealPlan>> {
+    try {
+      // Get current meal plan
+      const { data: currentPlan, error: fetchError } = await supabase
+        .from("meal_plans")
+        .select("meals")
+        .eq("id", mealPlanId)
+        .eq("user_id", userId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Get existing recipes for this slot
+      const meals = (currentPlan.meals as WeekMeals) || {};
+      const slotKey = `${day}-${meal}`;
+      const existingRecipes = meals[slotKey] || [];
+
+      // Validate limit
+      if (existingRecipes.length >= MAX_RECIPES_PER_SLOT) {
+        throw new Error(`Maximum ${MAX_RECIPES_PER_SLOT} recettes par repas`);
+      }
+
+      // Add new recipe
+      meals[slotKey] = [...existingRecipes, newRecipe];
+
+      // Save updated meal plan
+      const { data, error } = await supabase
+        .from("meal_plans")
+        .update({ meals })
+        .eq("id", mealPlanId)
+        .eq("user_id", userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return { data: data as MealPlan, error: null };
+    } catch (error) {
+      return { data: null, error: error as Error };
+    }
+  }
+
+  /**
+   * Remove a specific recipe from a meal slot by index
+   */
+  static async removeRecipeFromSlot(
+    mealPlanId: string,
+    userId: string,
+    day: WeekDay,
+    meal: MealType,
+    recipeIndex: number
+  ): Promise<ServiceResponse<MealPlan>> {
+    try {
+      // Get current meal plan
+      const { data: currentPlan, error: fetchError } = await supabase
+        .from("meal_plans")
+        .select("meals")
+        .eq("id", mealPlanId)
+        .eq("user_id", userId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Remove specific recipe by index
+      const meals = (currentPlan.meals as WeekMeals) || {};
+      const slotKey = `${day}-${meal}`;
+      const existingRecipes = meals[slotKey] || [];
+
+      // Remove recipe at specific index
+      meals[slotKey] = existingRecipes.filter((_, index) => index !== recipeIndex);
+
+      // If no recipes left, remove the slot entirely
+      if (meals[slotKey]!.length === 0) {
+        delete meals[slotKey];
+      }
+
+      // Save updated meal plan
+      const { data, error } = await supabase
+        .from("meal_plans")
+        .update({ meals })
+        .eq("id", mealPlanId)
+        .eq("user_id", userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return { data: data as MealPlan, error: null };
+    } catch (error) {
+      return { data: null, error: error as Error };
+    }
+  }
+
+  /**
+   * Update a specific recipe within a meal slot by index (servings or isCooked)
+   */
+  static async updateRecipeInSlot(
+    mealPlanId: string,
+    userId: string,
+    day: WeekDay,
+    meal: MealType,
+    recipeIndex: number,
+    updates: Partial<Pick<MealSlot, "servings" | "isCooked" | "notes">>
+  ): Promise<ServiceResponse<MealPlan>> {
+    try {
+      // Get current meal plan
+      const { data: currentPlan, error: fetchError } = await supabase
+        .from("meal_plans")
+        .select("meals")
+        .eq("id", mealPlanId)
+        .eq("user_id", userId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Update specific recipe by index
+      const meals = (currentPlan.meals as WeekMeals) || {};
+      const slotKey = `${day}-${meal}`;
+      const existingRecipes = meals[slotKey] || [];
+
+      meals[slotKey] = existingRecipes.map((slot, index) =>
+        index === recipeIndex ? { ...slot, ...updates } : slot
+      );
+
+      // Save updated meal plan
+      const { data, error } = await supabase
+        .from("meal_plans")
+        .update({ meals })
+        .eq("id", mealPlanId)
+        .eq("user_id", userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return { data: data as MealPlan, error: null };
+    } catch (error) {
+      return { data: null, error: error as Error };
+    }
+  }
+
+  /**
    * Get all recipes used in a meal plan (for grocery list generation)
    */
   static async getMealPlanRecipes(mealPlanId: string, userId: string): Promise<ServiceResponse<string[]>> {
@@ -271,7 +425,8 @@ export class MealPlanService {
 
       const meals = (mealPlan.meals as WeekMeals) || {};
       const recipeIds = Object.values(meals)
-        .filter((slot): slot is MealSlot => slot !== undefined)
+        .filter((slots): slots is MealSlot[] => slots !== undefined)
+        .flat() // Flatten array of arrays
         .map((slot) => slot.recipeId);
 
       // Remove duplicates

@@ -33,7 +33,7 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 | 📝 Documentation | ✅ Complète | 100% |
 | 🗄️ Base de Données | ✅ Opérationnelle | 85% |
 | ⚙️ Backend Services | ✅ Fonctionnels | 60% |
-| 📱 Frontend | 🚧 En cours | 80% |
+| 📱 Frontend | 🚧 En cours | 85% |
 | 🤖 Services IA | 🚧 En cours | 50% |
 | 🔐 Authentification | ✅ Complète | 100% |
 | 📚 Gestion Recettes | ✅ Complète | 100% |
@@ -89,39 +89,54 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 - ✅ FAB pour création rapide
 - ✅ Mapping snake_case ↔ camelCase (CookbookService + RecipeService)
 
-**Meal Planning** ✅ (24 novembre 2025) :
-- ✅ MealPlanScreen - Interface complète de planification hebdomadaire (527 lignes)
-  - Grille 7 jours × 4 types de repas (petit-déj, déjeuner, dîner, snack)
+**Meal Planning** ✅ (30 novembre 2025 - Refonte complète) :
+- ✅ MealPlanScreen - Interface liste verticale avec support multi-recettes (505 lignes)
+  - **Layout refactoré** : Grille 7×4 → Liste verticale scrollable (5× plus d'espace)
   - Navigation semaine par semaine (← / → avec date-fns)
   - Bouton "Semaine actuelle" pour revenir à aujourd'hui
   - Bouton "Effacer la semaine" avec confirmation
-  - Layout optimisé avec espacements réduits (88% hauteur d'écran)
-- ✅ MealSlotCard - Composant carte repas avec deux états (269 lignes)
-  - État vide : Bouton "+" pour ajouter un repas
-  - État rempli : Image recette + nom + portions + checkbox "Cuisiné"
-  - Actions : Éditer, Marquer cuisiné, Supprimer
-  - Design "Warm & Cozy" avec shadows et borders
-- ✅ RecipePickerModal - Modal de sélection de recettes (734 lignes)
-  - Navigation à 2 niveaux : Cookbooks → Recettes (UX optimisée)
-  - Structure fixe : Header (avec retour + fermeture) → Contenu scrollable → Footer fixe
-  - Affichage par livre avec compteur de recettes
-  - Ajustement portions [−] 1-50 [+] avec stepper custom
-  - Bottom sheet modal 88% hauteur avec FlatList optimisée
-  - Loading/error/empty states pour cookbooks ET recettes
-- ✅ Hooks TanStack Query (useMealPlans.ts - 263 lignes)
-  - useMealPlan - Fetch planning semaine avec auto-création si inexistant
-  - useUpdateMealSlot - Mutation ajout/édition repas avec invalidation cache
-  - useClearMealSlot - Suppression slot individuel
-  - useMarkMealCooked - Toggle statut cuisiné/à cuisiner
-  - useClearWeekMealPlan - Effacer toute la semaine
+  - **Modal routing intelligent** : Vide → RecipePickerModal, Rempli → MealSlotDetailModal
+- ✅ DayCard - Carte journée avec 4 MealSlotRow
+  - Header avec jour + date formatée (ex: "Lundi 4 novembre")
+  - Contient breakfast, lunch, dinner, snack
+  - Hauteur adaptative selon contenu
+- ✅ MealSlotRow - Row repas avec 3 états visuels (60px hauteur fixe)
+  - **Vide** : Bordure dashed + "🍽️ + Ajouter"
+  - **Simple** (1 recette) : "Titre de la recette (4p)"
+  - **Multiple** (2-5 recettes) : Badge "[3]" + "3 recettes" + flèche →
+- ✅ MealSlotDetailModal - Bottom sheet modal détail (70% hauteur)
+  - Header fixe : Jour + Type repas + Compteur recettes
+  - ScrollView avec liste RecipeCardInModal
+  - Footer fixe : Bouton "+ Ajouter une recette" (max 5)
+  - Éditeur portions inline (remplace card temporairement)
+  - **Auto-fermeture** après suppression dernière recette
+  - **État réactif temps réel** : Mises à jour instantanées (toggle cooked, servings, delete)
+- ✅ RecipeCardInModal - Card horizontale avec 3 actions
+  - Image 80×80px + Info (titre + portions)
+  - Bouton "✓ Cuisiné" / "À cuisiner" (vert si cooked)
+  - Bouton "Modifier" (ouvre éditeur inline)
+  - Bouton "🗑️" (suppression avec confirmation)
+- ✅ RecipePickerModal - Modal sélection recettes (734 lignes, inchangé)
+  - Navigation 2 niveaux : Cookbooks → Recettes
+  - Ajustement portions [−] 1-50 [+]
+  - Bottom sheet modal 88% hauteur
+- ✅ Support Multi-Recettes (MAX_RECIPES_PER_SLOT = 5)
+  - **Migration JSONB** : MealSlot object → MealSlot[] array
+  - **Index-based operations** : Support duplicates (même recette plusieurs fois)
+  - Backup créé avant migration
+- ✅ Hooks TanStack Query refactorisés
+  - useAddRecipeToSlot - Ajout avec validation max capacity
+  - useRemoveRecipeFromSlot - Suppression par index
+  - useUpdateRecipeInSlot - Update servings/cooked par index
+  - useClearWeekMealPlan - Effacer semaine complète
+  - **State management amélioré** : Données dynamiques via getMealSlots (pas de snapshots)
 - ✅ Date Management avec date-fns v4.1.0
-  - getMondayOfWeek helper (start of week = Monday)
-  - Format français "Semaine du 18 Nov - 24 Nov 2025" (locale fr)
-  - Navigation prev/next week avec startOfWeek ISO
-- ✅ JSONB Storage - Slots stockés comme `{"monday-breakfast": {...}, ...}`
-- ✅ Bug Fix - Supabase client centralisé (mealPlan.service.ts + groceryList.service.ts)
-- ✅ États complets - Loading, error avec retry, empty state ("Aucune recette pour cette semaine")
-- ✅ Optimistic UI - Invalidation cache TanStack Query après chaque mutation
+  - Format français "Semaine du 18 Nov - 24 Nov 2025"
+  - Navigation ISO week avec startOfWeek(Monday)
+- ✅ Architecture cleanup
+  - Supprimé MealSlotCard.tsx (déprécié)
+  - 4 nouveaux composants modulaires (+800 lignes)
+  - Code découplé et maintenable
 
 **Navigation & UI** :
 - ✅ Navigation complète configurée (4 tabs + écrans stack)

@@ -20,6 +20,121 @@
 
 ---
 
+## 2025-11-30 - Refonte Complète Écran Meal Plan (Multi-Recettes + UX Liste Verticale)
+
+**Contexte** : L'écran de meal planning présentait deux problèmes majeurs :
+1. **Layout inadapté** : Grille 7×4 (7 jours × 4 repas) créant des cards de seulement ~70px de large, rendant le texte illisible et les interactions impossibles
+2. **Support mono-recette** : Impossible d'ajouter plusieurs recettes à un même slot (ex: yaourt + salade de fruits au petit-déjeuner)
+3. **État statique** : Modifications (toggle cooked, servings, delete) non visibles en temps réel dans le modal, nécessitant fermeture/réouverture
+
+**Décision** : **Refonte complète avec support multi-recettes et layout liste verticale**
+
+**Implémentation** :
+
+1. **Nouveau Layout : Grille → Liste Verticale**
+   - **Avant** : Grille 7×4 avec 28 petites cards (~70px large)
+   - **Après** : Liste verticale scrollable avec 7 DayCard (1 par jour, ~358px large)
+   - **Gain d'espace** : 5× plus d'espace par slot (70px → 358px)
+   - **Résultat** : Texte lisible, interactions faciles, expérience mobile optimale
+
+2. **Nouveau Composant : DayCard** (`src/components/meal-plan/DayCard.tsx`)
+   - Card journée avec header (jour + date formatée, ex: "Lundi 4 novembre")
+   - Contient 4 MealSlotRow (breakfast, lunch, dinner, snack)
+   - Hauteur adaptative selon contenu
+   - Props: `{ day, date, allRecipes, getMealSlots, onMealPress }`
+
+3. **Nouveau Composant : MealSlotRow** (`src/components/meal-plan/MealSlotRow.tsx`)
+   - **3 états visuels** :
+     - **Vide** : Bordure dashed, "🍽️ + Ajouter" (style cream + gray)
+     - **Simple** : 1 recette → "Titre de la recette (4p)" en texte direct
+     - **Multiple** : 2+ recettes → Badge numérique "[3]" + "3 recettes" + flèche
+   - Hauteur fixe : 60px pour alignement uniforme
+   - Interaction : Tap sur row → ouvre modal approprié
+
+4. **Nouveau Composant : MealSlotDetailModal** (`src/components/meal-plan/MealSlotDetailModal.tsx`)
+   - Bottom sheet modal (70% hauteur écran)
+   - **Header fixe** : Jour + Type de repas + Compteur recettes
+   - **ScrollView** : Liste de RecipeCardInModal (scrollable si >3 recettes)
+   - **Footer fixe** : Bouton "+ Ajouter une recette" (disabled si MAX_RECIPES_PER_SLOT=5 atteint)
+   - **Éditeur inline** : Tap "Modifier" → remplace card par input servings + boutons Annuler/Enregistrer
+   - **Auto-fermeture** : Se ferme automatiquement si dernière recette supprimée
+
+5. **Nouveau Composant : RecipeCardInModal** (`src/components/meal-plan/RecipeCardInModal.tsx`)
+   - Layout horizontal : Image 80×80px + Info + 3 boutons d'action
+   - **Actions** :
+     - Toggle "Cuisiné" : Bouton avec checkmark, vert si cooked
+     - "Modifier" : Ouvre éditeur inline servings
+     - "🗑️" : Suppression avec confirmation Alert
+   - Background cream.DEFAULT, height min 140px
+
+6. **Support Multi-Recettes : Migration JSONB**
+   - **Structure data** : `MealSlot` object → `MealSlot[]` array
+   - **Migration SQL** : `jsonb_build_array(value)` pour wrap objets existants
+   - **MAX_RECIPES_PER_SLOT** : Limite à 5 recettes par slot
+   - **Index-based operations** : Utilise array index (pas recipeId) pour supporter duplicates
+   - **Services mis à jour** :
+     - `addRecipeToSlot(...)` : Push dans array avec validation max capacity
+     - `removeRecipeFromSlot(recipeIndex)` : Filter par index
+     - `updateRecipeInSlot(recipeIndex, updates)` : Map avec index matching
+   - **Backup créé** : `supabase/migrations/BACKUP-before-multi-recipes-2025-11-30.json`
+
+7. **État Réactif en Temps Réel** (Fix critique UX)
+   - **Problème initial** : Modal recevait snapshot statique `selectedSlotForDetail.slots`
+   - **Solution** : Passer `getMealSlots(day, meal)` directement au modal
+   - **Résultat** : React Query invalide cache → composant re-render → UI mise à jour instantanée
+   - **Actions temps réel** :
+     - Toggle cooked ✅
+     - Update servings ✅
+     - Delete recipe ✅
+     - Add recipe ✅
+   - **Auto-fermeture smart** : Vérifie si dernière recette AVANT suppression (`currentSlots.length === 1`)
+
+8. **Modal Routing Intelligent** (`handleMealPress`, lines 121-136)
+   ```typescript
+   if (!slots || slots.length === 0) {
+     // Vide → RecipePickerModal
+     setSelectedSlot({ day, meal });
+     setModalVisible(true);
+   } else {
+     // Rempli → MealSlotDetailModal
+     setSelectedSlotForDetail({ day, meal }); // Simplifié : plus de snapshot slots
+     setDetailModalVisible(true);
+   }
+   ```
+
+9. **Cleanup & Architecture**
+   - **Supprimé** : `MealSlotCard.tsx` (déprécié, 450 lignes)
+   - **Ajoutés** : 4 nouveaux composants (DayCard, MealSlotRow, MealSlotDetailModal, RecipeCardInModal)
+   - **Refactorisé** : `meal-plan.tsx` complètement refondu (505 lignes)
+   - **Types simplifiés** : `selectedSlotForDetail` ne stocke plus le snapshot slots
+
+**Raisons** :
+- **UX Mobile-first** : Scroll vertical naturel sur mobile vs grille horizontale cramped
+- **Lisibilité** : 5× plus d'espace = texte lisible, images visibles, interactions faciles
+- **Flexibilité** : Support multi-recettes essentiel (petit-déj varié, batch cooking, etc.)
+- **Performance** : Index-based operations + React Query optimistic updates
+- **Réactivité** : État dynamique via `getMealSlots` au lieu de snapshots statiques
+
+**Alternatives considérées** :
+1. **Améliorer la grille** : Impossible, trop petit même avec optimisations
+2. **Tabs par jour** : Navigation lourde, pas de vue d'ensemble semaine
+3. **Accordion** : Moins intuitif, interactions supplémentaires
+4. **Mono-recette avec notes** : Pas assez flexible pour vrais cas d'usage
+
+**Conséquences** :
+- **Positif** :
+  - UX dramatiquement améliorée (feedback utilisateur : "beaucoup mieux")
+  - Support multi-recettes opérationnel
+  - Code plus maintenable (composants séparés vs monolithe)
+  - État réactif en temps réel sans bugs
+- **Trade-offs** :
+  - Vue d'ensemble semaine nécessite scroll (acceptable sur mobile)
+  - 4 nouveaux composants = +800 lignes code (mais découplé et testable)
+
+**Statut** : ✅ Validée et implémentée
+
+---
+
 ## 2025-11-23 - Implémentation Écran Détail Recette (RecipeDetailScreen)
 
 **Contexte** : L'écran de détail des recettes (`app/recipes/[id].tsx`) n'était qu'un placeholder. Besoin d'une vue complète pour consulter les recettes avec :

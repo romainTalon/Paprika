@@ -1,0 +1,56 @@
+{
+  "backup_date": "2025-11-30T16:30:00Z",
+  "backup_reason": "Sauvegarde avant migration multi-recettes (object → array)",
+  "table": "meal_plans",
+  "project": "Paprika-dev (iiwykxsbldhmyuriqozd)",
+  "total_records": 5,
+  "data": [
+    {
+      "id": "83f9435f-a87b-4383-befc-a9620ac8d4d7",
+      "user_id": "bf27fdee-3d8e-4fb0-9488-e5b976dde559",
+      "week_start": "2025-12-22",
+      "meals": {},
+      "created_at": "2025-11-24 16:48:08.542157+00",
+      "updated_at": "2025-11-24 16:48:08.542157+00"
+    },
+    {
+      "id": "b9eefbdc-c5d2-4674-8e72-9e93538efc52",
+      "user_id": "bf27fdee-3d8e-4fb0-9488-e5b976dde559",
+      "week_start": "2025-12-15",
+      "meals": {},
+      "created_at": "2025-11-24 16:48:07.583453+00",
+      "updated_at": "2025-11-24 16:48:07.583453+00"
+    },
+    {
+      "id": "764db1b1-c288-4af0-bcf5-78b40efac325",
+      "user_id": "bf27fdee-3d8e-4fb0-9488-e5b976dde559",
+      "week_start": "2025-12-08",
+      "meals": {},
+      "created_at": "2025-11-24 16:48:06.654146+00",
+      "updated_at": "2025-11-24 16:48:06.654146+00"
+    },
+    {
+      "id": "09e8380d-0bfe-425e-bb51-c5e14356b6ea",
+      "user_id": "bf27fdee-3d8e-4fb0-9488-e5b976dde559",
+      "week_start": "2025-12-01",
+      "meals": {},
+      "created_at": "2025-11-24 16:48:03.249335+00",
+      "updated_at": "2025-11-24 16:48:03.249335+00"
+    },
+    {
+      "id": "88527f7e-a02b-4400-b493-2d648faab2fb",
+      "user_id": "bf27fdee-3d8e-4fb0-9488-e5b976dde559",
+      "week_start": "2025-11-24",
+      "meals": {
+        "monday-breakfast": {
+          "isCooked": false,
+          "recipeId": "4b7f5ccc-fb42-41ec-bcd1-2fba93004687",
+          "servings": 4
+        }
+      },
+      "created_at": "2025-11-24 16:47:50.355405+00",
+      "updated_at": "2025-11-30 15:30:52.275894+00"
+    }
+  ],
+  "restore_notes": "Pour restaurer cette sauvegarde, exécuter : UPDATE meal_plans SET meals = <backup_data> WHERE id = '<record_id>';"
+}

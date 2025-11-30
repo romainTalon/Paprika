@@ -1,8 +1,8 @@
 /**
  * Meal Plan Screen
  *
- * Weekly meal planning interface with 7 days × 4 meal types grid.
- * Allows selecting recipes for each meal slot and adjusting servings.
+ * Weekly meal planning interface with vertical list of day cards.
+ * Allows selecting recipes for each meal slot and managing them via modals.
  *
  * @module app/(tabs)/meal-plan
  */
@@ -16,40 +16,33 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { Container, Text, Button } from "@/components/ui";
-import { MealSlotCard } from "@/components/meal-plan";
+import { Text } from "@/components/ui";
+import { DayCard, MealSlotDetailModal } from "@/components/meal-plan";
 import RecipePickerModal from "@/components/modals/RecipePickerModal";
-import { colors, spacing, shadows, fontSizes, fontWeights } from "@/theme";
+import { colors, spacing, fontSizes, fontWeights } from "@/theme";
 import {
   useMealPlan,
-  useUpdateMealSlot,
-  useClearMealSlot,
-  useMarkMealCooked,
   useClearWeekMealPlan,
+  useAddRecipeToSlot,
+  useRemoveRecipeFromSlot,
+  useUpdateRecipeInSlot,
 } from "@/hooks/useMealPlans";
 import { useRecipes } from "@/hooks/useRecipes";
 import { useAuth } from "@/hooks/useAuth";
 import { MealPlanService } from "@/services";
-import type { MealType, WeekDay, MealSlot, getMealSlotKey } from "@/types";
-import { addWeeks, subWeeks, format, startOfWeek } from "date-fns";
+import type { MealType, WeekDay, MealSlot } from "@/types";
+import { addWeeks, subWeeks, format, startOfWeek, addDays } from "date-fns";
 import { fr } from "date-fns/locale";
 
-// Meal types and days configuration
-const MEAL_TYPES: { type: MealType; icon: string; label: string }[] = [
-  { type: "breakfast", icon: "🍳", label: "Petit-déj" },
-  { type: "lunch", icon: "🍽️", label: "Déjeuner" },
-  { type: "dinner", icon: "🍲", label: "Dîner" },
-  { type: "snack", icon: "🍎", label: "Snack" },
-];
-
-const WEEK_DAYS: { day: WeekDay; label: string; shortLabel: string }[] = [
-  { day: "monday", label: "Lundi", shortLabel: "Lun" },
-  { day: "tuesday", label: "Mardi", shortLabel: "Mar" },
-  { day: "wednesday", label: "Mercredi", shortLabel: "Mer" },
-  { day: "thursday", label: "Jeudi", shortLabel: "Jeu" },
-  { day: "friday", label: "Vendredi", shortLabel: "Ven" },
-  { day: "saturday", label: "Samedi", shortLabel: "Sam" },
-  { day: "sunday", label: "Dimanche", shortLabel: "Dim" },
+// Week days configuration
+const WEEK_DAYS: WeekDay[] = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
 ];
 
 export default function MealPlanScreen() {
@@ -61,23 +54,30 @@ export default function MealPlanScreen() {
     return MealPlanService.getMondayOfWeek(); // YYYY-MM-DD format
   });
 
-  // Modal state
+  // Recipe Picker Modal state
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{
     day: WeekDay;
     meal: MealType;
   } | null>(null);
 
-  // Fetch meal plan for current week
-  const { data: mealPlan, isLoading, error, refetch } = useMealPlan(userId!, currentWeekStart);
+  // Meal Slot Detail Modal state
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [selectedSlotForDetail, setSelectedSlotForDetail] = useState<{
+    day: WeekDay;
+    meal: MealType;
+  } | null>(null);
 
-  // Fetch all recipes (to display in slots)
+  // Fetch meal plan for current week
+  const { data: mealPlan, isLoading, error } = useMealPlan(userId!, currentWeekStart);
+
+  // Fetch all recipes
   const { data: allRecipes } = useRecipes(userId!);
 
   // Mutations
-  const updateSlot = useUpdateMealSlot();
-  const clearSlot = useClearMealSlot();
-  const markCooked = useMarkMealCooked();
+  const addRecipe = useAddRecipeToSlot();
+  const removeRecipe = useRemoveRecipeFromSlot();
+  const updateRecipe = useUpdateRecipeInSlot();
   const clearWeek = useClearWeekMealPlan();
 
   // Week navigation handlers
@@ -107,91 +107,94 @@ export default function MealPlanScreen() {
     return `Semaine du ${startFormatted} - ${endFormatted}`;
   }, [currentWeekStart]);
 
-  // Slot handlers
-  const handleSlotPress = useCallback(
-    (day: WeekDay, meal: MealType) => {
-      setSelectedSlot({ day, meal });
-      setModalVisible(true);
+  // Get meal slots from meal plan
+  const getMealSlots = useCallback(
+    (day: WeekDay, meal: MealType): MealSlot[] => {
+      if (!mealPlan?.meals) return [];
+      const key = `${day}-${meal}`;
+      return (mealPlan.meals as Record<string, MealSlot[]>)[key] || [];
     },
-    []
+    [mealPlan]
   );
 
+  // Handler for meal slot press (routes to appropriate modal)
+  const handleMealPress = useCallback(
+    (day: WeekDay, meal: MealType) => {
+      const slots = getMealSlots(day, meal);
+
+      if (!slots || slots.length === 0) {
+        // Empty slot → Open Recipe Picker Modal
+        setSelectedSlot({ day, meal });
+        setModalVisible(true);
+      } else {
+        // Slot with recipes → Open Detail Modal
+        setSelectedSlotForDetail({ day, meal });
+        setDetailModalVisible(true);
+      }
+    },
+    [getMealSlots]
+  );
+
+  // Recipe Picker Modal - Select recipe
   const handleRecipeSelect = useCallback(
     async (recipeId: string, servings: number) => {
       if (!selectedSlot || !userId || !mealPlan) return;
 
       try {
-        await updateSlot.mutateAsync({
+        await addRecipe.mutateAsync({
           mealPlanId: mealPlan.id,
           userId,
           weekStart: currentWeekStart,
           day: selectedSlot.day,
           meal: selectedSlot.meal,
-          mealSlot: {
+          newRecipe: {
             recipeId,
             servings,
             isCooked: false,
           },
         });
 
-        Alert.alert("Succès", "Repas ajouté au planning !");
+        Alert.alert("Succès", "Recette ajoutée au planning !");
+        setModalVisible(false);
       } catch (error) {
         Alert.alert(
           "Erreur",
-          error instanceof Error ? error.message : "Impossible d'ajouter le repas"
+          error instanceof Error ? error.message : "Impossible d'ajouter la recette"
         );
       }
     },
-    [selectedSlot, userId, mealPlan, currentWeekStart, updateSlot]
+    [selectedSlot, userId, mealPlan, currentWeekStart, addRecipe]
   );
 
-  const handleRemoveSlot = useCallback(
-    async (day: WeekDay, meal: MealType) => {
-      if (!userId || !mealPlan) return;
+  // Detail Modal - Add recipe button
+  const handleAddRecipeFromDetail = useCallback(() => {
+    if (!selectedSlotForDetail) return;
 
-      Alert.alert(
-        "Supprimer",
-        "Êtes-vous sûr de vouloir supprimer ce repas du planning ?",
-        [
-          { text: "Annuler", style: "cancel" },
-          {
-            text: "Supprimer",
-            style: "destructive",
-            onPress: async () => {
-              try {
-                await clearSlot.mutateAsync({
-                  mealPlanId: mealPlan.id,
-                  userId,
-                  weekStart: currentWeekStart,
-                  day,
-                  meal,
-                });
-              } catch (error) {
-                Alert.alert(
-                  "Erreur",
-                  error instanceof Error ? error.message : "Impossible de supprimer le repas"
-                );
-              }
-            },
-          },
-        ]
-      );
-    },
-    [userId, mealPlan, currentWeekStart, clearSlot]
-  );
+    // Close detail modal
+    setDetailModalVisible(false);
 
-  const handleToggleCooked = useCallback(
-    async (day: WeekDay, meal: MealType, currentStatus: boolean) => {
-      if (!userId || !mealPlan) return;
+    // Open recipe picker modal
+    setSelectedSlot({
+      day: selectedSlotForDetail.day,
+      meal: selectedSlotForDetail.meal,
+    });
+    setModalVisible(true);
+  }, [selectedSlotForDetail]);
+
+  // Detail Modal - Toggle cooked status
+  const handleToggleCookedInDetail = useCallback(
+    async (recipeIndex: number, currentStatus: boolean) => {
+      if (!selectedSlotForDetail || !userId || !mealPlan) return;
 
       try {
-        await markCooked.mutateAsync({
+        await updateRecipe.mutateAsync({
           mealPlanId: mealPlan.id,
           userId,
           weekStart: currentWeekStart,
-          day,
-          meal,
-          isCooked: !currentStatus,
+          day: selectedSlotForDetail.day,
+          meal: selectedSlotForDetail.meal,
+          recipeIndex,
+          updates: { isCooked: !currentStatus },
         });
       } catch (error) {
         Alert.alert(
@@ -200,9 +203,68 @@ export default function MealPlanScreen() {
         );
       }
     },
-    [userId, mealPlan, currentWeekStart, markCooked]
+    [selectedSlotForDetail, userId, mealPlan, currentWeekStart, updateRecipe]
   );
 
+  // Detail Modal - Update servings
+  const handleUpdateServingsInDetail = useCallback(
+    async (recipeIndex: number, newServings: number) => {
+      if (!selectedSlotForDetail || !userId || !mealPlan) return;
+
+      try {
+        await updateRecipe.mutateAsync({
+          mealPlanId: mealPlan.id,
+          userId,
+          weekStart: currentWeekStart,
+          day: selectedSlotForDetail.day,
+          meal: selectedSlotForDetail.meal,
+          recipeIndex,
+          updates: { servings: newServings },
+        });
+      } catch (error) {
+        Alert.alert(
+          "Erreur",
+          error instanceof Error ? error.message : "Impossible de modifier les portions"
+        );
+      }
+    },
+    [selectedSlotForDetail, userId, mealPlan, currentWeekStart, updateRecipe]
+  );
+
+  // Detail Modal - Remove recipe
+  const handleRemoveRecipeInDetail = useCallback(
+    async (recipeIndex: number) => {
+      if (!selectedSlotForDetail || !userId || !mealPlan) return;
+
+      // Check if this is the last recipe BEFORE removing
+      const currentSlots = getMealSlots(selectedSlotForDetail.day, selectedSlotForDetail.meal);
+      const isLastRecipe = currentSlots.length === 1;
+
+      try {
+        await removeRecipe.mutateAsync({
+          mealPlanId: mealPlan.id,
+          userId,
+          weekStart: currentWeekStart,
+          day: selectedSlotForDetail.day,
+          meal: selectedSlotForDetail.meal,
+          recipeIndex,
+        });
+
+        // Close modal immediately if we just removed the last recipe
+        if (isLastRecipe) {
+          setDetailModalVisible(false);
+        }
+      } catch (error) {
+        Alert.alert(
+          "Erreur",
+          error instanceof Error ? error.message : "Impossible de supprimer la recette"
+        );
+      }
+    },
+    [selectedSlotForDetail, userId, mealPlan, currentWeekStart, removeRecipe, getMealSlots]
+  );
+
+  // Clear entire week
   const handleClearWeek = useCallback(() => {
     if (!userId || !mealPlan) return;
 
@@ -234,179 +296,135 @@ export default function MealPlanScreen() {
     );
   }, [userId, mealPlan, currentWeekStart, clearWeek]);
 
-  // Get meal slot from meal plan
-  const getMealSlot = useCallback(
-    (day: WeekDay, meal: MealType): MealSlot | null => {
-      if (!mealPlan?.meals) return null;
-      const key = `${day}-${meal}`;
-      return (mealPlan.meals as Record<string, MealSlot>)[key] || null;
-    },
-    [mealPlan]
-  );
-
-  // Get recipe for meal slot
-  const getRecipeForSlot = useCallback(
-    (mealSlot: MealSlot | null) => {
-      if (!mealSlot || !allRecipes) return undefined;
-      return allRecipes.find((r) => r.id === mealSlot.recipeId);
-    },
-    [allRecipes]
-  );
-
-  // Get initial values for modal (when editing)
-  const getInitialModalValues = useMemo(() => {
-    if (!selectedSlot) return { recipeId: null, servings: 4 };
-    const mealSlot = getMealSlot(selectedSlot.day, selectedSlot.meal);
-    return {
-      recipeId: mealSlot?.recipeId || null,
-      servings: mealSlot?.servings || 4,
-    };
-  }, [selectedSlot, getMealSlot]);
+  // Calculate dates for each day of the week
+  const weekDates = useMemo(() => {
+    const startDate = new Date(currentWeekStart);
+    return WEEK_DAYS.map((day, index) => addDays(startDate, index));
+  }, [currentWeekStart]);
 
   // Loading state
   if (isLoading) {
     return (
-      <Container centered useSafeArea>
+      <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
         <Text variant="body" color="neutral" style={{ marginTop: spacing.md }}>
           Chargement du planning...
         </Text>
-      </Container>
+      </View>
     );
   }
 
   // Error state
   if (error) {
     return (
-      <Container centered useSafeArea>
-        <Text style={styles.errorIcon}>⚠️</Text>
-        <Text variant="h2">Erreur</Text>
-        <Text variant="body" color="neutral" style={{ marginTop: spacing.md, textAlign: "center" }}>
-          {error instanceof Error ? error.message : "Impossible de charger le planning"}
+      <View style={styles.centerContainer}>
+        <Text variant="body" color="error" style={{ marginBottom: spacing.md }}>
+          Erreur lors du chargement du planning
         </Text>
-        <Button variant="primary" onPress={() => refetch()} style={{ marginTop: spacing.lg }}>
-          Réessayer
-        </Button>
-      </Container>
+        <Text variant="caption" color="neutral">
+          {error instanceof Error ? error.message : "Erreur inconnue"}
+        </Text>
+      </View>
     );
   }
 
   return (
-    <Container useSafeArea>
-      <View style={styles.container}>
-        {/* Week Navigation Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.navButton}
-            onPress={handlePrevWeek}
-            accessibilityLabel="Previous week"
-            accessibilityRole="button"
-          >
-            <Text style={styles.navButtonText}>←</Text>
-          </TouchableOpacity>
-
-          <View style={styles.weekInfo}>
-            <Text variant="h3" style={styles.weekText}>
-              {weekRangeText}
-            </Text>
-            <TouchableOpacity onPress={handleCurrentWeek}>
-              <Text variant="caption" style={styles.currentWeekButton}>
-                Semaine actuelle
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity
-            style={styles.navButton}
-            onPress={handleNextWeek}
-            accessibilityLabel="Next week"
-            accessibilityRole="button"
-          >
-            <Text style={styles.navButtonText}>→</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Clear Week Button */}
-        <View style={styles.actionBar}>
-          <Button variant="outline" size="sm" onPress={handleClearWeek}>
-            Effacer la semaine
-          </Button>
-        </View>
-
-        {/* Meal Planning Grid */}
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={true}
+    <View style={{ flex: 1 }}>
+      {/* Header: Week Navigation */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={handlePrevWeek}
+          style={styles.navButton}
+          accessibilityLabel="Semaine précédente"
         >
-          {/* Meal Type Headers */}
-          <View style={styles.headerRow}>
-            <View style={styles.dayLabelCell} />
-            {MEAL_TYPES.map(({ type, icon, label }) => (
-              <View key={type} style={styles.mealHeaderCell}>
-                <Text style={styles.mealIcon}>{icon}</Text>
-                <Text variant="caption" style={styles.mealLabel}>
-                  {label}
-                </Text>
-              </View>
-            ))}
-          </View>
+          <Text style={styles.navIcon}>←</Text>
+        </TouchableOpacity>
 
-          {/* Days Rows */}
-          {WEEK_DAYS.map(({ day, label, shortLabel }) => (
-            <View key={day} style={styles.dayRow}>
-              {/* Day Label */}
-              <View style={styles.dayLabelCell}>
-                <Text variant="bodySmall" style={styles.dayLabel}>
-                  {shortLabel}
-                </Text>
-              </View>
+        <View style={styles.weekInfo}>
+          <Text style={styles.weekRangeText}>{weekRangeText}</Text>
+          <TouchableOpacity
+            onPress={handleCurrentWeek}
+            style={styles.currentWeekButton}
+            accessibilityLabel="Aller à la semaine actuelle"
+          >
+            <Text style={styles.currentWeekButtonText}>Semaine actuelle</Text>
+          </TouchableOpacity>
+        </View>
 
-              {/* Meal Slots */}
-              {MEAL_TYPES.map(({ type: mealType }) => {
-                const mealSlot = getMealSlot(day, mealType);
-                const recipe = getRecipeForSlot(mealSlot);
-
-                return (
-                  <View key={`${day}-${mealType}`} style={styles.slotCell}>
-                    <MealSlotCard
-                      mealSlot={mealSlot}
-                      day={day}
-                      mealType={mealType}
-                      recipe={recipe}
-                      onPress={() => handleSlotPress(day, mealType)}
-                      onToggleCooked={
-                        mealSlot
-                          ? () => handleToggleCooked(day, mealType, mealSlot.isCooked)
-                          : undefined
-                      }
-                      onRemove={mealSlot ? () => handleRemoveSlot(day, mealType) : undefined}
-                    />
-                  </View>
-                );
-              })}
-            </View>
-          ))}
-        </ScrollView>
-
-        {/* Recipe Picker Modal */}
-        <RecipePickerModal
-          visible={modalVisible}
-          userId={userId ?? null}
-          initialRecipeId={getInitialModalValues.recipeId}
-          initialServings={getInitialModalValues.servings}
-          onClose={() => setModalVisible(false)}
-          onSelect={handleRecipeSelect}
-        />
+        <TouchableOpacity
+          onPress={handleNextWeek}
+          style={styles.navButton}
+          accessibilityLabel="Semaine suivante"
+        >
+          <Text style={styles.navIcon}>→</Text>
+        </TouchableOpacity>
       </View>
-    </Container>
+
+      {/* Action Bar */}
+      <View style={styles.actionBar}>
+        <TouchableOpacity
+          onPress={handleClearWeek}
+          style={styles.clearButton}
+          accessibilityLabel="Effacer toute la semaine"
+        >
+          <Text style={styles.clearButtonText}>Effacer la semaine</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Day Cards List */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator
+      >
+        {WEEK_DAYS.map((day, index) => (
+          <DayCard
+            key={day}
+            day={day}
+            date={weekDates[index]}
+            allRecipes={allRecipes}
+            getMealSlots={getMealSlots}
+            onMealPress={handleMealPress}
+          />
+        ))}
+      </ScrollView>
+
+      {/* Recipe Picker Modal */}
+      <RecipePickerModal
+        visible={modalVisible}
+        userId={userId ?? null}
+        onClose={() => setModalVisible(false)}
+        onSelect={handleRecipeSelect}
+      />
+
+      {/* Meal Slot Detail Modal */}
+      <MealSlotDetailModal
+        visible={detailModalVisible}
+        day={selectedSlotForDetail?.day}
+        mealType={selectedSlotForDetail?.meal}
+        mealSlots={
+          selectedSlotForDetail
+            ? getMealSlots(selectedSlotForDetail.day, selectedSlotForDetail.meal)
+            : []
+        }
+        allRecipes={allRecipes}
+        onClose={() => setDetailModalVisible(false)}
+        onAddRecipe={handleAddRecipeFromDetail}
+        onToggleCooked={handleToggleCookedInDetail}
+        onUpdateServings={handleUpdateServingsInDetail}
+        onRemoveRecipe={handleRemoveRecipeInDetail}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  centerContainer: {
     flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: colors.cream.DEFAULT,
+    padding: spacing.lg,
   },
 
   // Header
@@ -415,113 +433,79 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[200],
   },
 
   navButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.primary.DEFAULT,
+    padding: spacing.sm,
+    minWidth: 44,
+    minHeight: 44,
     justifyContent: "center",
     alignItems: "center",
-    ...shadows.sm,
   },
 
-  navButtonText: {
+  navIcon: {
     fontSize: 24,
     lineHeight: 28,
-    color: colors.white,
-    fontWeight: fontWeights.bold as any,
+    color: colors.primary.DEFAULT,
   },
 
   weekInfo: {
     flex: 1,
     alignItems: "center",
-    marginHorizontal: spacing.md,
   },
 
-  weekText: {
+  weekRangeText: {
+    fontSize: fontSizes.base,
+    fontWeight: fontWeights.semibold as any,
     color: colors.warm.brown,
     marginBottom: spacing.xs,
   },
 
   currentWeekButton: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+
+  currentWeekButtonText: {
+    fontSize: fontSizes.xs,
     color: colors.primary.DEFAULT,
-    textDecorationLine: "underline",
+    fontWeight: fontWeights.medium as any,
   },
 
   // Action Bar
   actionBar: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[200],
   },
 
-  // Grid
+  clearButton: {
+    alignSelf: "center",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: spacing.sm,
+    backgroundColor: colors.cream.DEFAULT,
+  },
+
+  clearButtonText: {
+    fontSize: fontSizes.sm,
+    color: colors.error,
+    fontWeight: fontWeights.medium as any,
+  },
+
+  // Scroll View
   scrollView: {
     flex: 1,
+    backgroundColor: colors.cream.DEFAULT,
   },
 
   scrollContent: {
-    padding: spacing.xs,
-    paddingBottom: spacing.md,
-  },
-
-  headerRow: {
-    flexDirection: "row",
-    marginBottom: spacing.sm,
-  },
-
-  dayLabelCell: {
-    width: 50,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  mealHeaderCell: {
-    flex: 1,
-    alignItems: "center",
-    marginHorizontal: spacing.xs,
-  },
-
-  mealIcon: {
-    fontSize: 24,
-    lineHeight: 28,
-    marginBottom: spacing.xs,
-  },
-
-  mealLabel: {
-    color: colors.warm.brown,
-    fontWeight: fontWeights.semibold as any,
-    textAlign: "center",
-  },
-
-  dayRow: {
-    flexDirection: "row",
-    marginBottom: spacing.sm,
-  },
-
-  dayLabel: {
-    fontWeight: fontWeights.semibold as any,
-    color: colors.warm.brown,
-    textAlign: "center",
-  },
-
-  slotCell: {
-    flex: 1,
-    marginHorizontal: spacing.xs,
-  },
-
-  // Error
-  errorIcon: {
-    fontSize: 64,
-    lineHeight: 72,
-    marginBottom: spacing.md,
+    padding: spacing.md,
   },
 });

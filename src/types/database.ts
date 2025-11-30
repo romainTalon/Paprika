@@ -75,10 +75,16 @@ export interface MealSlot {
  * Complete Week Meals Structure
  * Stored in meal_plans.meals as JSONB object
  * Keys: "[day]-[meal]" like "monday-breakfast"
+ * Values: Array of MealSlots (supports multiple recipes per meal, max 5)
  */
 export type WeekMeals = {
-  [key: string]: MealSlot | undefined;
+  [key: string]: MealSlot[] | undefined;
 };
+
+/**
+ * Maximum number of recipes allowed per meal slot
+ */
+export const MAX_RECIPES_PER_SLOT = 5;
 
 /**
  * Meal Types
