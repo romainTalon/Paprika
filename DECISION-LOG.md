@@ -20,6 +20,127 @@
 
 ---
 
+## 2025-12-07 - Mapping snake_case ↔ camelCase dans Service Layer
+
+**Contexte** : Lors de l'implémentation des listes de courses, une incohérence critique est apparue :
+- Supabase PostgreSQL utilise la convention `snake_case` pour les noms de colonnes (ex: `is_checked`, `grocery_list_id`)
+- TypeScript/JavaScript utilise la convention `camelCase` (ex: `isChecked`, `groceryListId`)
+- Les types Drizzle ORM utilisent camelCase pour les propriétés
+- Les services utilisent directement Supabase client (pas Drizzle) pour les queries
+- Les données retournées par Supabase étaient cast en `as Type` sans mapping, causant des bugs :
+  - Les cases à cocher ne se cochaient pas visuellement (`item.isChecked` était `undefined`, seul `item.is_checked` existait)
+  - Les compteurs ne se mettaient pas à jour correctement
+  - Les opérations CRUD échouaient silencieusement
+
+**Décision** : **Implémenter des fonctions de mapping explicites dans tous les services pour convertir entre snake_case (DB) et camelCase (TypeScript)**
+
+**Implémentation** :
+
+1. **Fonctions de mapping privées** dans chaque service :
+   ```typescript
+   // GroceryListService
+   private static mapGroceryList(dbList: any): GroceryList {
+     return {
+       id: dbList.id,
+       userId: dbList.user_id,
+       name: dbList.name,
+       isActive: dbList.is_active,
+       isArchived: dbList.is_archived,
+       createdAt: dbList.created_at,
+       updatedAt: dbList.updated_at,
+     };
+   }
+
+   private static mapGroceryItem(dbItem: any): GroceryItem {
+     return {
+       id: dbItem.id,
+       groceryListId: dbItem.grocery_list_id,
+       name: dbItem.name,
+       quantity: dbItem.quantity,
+       unit: dbItem.unit,
+       category: dbItem.category,
+       imageUrl: dbItem.image_url,
+       isChecked: dbItem.is_checked,      // ✅ Mapping explicite
+       checkedAt: dbItem.checked_at,
+       notes: dbItem.notes,
+       addedFrom: dbItem.added_from,
+       sourceId: dbItem.source_id,
+       createdAt: dbItem.created_at,
+     };
+   }
+   ```
+
+2. **Utilisation systématique dans toutes les méthodes** :
+   ```typescript
+   // Lecture (DB → TypeScript)
+   static async getListItems(listId: string) {
+     const { data, error } = await supabase
+       .from("grocery_items")
+       .select("*")
+       .eq("grocery_list_id", listId);
+
+     if (error) throw error;
+     return { data: data ? data.map(this.mapGroceryItem) : [], error: null };
+   }
+
+   // Écriture (TypeScript → DB)
+   static async addItem(listId: string, item: Omit<NewGroceryItem, "groceryListId">) {
+     const { data, error } = await supabase
+       .from("grocery_items")
+       .insert({
+         grocery_list_id: listId,
+         name: item.name,
+         quantity: item.quantity,
+         is_checked: item.isChecked,     // ✅ Mapping explicite
+         checked_at: item.checkedAt,
+         added_from: item.addedFrom,
+         source_id: item.sourceId,
+       })
+       .select()
+       .single();
+
+     return { data: this.mapGroceryItem(data), error: null };
+   }
+   ```
+
+3. **Application aux services existants** :
+   - ✅ `GroceryListService` : 14 méthodes mappées (getUserLists, getActiveList, createList, updateList, archiveList, getListItems, getItemsByCategory, addItem, updateItem, toggleItem, addItemWithMerge, etc.)
+   - ✅ `CookbookService` : Déjà implémenté précédemment
+   - ✅ `RecipeService` : Déjà implémenté précédemment
+   - ✅ `MealPlanService` : Déjà implémenté précédemment
+
+**Raisons** :
+- **Correctness** : Les données sont maintenant conformes aux types TypeScript attendus par les composants
+- **Type Safety** : Les erreurs de propriété undefined sont évitées à la compilation
+- **Maintenabilité** : Un seul endroit pour gérer la conversion (DRY principle)
+- **Performance** : Pas d'impact perceptible (mapping simple O(n) sur des petites listes)
+- **Debugging** : Console.log montre les bonnes propriétés (camelCase au lieu de snake_case)
+
+**Alternatives considérées** :
+1. ❌ **Utiliser Drizzle ORM pour toutes les queries** : Aurait résolu le problème automatiquement, mais :
+   - Nécessite migration complète de tous les services
+   - Drizzle client pas encore configuré côté mobile
+   - Complexité ajoutée pour les queries avancées (JSONB, full-text search)
+2. ❌ **Modifier les noms de colonnes en DB** : Contre-convention PostgreSQL
+3. ❌ **Utiliser snake_case partout en TypeScript** : Contre-convention JavaScript/TypeScript
+4. ❌ **Bibliothèque de mapping générique** (ex: `humps`, `camelcase-keys`) :
+   - Dépendance externe supplémentaire
+   - Moins de contrôle sur le mapping
+   - Potentiellement plus lent
+
+**Conséquences** :
+- ✅ **Bugs UI résolus** : Les cases à cocher fonctionnent, les compteurs se mettent à jour
+- ✅ **Code prédictible** : Les composants peuvent faire confiance aux types
+- ✅ **Pattern établi** : Tous les nouveaux services devront suivre ce pattern
+- ⚠️ **Verbosité** : ~40 lignes de mapping par service (2 fonctions × ~20 lignes)
+- ⚠️ **Risque d'oubli** : Un développeur pourrait oublier d'utiliser le mapping → Solution : Documentation + code review
+
+**Bug résolu** : Après cette implémentation, le toggle des cases à cocher fonctionne correctement car `item.isChecked` existe maintenant (au lieu de `undefined` causé par le cast `as GroceryItem[]` sans mapping).
+
+**Statut** : ✅ Validée et implémentée (7 décembre 2025)
+
+---
+
 ## 2025-11-30 - Refonte Complète Écran Meal Plan (Multi-Recettes + UX Liste Verticale)
 
 **Contexte** : L'écran de meal planning présentait deux problèmes majeurs :
