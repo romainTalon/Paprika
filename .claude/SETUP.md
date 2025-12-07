@@ -9,7 +9,7 @@ Ce dossier contient la configuration Claude Code pour le projet Paprika, incluan
 ├── SETUP.md                    # Ce fichier - Documentation de configuration
 ├── system.md                   # Règles système - Lu automatiquement à chaque session
 ├── settings.local.json         # Permissions et configuration locale
-├── commands/
+├── commands/                   # Agents (invocation manuelle avec /commande)
 │   ├── README.md              # Documentation des agents
 │   ├── frontend-dev.md        # Agent développement frontend
 │   ├── supabase-dev.md        # Agent développement backend
@@ -17,6 +17,13 @@ Ce dossier contient la configuration Claude Code pour le projet Paprika, incluan
 │   ├── lead-review.md         # Agent review de code
 │   ├── build-feature.md       # Agent orchestrateur
 │   └── update-status.md       # Agent mise à jour documentation
+└── skills/                     # Skills (activation automatique par Claude)
+    ├── design-system/         # Applique le design system automatiquement
+    │   └── SKILL.md
+    ├── supabase-patterns/     # Applique les patterns Supabase
+    │   └── SKILL.md
+    └── recipe-domain/         # Connaissances métier recettes
+        └── SKILL.md
 ```
 
 ---
@@ -150,6 +157,58 @@ J'ai implémenté la feature grocery list
 - ✅ Après avoir terminé un écran
 - ✅ Après avoir ajouté des tests
 - ✅ Quand une phase du projet change de statut
+
+---
+
+## 🧠 Skills (Connaissances Automatiques)
+
+**Différence avec les agents :**
+- **Agents** (`/commande`) = Invocation manuelle par l'utilisateur
+- **Skills** = Activation automatique par Claude selon le contexte
+
+Les skills permettent à Claude d'appliquer automatiquement les bonnes pratiques sans que vous ayez besoin de les invoquer.
+
+### 1. `design-system` - Design System Automatique
+
+**S'active quand:**
+- Vous créez des styles avec `StyleSheet.create()`
+- Vous utilisez des couleurs, espacements ou typographies
+- Vous stylisez des composants React Native
+
+**Ce qu'il fait:**
+- ✅ Utilise automatiquement les tokens du thème
+- ✅ Évite les valeurs hardcodées
+- ✅ Applique les patterns de styling établis
+
+---
+
+### 2. `supabase-patterns` - Patterns Supabase
+
+**S'active quand:**
+- Vous travaillez avec la base de données
+- Vous créez des services ou hooks
+- Vous écrivez des requêtes Supabase
+
+**Ce qu'il fait:**
+- ✅ Applique le pattern service layer `{data, error}`
+- ✅ Gère le mapping snake_case ↔ camelCase
+- ✅ Structure les hooks TanStack Query correctement
+- ✅ Applique les règles RLS
+
+---
+
+### 3. `recipe-domain` - Connaissances Métier Recettes
+
+**S'active quand:**
+- Vous travaillez avec des recettes
+- Vous gérez des ingrédients ou étapes
+- Vous implémentez le meal planning ou les listes de courses
+
+**Ce qu'il fait:**
+- ✅ Comprend la structure des données recettes
+- ✅ Applique les règles de validation
+- ✅ Connaît les limites freemium
+- ✅ Gère les fractions et multiplicateurs de portions
 
 ---
 

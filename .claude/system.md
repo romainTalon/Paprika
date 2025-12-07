@@ -239,6 +239,14 @@ Use these slash commands for specialized tasks:
 - `/build-feature` - Orchestrate complete feature development
 - `/update-status` - Update the status report after new features
 
+## 🧠 Auto-Activated Skills
+
+These skills are automatically activated based on context (no invocation needed):
+
+- **design-system** - Applies theme tokens when styling (never hardcode values)
+- **supabase-patterns** - Applies service layer patterns, RLS rules, snake_case mapping
+- **recipe-domain** - Understands recipe data structures, validation, freemium limits
+
 ---
 
 ## 📝 After Implementing New Features
@@ -258,7 +266,7 @@ Use these slash commands for specialized tasks:
 
 3. **The agent will:**
    - Analyze the changes
-   - Update `docs/Paprika-status-report.md`
+   - Update `README.md` (section "État du Projet")
    - Adjust completion percentages
    - Add new metrics
    - Update the task list
