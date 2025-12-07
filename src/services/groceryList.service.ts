@@ -4,9 +4,57 @@
  */
 
 import { supabase } from "@/lib/supabase";
-import type { GroceryList, GroceryItem, NewGroceryList, NewGroceryItem, ServiceResponse } from "@/types";
+import type {
+  GroceryList,
+  GroceryItem,
+  NewGroceryList,
+  NewGroceryItem,
+  ServiceResponse,
+  RecipeIngredient,
+} from "@/types";
+import { DEFAULT_CATEGORY_ID } from "@/constants/categories";
 
 export class GroceryListService {
+  // =============================================================================
+  // MAPPING HELPERS (snake_case <-> camelCase)
+  // =============================================================================
+
+  /**
+   * Map database GroceryList (snake_case) to TypeScript (camelCase)
+   */
+  private static mapGroceryList(dbList: any): GroceryList {
+    return {
+      id: dbList.id,
+      userId: dbList.user_id,
+      name: dbList.name,
+      isActive: dbList.is_active,
+      isArchived: dbList.is_archived,
+      createdAt: dbList.created_at,
+      updatedAt: dbList.updated_at,
+    };
+  }
+
+  /**
+   * Map database GroceryItem (snake_case) to TypeScript (camelCase)
+   */
+  private static mapGroceryItem(dbItem: any): GroceryItem {
+    return {
+      id: dbItem.id,
+      groceryListId: dbItem.grocery_list_id,
+      name: dbItem.name,
+      quantity: dbItem.quantity,
+      unit: dbItem.unit,
+      category: dbItem.category,
+      imageUrl: dbItem.image_url,
+      isChecked: dbItem.is_checked,
+      checkedAt: dbItem.checked_at,
+      notes: dbItem.notes,
+      addedFrom: dbItem.added_from,
+      sourceId: dbItem.source_id,
+      createdAt: dbItem.created_at,
+    };
+  }
+
   // =============================================================================
   // GROCERY LISTS
   // =============================================================================
@@ -29,7 +77,7 @@ export class GroceryListService {
 
       if (error) throw error;
 
-      return { data: data as GroceryList[], error: null };
+      return { data: data ? data.map(this.mapGroceryList) : [], error: null };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -56,7 +104,7 @@ export class GroceryListService {
         throw error;
       }
 
-      return { data: data as GroceryList, error: null };
+      return { data: this.mapGroceryList(data), error: null };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -88,7 +136,7 @@ export class GroceryListService {
         throw error;
       }
 
-      return { data: data as GroceryList, error: null };
+      return { data: this.mapGroceryList(data), error: null };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -113,7 +161,7 @@ export class GroceryListService {
 
       if (error) throw error;
 
-      return { data: data as GroceryList, error: null };
+      return { data: this.mapGroceryList(data), error: null };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -134,7 +182,7 @@ export class GroceryListService {
 
       if (error) throw error;
 
-      return { data: data as GroceryList, error: null };
+      return { data: this.mapGroceryList(data), error: null };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -176,7 +224,7 @@ export class GroceryListService {
 
       if (error) throw error;
 
-      return { data: data as GroceryItem[], error: null };
+      return { data: data ? data.map(this.mapGroceryItem) : [], error: null };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -196,9 +244,10 @@ export class GroceryListService {
 
       if (error) throw error;
 
-      // Group by category
+      // Map and group by category
+      const items = data ? data.map(this.mapGroceryItem) : [];
       const grouped: Record<string, GroceryItem[]> = {};
-      (data as GroceryItem[]).forEach((item) => {
+      items.forEach((item) => {
         const category = item.category || "Autres";
         if (!grouped[category]) {
           grouped[category] = [];
@@ -224,14 +273,23 @@ export class GroceryListService {
         .from("grocery_items")
         .insert({
           grocery_list_id: listId,
-          ...item,
+          name: item.name,
+          quantity: item.quantity,
+          unit: item.unit,
+          category: item.category,
+          image_url: item.imageUrl,
+          is_checked: item.isChecked,
+          checked_at: item.checkedAt,
+          notes: item.notes,
+          added_from: item.addedFrom, // Map camelCase to snake_case
+          source_id: item.sourceId,
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      return { data: data as GroceryItem, error: null };
+      return { data: this.mapGroceryItem(data), error: null };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -254,7 +312,7 @@ export class GroceryListService {
 
       if (error) throw error;
 
-      return { data: data as GroceryItem, error: null };
+      return { data: this.mapGroceryItem(data), error: null };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -294,7 +352,7 @@ export class GroceryListService {
 
       if (error) throw error;
 
-      return { data: data as GroceryItem, error: null };
+      return { data: this.mapGroceryItem(data), error: null };
     } catch (error) {
       return { data: null, error: error as Error };
     }
@@ -357,6 +415,174 @@ export class GroceryListService {
       // TODO: Add items to grocery list
 
       return { data: list!, error: null };
+    } catch (error) {
+      return { data: null, error: error as Error };
+    }
+  }
+
+  // =============================================================================
+  // DUPLICATE MERGING & BULK OPERATIONS
+  // =============================================================================
+
+  /**
+   * Normalize item name for comparison
+   * - Lowercase
+   * - Trim whitespace
+   * - Remove accents
+   */
+  static normalizeItemName(name: string): string {
+    return name
+      .toLowerCase()
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  }
+
+  /**
+   * Add item to grocery list with duplicate merging
+   * If an item with the same normalized name and category exists,
+   * merge quantities instead of creating a duplicate.
+   */
+  static async addItemWithMerge(
+    listId: string,
+    item: Omit<NewGroceryItem, "groceryListId">
+  ): Promise<ServiceResponse<GroceryItem>> {
+    try {
+      const normalizedName = this.normalizeItemName(item.name);
+      const category = item.category || DEFAULT_CATEGORY_ID;
+
+      // Fetch existing items in the same category
+      const { data: existingItems, error: fetchError } = await supabase
+        .from("grocery_items")
+        .select("*")
+        .eq("grocery_list_id", listId)
+        .eq("category", category);
+
+      if (fetchError) throw fetchError;
+
+      // Find a match based on normalized name
+      const match = existingItems?.find(
+        (existing) => this.normalizeItemName(existing.name) === normalizedName
+      );
+
+      if (match) {
+        // Merge quantities
+        const existingQty = parseFloat(String(match.quantity)) || 0;
+        const newQty = typeof item.quantity === 'number' ? item.quantity : parseFloat(String(item.quantity)) || 0;
+        const mergedQty = existingQty + newQty;
+
+        // Update the existing item
+        const { data, error } = await supabase
+          .from("grocery_items")
+          .update({
+            quantity: String(mergedQty), // Convert to string for decimal type
+            // Uncheck if it was checked (user is adding more)
+            is_checked: false,
+            checked_at: null,
+          })
+          .eq("id", match.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        return { data: this.mapGroceryItem(data), error: null };
+      }
+
+      // No match found, insert new item
+      return this.addItem(listId, { ...item, category });
+    } catch (error) {
+      return { data: null, error: error as Error };
+    }
+  }
+
+  /**
+   * Add ingredients from a recipe to the grocery list
+   * Uses merge logic to avoid duplicates.
+   */
+  static async addItemsFromRecipe(
+    listId: string,
+    recipeId: string,
+    ingredients: RecipeIngredient[],
+    category?: string
+  ): Promise<ServiceResponse<{ added: number; merged: number }>> {
+    try {
+      let added = 0;
+      let merged = 0;
+
+      for (const ingredient of ingredients) {
+        const normalizedName = this.normalizeItemName(ingredient.name);
+        const itemCategory = category || DEFAULT_CATEGORY_ID;
+
+        // Check if item already exists
+        const { data: existingItems } = await supabase
+          .from("grocery_items")
+          .select("*")
+          .eq("grocery_list_id", listId)
+          .eq("category", itemCategory);
+
+        const match = existingItems?.find(
+          (existing) => this.normalizeItemName(existing.name) === normalizedName
+        );
+
+        if (match) {
+          // Merge quantities
+          const existingQty = parseFloat(String(match.quantity)) || 0;
+          const newQty = ingredient.quantity || 0;
+
+          await supabase
+            .from("grocery_items")
+            .update({
+              quantity: String(existingQty + newQty), // Convert to string for decimal type
+              is_checked: false,
+              checked_at: null,
+            })
+            .eq("id", match.id);
+
+          merged++;
+        } else {
+          // Insert new item
+          await supabase.from("grocery_items").insert({
+            grocery_list_id: listId,
+            name: ingredient.name,
+            quantity: ingredient.quantity ? String(ingredient.quantity) : null, // Convert to string
+            unit: ingredient.unit || null,
+            category: itemCategory,
+            added_from: "recipe", // snake_case for database
+            source_id: recipeId, // snake_case for database
+          });
+
+          added++;
+        }
+      }
+
+      return { data: { added, merged }, error: null };
+    } catch (error) {
+      return { data: null, error: error as Error };
+    }
+  }
+
+  /**
+   * Get or create active list for a user
+   * If no active list exists, creates one with the default name.
+   */
+  static async getOrCreateActiveList(
+    userId: string,
+    defaultName: string = "Ma Liste"
+  ): Promise<ServiceResponse<GroceryList>> {
+    try {
+      // Try to get the active list
+      const { data: activeList, error: fetchError } = await this.getActiveList(userId);
+
+      if (fetchError) throw fetchError;
+
+      // If active list exists, return it
+      if (activeList) {
+        return { data: activeList, error: null };
+      }
+
+      // No active list, create one
+      return this.createList(userId, defaultName);
     } catch (error) {
       return { data: null, error: error as Error };
     }

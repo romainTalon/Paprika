@@ -32,12 +32,13 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 |-----------|--------|-------------|
 | 📝 Documentation | ✅ Complète | 100% |
 | 🗄️ Base de Données | ✅ Opérationnelle | 85% |
-| ⚙️ Backend Services | ✅ Fonctionnels | 60% |
-| 📱 Frontend | 🚧 En cours | 85% |
+| ⚙️ Backend Services | ✅ Fonctionnels | 70% |
+| 📱 Frontend | 🚧 En cours | 90% |
 | 🤖 Services IA | 🚧 En cours | 50% |
 | 🔐 Authentification | ✅ Complète | 100% |
 | 📚 Gestion Recettes | ✅ Complète | 100% |
 | 📅 Meal Planning | ✅ Complète | 100% |
+| 🛒 Listes de Courses | ✅ Complète | 100% |
 | 💳 Paiements | ⏳ À faire | 0% |
 
 **Phase 1 Setup complétée** ✅ :
@@ -137,6 +138,68 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
   - Supprimé MealSlotCard.tsx (déprécié)
   - 4 nouveaux composants modulaires (+800 lignes)
   - Code découplé et maintenable
+
+**Listes de Courses** ✅ (7 décembre 2025) :
+- ✅ GroceryListsScreen - Écran tab avec carte liste active
+  - Affichage liste active avec compteur articles
+  - Barre de progression visuelle (cochés/total)
+  - Création nouvelle liste avec gestion limite freemium (1 max)
+  - Navigation vers détail au tap
+  - Empty state si aucune liste
+- ✅ GroceryListDetailScreen - Vue détail avec catégories (422 lignes)
+  - Affichage par sections catégories (🥬 Légumes, 🍎 Fruits, etc.)
+  - Stats bar : "X articles (Y cochés)"
+  - Bouton "Vider les cochés" pour nettoyage rapide
+  - FAB "+" pour ajout rapide
+  - Pull-to-refresh
+  - Empty/loading/error states
+- ✅ AddItemModal - Modal formulaire ajout article (319 lignes)
+  - Champs : nom (requis), quantité (optionnel), unité (optionnel)
+  - CategoryPicker pour sélection manuelle (10 catégories)
+  - Validation en temps réel
+  - Bottom-sheet modal pattern
+- ✅ GroceryItemRow - Row swipeable avec checkbox (199 lignes)
+  - Checkbox toggle avec état visuel (✓)
+  - Texte barré si coché + opacité réduite
+  - Swipe-to-delete avec bouton rouge "Supprimer"
+  - Affichage quantité + unité
+  - Animation Reanimated
+- ✅ CategorySection - Groupement par catégorie
+  - Header : emoji + nom + compteur "X/Y" (non cochés/total)
+  - Items triés : non cochés en haut, cochés en bas
+  - Support 10 catégories prédéfinies
+- ✅ CategoryPicker - Sélecteur horizontal (162 lignes)
+  - Pills scrollables horizontalement
+  - Emoji + label pour chaque catégorie
+  - État sélectionné visuellement distinct
+  - Défaut : "🛒 Autres"
+- ✅ Export depuis Recettes
+  - Bouton "🛒 Courses" dans footer RecipeDetailScreen
+  - Export ingrédients ajustés selon portions
+  - Confirmation avec compteur ingrédients
+  - Feedback succès avec stats (X ajoutés, Y fusionnés)
+- ✅ Hooks TanStack Query complets
+  - useActiveGroceryList, useGroceryListItems
+  - useAddGroceryItem (avec fusion doublons)
+  - useToggleGroceryItem, useDeleteGroceryItem
+  - useClearCheckedItems
+  - useAddIngredientsFromRecipe (bulk export)
+- ✅ Service Layer (GroceryListService) - 578 lignes
+  - CRUD complet listes + items
+  - **Fusion intelligente doublons** : normalizeItemName (lowercase, trim, remove accents)
+  - addItemWithMerge : détection + addition quantités
+  - addItemsFromRecipe : export en masse avec merge
+  - **Mapping snake_case ↔ camelCase** pour tous les appels Supabase
+  - Support freemium (1 liste active max)
+- ✅ Gestion Gestures & Animations
+  - react-native-gesture-handler installé et configuré
+  - react-native-reanimated configuré (babel plugin)
+  - GestureHandlerRootView wrapper dans app/_layout.tsx
+- ✅ 10 Catégories prédéfinies (constants/categories.ts)
+  - 🥬 Légumes, 🍎 Fruits, 🍖 Viandes, 🐟 Poissons
+  - 🥛 Produits laitiers, 🥖 Boulangerie, 🥫 Épicerie
+  - 🧊 Surgelés, 🍷 Boissons, 🛒 Autres
+  - Helper getCategoryDisplay(id) pour format complet
 
 **Navigation & UI** :
 - ✅ Navigation complète configurée (4 tabs + écrans stack)

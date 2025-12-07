@@ -22,6 +22,7 @@ import { Text, Button } from "@/components/ui";
 import { BackButton } from "@/components/navigation";
 import { colors, spacing, fontSizes, fontWeights, shadows } from "@/theme";
 import { useRecipe, useToggleFavorite, useDeleteRecipe } from "@/hooks/useRecipes";
+import { useAddIngredientsFromRecipe } from "@/hooks/useGroceryList";
 import { useAuth } from "@/hooks/useAuth";
 import type { RecipeIngredient, RecipeStep } from "@/types/database";
 
@@ -36,6 +37,7 @@ export default function RecipeDetailScreen() {
   const { data: recipe, isLoading, error, refetch } = useRecipe(recipeId, user?.id);
   const toggleFavorite = useToggleFavorite();
   const deleteRecipe = useDeleteRecipe();
+  const addToGroceryList = useAddIngredientsFromRecipe();
 
   // Local State
   const [servingsMultiplier, setServingsMultiplier] = useState(1);
@@ -135,6 +137,50 @@ export default function RecipeDetailScreen() {
     if (!recipe) return 0;
     return (recipe.prepTime || 0) + (recipe.cookTime || 0);
   }, [recipe]);
+
+  // Grocery list handler (after adjustedIngredients is defined)
+  const handleAddToGroceryList = useCallback(() => {
+    if (!recipe || !user?.id || !adjustedIngredients.length) return;
+
+    Alert.alert(
+      "Ajouter aux courses",
+      `Ajouter ${adjustedIngredients.length} ingrédient${adjustedIngredients.length > 1 ? "s" : ""} à votre liste de courses ?`,
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Ajouter",
+          onPress: async () => {
+            try {
+              const result = await addToGroceryList.mutateAsync({
+                userId: user.id,
+                recipeId: recipe.id,
+                ingredients: adjustedIngredients,
+              });
+
+              const { added, merged } = result.stats;
+              let message = "";
+              if (added > 0 && merged > 0) {
+                message = `${added} ajouté${added > 1 ? "s" : ""}, ${merged} fusionné${merged > 1 ? "s" : ""}`;
+              } else if (added > 0) {
+                message = `${added} ingrédient${added > 1 ? "s" : ""} ajouté${added > 1 ? "s" : ""}`;
+              } else {
+                message = `${merged} ingrédient${merged > 1 ? "s" : ""} fusionné${merged > 1 ? "s" : ""}`;
+              }
+
+              Alert.alert("Succès", message);
+            } catch (error) {
+              Alert.alert(
+                "Erreur",
+                error instanceof Error
+                  ? error.message
+                  : "Impossible d'ajouter les ingrédients"
+              );
+            }
+          },
+        },
+      ]
+    );
+  }, [recipe, user, adjustedIngredients, addToGroceryList]);
 
   // Loading State
   if (isLoading) {
@@ -477,6 +523,17 @@ export default function RecipeDetailScreen() {
 
       {/* Sticky Footer Actions */}
       <View style={styles.footer}>
+        {adjustedIngredients.length > 0 && (
+          <Button
+            variant="outline"
+            onPress={handleAddToGroceryList}
+            loading={addToGroceryList.isPending}
+            style={styles.footerButton}
+          >
+            🛒 Courses
+          </Button>
+        )}
+
         <Button
           variant="outline"
           onPress={handleEdit}

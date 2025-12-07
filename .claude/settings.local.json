@@ -55,7 +55,8 @@
       "mcp__supabase__apply_migration",
       "Bash(powershell -Command \"Get-Content ''C:\\Repositories\\Paprika\\app\\(tabs)\\meal-plan.tsx'' | Select-String ''export'' | Select-Object -Last 5\")",
       "Bash(npm uninstall:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(npx expo install:*)"
     ],
     "deny": [],
     "ask": []

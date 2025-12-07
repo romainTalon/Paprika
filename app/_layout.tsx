@@ -9,6 +9,7 @@ import { Stack } from "expo-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AuthProvider } from "@/contexts/AuthContext";
 
 export default function RootLayout() {
@@ -33,17 +34,19 @@ export default function RootLayout() {
   );
 
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <QueryClientProvider client={queryClient}>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="index" />
-            <Stack.Screen name="onboarding" />
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(tabs)" />
-          </Stack>
-        </QueryClientProvider>
-      </AuthProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <QueryClientProvider client={queryClient}>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="onboarding" />
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(tabs)" />
+            </Stack>
+          </QueryClientProvider>
+        </AuthProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
