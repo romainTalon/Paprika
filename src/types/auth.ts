@@ -7,11 +7,19 @@
 import type { User, Session } from "@supabase/supabase-js";
 
 /**
+ * Extended user type with app-specific fields
+ */
+export interface AppUser extends User {
+  /** Premium status */
+  isPremium?: boolean;
+}
+
+/**
  * Authentication state
  */
 export interface AuthState {
   /** Current authenticated user */
-  user: User | null;
+  user: AppUser | null;
   /** Current session */
   session: Session | null;
   /** Whether auth state is currently being loaded */

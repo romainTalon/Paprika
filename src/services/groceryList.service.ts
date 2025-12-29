@@ -84,6 +84,67 @@ export class GroceryListService {
   }
 
   /**
+   * Get all grocery lists for a user WITH item stats
+   * Performance optimized: 2 queries instead of N+1
+   * Returns lists with itemCount and checkedCount
+   */
+  static async getUserListsWithStats(
+    userId: string,
+    includeArchived = false
+  ): Promise<ServiceResponse<Array<GroceryList & { itemCount: number; checkedCount: number }>>> {
+    try {
+      // Query 1: Fetch all lists
+      let listsQuery = supabase
+        .from("grocery_lists")
+        .select("*")
+        .eq("user_id", userId);
+
+      if (!includeArchived) {
+        listsQuery = listsQuery.eq("is_archived", false);
+      }
+
+      const { data: lists, error: listsError } = await listsQuery.order("created_at", { ascending: false });
+
+      if (listsError) throw listsError;
+      if (!lists || lists.length === 0) {
+        return { data: [], error: null };
+      }
+
+      // Query 2: Fetch ALL items for ALL lists in ONE query
+      const { data: items, error: itemsError } = await supabase
+        .from("grocery_items")
+        .select("grocery_list_id, is_checked")
+        .in("grocery_list_id", lists.map((l) => l.id));
+
+      if (itemsError) throw itemsError;
+
+      // Aggregate stats by list ID
+      const statsByListId = (items || []).reduce((acc, item) => {
+        const listId = item.grocery_list_id;
+        if (!acc[listId]) {
+          acc[listId] = { total: 0, checked: 0 };
+        }
+        acc[listId].total++;
+        if (item.is_checked) {
+          acc[listId].checked++;
+        }
+        return acc;
+      }, {} as Record<string, { total: number; checked: number }>);
+
+      // Map lists with stats
+      const listsWithStats = lists.map((list) => ({
+        ...this.mapGroceryList(list),
+        itemCount: statsByListId[list.id]?.total ?? 0,
+        checkedCount: statsByListId[list.id]?.checked ?? 0,
+      }));
+
+      return { data: listsWithStats, error: null };
+    } catch (error) {
+      return { data: null, error: error as Error };
+    }
+  }
+
+  /**
    * Get active grocery list
    * Freemium: Only 1 active list for free users
    */

@@ -2500,5 +2500,303 @@ footerIcon: { ... }
 
 ---
 
+## 2025-12-29 - Support Multi-Listes de Courses (Premium)
+
+**Contexte** : L'application ne supportait qu'une seule liste de courses active par utilisateur. Le backend était déjà prêt (trigger freemium limite à 1 liste pour free, illimité pour premium), mais le frontend affichait uniquement la liste active.
+
+**Décision** : **Implémenter une interface de sélection multi-listes pour les utilisateurs premium, inspirée du pattern Cookbooks**
+
+**Architecture implémentée** :
+
+### 1. Optimisation Backend - Requêtes agrégées
+
+**Problème N+1** : Fetcher toutes les listes puis fetcher les stats de chaque liste séparément = 1 + N requêtes
+
+**Solution** : Nouvelle méthode `getUserListsWithStats()` dans `GroceryListService` (lignes 87-145)
+```typescript
+// Query 1: Fetch all lists
+const { data: lists } = await supabase
+  .from("grocery_lists")
+  .select("*")
+  .eq("user_id", userId);
+
+// Query 2: Fetch ALL items for ALL lists in ONE query
+const { data: items } = await supabase
+  .from("grocery_items")
+  .select("grocery_list_id, is_checked")
+  .in("grocery_list_id", lists.map(l => l.id));
+
+// Aggregate stats in JavaScript
+const statsByListId = items.reduce((acc, item) => {
+  if (!acc[listId]) acc[listId] = { total: 0, checked: 0 };
+  acc[listId].total++;
+  if (item.is_checked) acc[listId].checked++;
+  return acc;
+}, {});
+
+// Merge stats with lists
+const listsWithStats = lists.map(list => ({
+  ...list,
+  itemCount: statsByListId[list.id]?.total ?? 0,
+  checkedCount: statsByListId[list.id]?.checked ?? 0,
+}));
+```
+
+**Performance** : 2 requêtes au total (vs 1 + N précédemment) → Scalable même avec 20+ listes
+
+### 2. Nouveau Hook TanStack Query
+
+**Hook** : `useGroceryListsWithStats()` dans `src/hooks/useGroceryList.ts` (lignes 44-61)
+- Query key : `["grocery-lists-with-stats", userId, includeArchived]`
+- Stale time : 5 minutes
+- Invalida automatiquement sur mutations (create, update, delete)
+
+### 3. Composants UI
+
+**GroceryListCard** (`src/components/grocery/GroceryListCard.tsx` - 175 lignes) :
+- **Layout full-width** : `borderBottomWidth: 1` au lieu de `borderRadius + shadows`
+- **Swipe-to-reveal actions** : Swipe gauche → Boutons "Modifier" et "Supprimer" (80px chacun)
+- **Compteur articles** : Affiche "X articles", "1 article", ou "Aucun article"
+- **Chevron** : Indication visuelle de navigation
+- **Pattern** : Inspiré de `GroceryItemRow` pour cohérence visuelle
+- **UI épurée** : Pas de barre de progression ni stats cochés (simplifié 29 déc)
+
+**CreateListModal** (`src/components/grocery/CreateListModal.tsx` - 174 lignes) :
+- Formulaire simple (nom uniquement)
+- Mode création vs édition (détecté par prop `list`)
+- Gestion erreur trigger freemium → Alert claire "Limite atteinte (1/1)"
+- Bottom sheet modal pattern
+
+**SelectGroceryListModal** (`src/components/grocery/SelectGroceryListModal.tsx` - 151 lignes) :
+- Affichage listes actives disponibles
+- Bouton "+ Créer une nouvelle liste"
+- Flow : Sélection → Import direct OU Création → Import auto
+- Utilisé lors d'export recette → courses
+
+### 4. Refonte GroceryListsScreen
+
+**Transformation complète** (`app/(tabs)/grocery-lists.tsx`) :
+
+**AVANT** :
+```tsx
+<Container>
+  <View>Liste Active: {activeList.name}</View>
+  <Button onPress={createList}>Créer</Button>
+</Container>
+```
+
+**APRÈS** :
+```tsx
+<View style={styles.container}>  {/* SafeAreaView → View pour éviter padding auto */}
+  <View style={styles.header}>
+    <Text>Mes Listes</Text>
+    <Text>{lists.length} liste(s)</Text>
+  </View>
+
+  <GestureHandlerRootView>
+    <FlatList
+      data={lists}
+      renderItem={({ item }) => (
+        <GroceryListCard
+          list={item}
+          itemsCount={item.itemCount}
+          checkedCount={item.checkedCount}
+          onPress={() => navigate(item.id)}
+          onEdit={() => openEditModal(item)}
+          onDelete={() => confirmDelete(item)}
+        />
+      )}
+      contentContainerStyle={styles.listContent}  {/* No paddingHorizontal */}
+    />
+  </GestureHandlerRootView>
+
+  <TouchableOpacity style={styles.fab} onPress={handleCreate}>
+    <Text>+</Text>
+  </TouchableOpacity>
+
+  <CreateListModal ... />
+</View>
+```
+
+**Changements clés** :
+- ✅ `useGroceryListsWithStats()` au lieu de `useActiveGroceryList()`
+- ✅ FlatList edge-to-edge (pas de `paddingHorizontal`)
+- ✅ `View` au lieu de `SafeAreaView` pour éviter padding horizontal automatique
+- ✅ FAB avec check freemium (grisé si limite atteinte)
+- ✅ Invalidation cache sur toutes mutations (2 query keys : `grocery-lists` + `grocery-lists-with-stats`)
+
+### 5. Intégration Export Recette
+
+**Modification** : `app/recipes/[id].tsx` (lignes 26-171)
+
+**Flow AVANT** :
+```
+Clic "🛒 Courses" → Export direct vers liste active → Succès
+```
+
+**Flow APRÈS** :
+```
+Clic "🛒 Courses" → SelectGroceryListModal s'ouvre
+  ├─ Sélection liste existante → Export vers cette liste → Fermeture
+  └─ "Créer nouvelle" → CreateListModal → Création → Export auto → Fermeture
+```
+
+**Handlers** :
+```typescript
+const handleAddToGroceryList = () => {
+  setSelectListModalVisible(true);  // Ouverture modal sélection
+};
+
+const handleSelectList = async (listId: string) => {
+  await addToGroceryList.mutateAsync({
+    userId: user.id,
+    recipeId: recipe.id,
+    ingredients: adjustedIngredients,
+    listId,  // ← Nouveau paramètre
+  });
+  Alert.alert("Succès", `${added} ajouté(s), ${merged} fusionné(s)`);
+};
+
+const handleCreateNewList = () => {
+  setSelectListModalVisible(false);
+  setCreateListModalVisible(true);
+};
+
+const handleListCreated = (newList: GroceryList) => {
+  handleSelectList(newList.id);  // Auto-export vers nouvelle liste
+};
+```
+
+### 6. Hook Mutation Backward Compatible
+
+**Hook** : `useAddIngredientsFromRecipe()` (lignes 384-441)
+
+**Signature étendue** :
+```typescript
+mutationFn: async (params: {
+  userId: string;
+  recipeId: string;
+  ingredients: RecipeIngredient[];
+  category?: string;
+  listId?: string;  // ← NOUVEAU - Optionnel
+}) => { ... }
+```
+
+**Logique** :
+```typescript
+if (params.listId) {
+  // Nouveau comportement : utiliser la liste spécifiée
+  const lists = await GroceryListService.getUserLists(userId);
+  targetList = lists.find(l => l.id === params.listId);
+} else {
+  // Backward compatibility : utiliser liste active (comportement legacy)
+  targetList = await GroceryListService.getOrCreateActiveList(userId);
+}
+
+// Ajouter ingrédients à la liste cible
+await GroceryListService.addItemsFromRecipe(targetList.id, ...);
+```
+
+**Invalidation cache étendue** :
+```typescript
+onSuccess: (result, variables) => {
+  queryClient.invalidateQueries({ queryKey: ["grocery-lists", userId] });
+  queryClient.invalidateQueries({ queryKey: ["grocery-lists-with-stats", userId] });
+  queryClient.invalidateQueries({ queryKey: ["grocery-items", result.list.id] });
+}
+```
+
+### 7. Gestion Premium Status
+
+**Problème** : Le user Supabase Auth ne contenait pas `is_premium` (colonne dans `public.users`)
+
+**Solution** : Enrichissement du user dans `AuthContext` (lignes 54-79)
+```typescript
+const enrichUserWithProfile = async (authUser: User | null): Promise<AppUser | null> => {
+  if (!authUser) return null;
+
+  const { data: profile } = await supabase
+    .from("users")
+    .select("is_premium")
+    .eq("id", authUser.id)
+    .single();
+
+  return {
+    ...authUser,
+    isPremium: profile?.is_premium ?? false,
+  };
+};
+
+// Appel dans getSession + onAuthStateChange
+const enrichedUser = await enrichUserWithProfile(session?.user);
+setUser(enrichedUser);
+```
+
+**Type** : Nouveau type `AppUser` dans `src/types/auth.ts`
+```typescript
+export interface AppUser extends User {
+  isPremium?: boolean;
+}
+```
+
+**Raisons** :
+- ✅ **Performance optimale** : N+1 query problem résolu (2 requêtes vs 1+N)
+- ✅ **Pattern cohérent** : Réutilisation du pattern Cookbooks (FlatList + Cards + FAB + Modal)
+- ✅ **Freemium enforcement** : Check côté client (UX) + trigger DB (sécurité)
+- ✅ **Backward compatible** : Hook `useAddIngredientsFromRecipe` avec `listId` optionnel
+- ✅ **Edge-to-edge layout** : Cohérence visuelle avec GroceryItemRow (full-width)
+- ✅ **Premium UX** : Modal sélection permet de choisir la liste cible lors d'import recette
+- ✅ **Query cache management** : Invalidations multiples pour état synchronisé
+
+**Alternatives considérées** :
+
+1. **Tabs pour switcher entre listes** :
+   - ❌ Rejetée : Limite à ~5 listes visibles simultanément
+   - ❌ Ne scale pas si utilisateur premium a 20+ listes
+
+2. **Dropdown sélection dans header** :
+   - ❌ Rejetée : Pas de preview stats (itemCount, checkedCount)
+   - ❌ UX moins intuitive que cards swipeables
+
+3. **Utiliser Drizzle ORM pour queries** :
+   - ❌ Rejetée : Drizzle incompatible avec React Native (dépendances Node.js)
+   - ✅ Supabase client direct avec mapping manuel plus flexible
+
+4. **Fetch stats côté frontend (N+1)** :
+   - ❌ Rejetée : Performance catastrophique avec 10+ listes
+   - ✅ Agrégation backend scalable
+
+**Conséquences** :
+- ✅ **Users premium** peuvent créer et gérer plusieurs listes actives simultanément
+- ✅ **Users free** limités à 1 liste active (trigger DB + UI disabled FAB)
+- ✅ **Performance garantie** même avec 20+ listes (2 requêtes agrégées)
+- ✅ **UX cohérente** avec pattern Cookbooks (navigation, swipe actions, modals)
+- ✅ **Import recette intelligent** : Choix de la liste cible au lieu de forcer liste active
+- ✅ **Code maintenable** : 3 composants réutilisables (GroceryListCard, CreateListModal, SelectGroceryListModal)
+
+**Statut** : ✅ Validée et implémentée
+
+**Fichiers créés** :
+- `src/components/grocery/GroceryListCard.tsx` (175 lignes - simplifié 29 déc)
+- `src/components/grocery/CreateListModal.tsx` (174 lignes)
+- `src/components/grocery/SelectGroceryListModal.tsx` (151 lignes)
+
+**Fichiers modifiés** :
+- `src/services/groceryList.service.ts` - Méthode `getUserListsWithStats()` ajoutée (lignes 87-145)
+- `src/hooks/useGroceryList.ts` - Hook `useGroceryListsWithStats()` + invalidations étendues (lignes 44-61, mutations)
+- `src/types/auth.ts` - Type `AppUser` avec `isPremium` (lignes 12-15)
+- `src/contexts/AuthContext.tsx` - Enrichissement user avec premium status (lignes 54-103)
+- `src/components/grocery/index.ts` - Exports nouveaux composants
+- `app/(tabs)/grocery-lists.tsx` - Refonte complète écran sélection (329 lignes)
+- `app/recipes/[id].tsx` - Intégration modals sélection/création (lignes 26-171)
+
+**Métriques** :
+- **Requêtes optimisées** : 2 queries (vs N+1 naïf)
+- **Composants réutilisables** : 3 nouveaux (+500 lignes au total)
+- **Performance** : Temps de chargement constant O(1) quelle que soit le nombre de listes
+- **Freemium** : Limite 1 gratuit, illimité premium (enforcée DB + UI)
+
+---
+
 **Maintenu par** : Équipe Paprika
 **Dernière mise à jour** : 29 décembre 2025

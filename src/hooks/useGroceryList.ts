@@ -38,6 +38,29 @@ export function useGroceryLists(userId: string | undefined, includeArchived = fa
 }
 
 /**
+ * Hook to fetch all grocery lists WITH item stats (optimized)
+ * Uses 2 queries instead of N+1 for better performance
+ */
+export function useGroceryListsWithStats(userId: string | undefined, includeArchived = false) {
+  return useQuery({
+    queryKey: ["grocery-lists-with-stats", userId, includeArchived],
+    queryFn: async () => {
+      if (!userId) throw new Error("User ID is required");
+
+      const { data, error } = await GroceryListService.getUserListsWithStats(userId, includeArchived);
+
+      if (error) throw error;
+      if (!data) throw new Error("No data returned");
+
+      return data;
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
+  });
+}
+
+/**
  * Hook to fetch the active grocery list for current user
  */
 export function useActiveGroceryList(userId: string | undefined) {
@@ -124,6 +147,7 @@ export function useCreateGroceryList() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["grocery-lists", variables.userId] });
+      queryClient.invalidateQueries({ queryKey: ["grocery-lists-with-stats", variables.userId] });
     },
   });
 }
@@ -177,6 +201,7 @@ export function useUpdateGroceryList() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["grocery-lists", variables.userId] });
+      queryClient.invalidateQueries({ queryKey: ["grocery-lists-with-stats", variables.userId] });
     },
   });
 }
@@ -198,6 +223,7 @@ export function useArchiveGroceryList() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["grocery-lists", variables.userId] });
+      queryClient.invalidateQueries({ queryKey: ["grocery-lists-with-stats", variables.userId] });
     },
   });
 }
@@ -218,6 +244,7 @@ export function useDeleteGroceryList() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["grocery-lists", variables.userId] });
+      queryClient.invalidateQueries({ queryKey: ["grocery-lists-with-stats", variables.userId] });
     },
   });
 }
@@ -363,18 +390,38 @@ export function useAddIngredientsFromRecipe() {
       recipeId: string;
       ingredients: RecipeIngredient[];
       category?: string;
+      listId?: string; // Optional: specify target list (otherwise uses active list)
     }) => {
-      // First, get or create the active list
-      const { data: list, error: listError } = await GroceryListService.getOrCreateActiveList(
-        params.userId
-      );
+      let targetList: GroceryList;
 
-      if (listError) throw listError;
-      if (!list) throw new Error("Failed to get or create grocery list");
+      if (params.listId) {
+        // Use the specified list
+        const { data: lists, error: listError } = await GroceryListService.getUserLists(
+          params.userId,
+          false
+        );
 
-      // Then add the ingredients
+        if (listError) throw listError;
+
+        const foundList = lists?.find((l) => l.id === params.listId);
+        if (!foundList) throw new Error("Liste introuvable");
+
+        targetList = foundList;
+      } else {
+        // Backward compatibility: get or create active list
+        const { data: list, error: listError } = await GroceryListService.getOrCreateActiveList(
+          params.userId
+        );
+
+        if (listError) throw listError;
+        if (!list) throw new Error("Failed to get or create grocery list");
+
+        targetList = list;
+      }
+
+      // Add the ingredients to the target list
       const { data, error } = await GroceryListService.addItemsFromRecipe(
-        list.id,
+        targetList.id,
         params.recipeId,
         params.ingredients,
         params.category
@@ -383,10 +430,11 @@ export function useAddIngredientsFromRecipe() {
       if (error) throw error;
       if (!data) throw new Error("Failed to add ingredients");
 
-      return { list, stats: data };
+      return { list: targetList, stats: data };
     },
     onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: ["grocery-lists", variables.userId] });
+      queryClient.invalidateQueries({ queryKey: ["grocery-lists-with-stats", variables.userId] });
       queryClient.invalidateQueries({ queryKey: ["grocery-items", result.list.id] });
     },
   });

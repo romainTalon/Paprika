@@ -1,108 +1,138 @@
 /**
  * Grocery Lists Tab Screen
  *
- * Main screen for managing grocery lists.
- * Shows active list and allows navigation to detail view.
- * Supports creating new lists (with freemium limit).
+ * Shows all grocery lists for the user with stats.
+ * Supports creating, editing, archiving, and deleting lists.
+ * Premium users can create unlimited lists (free users limited to 1 active list).
  */
 
-import React, { useCallback, useMemo } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   StyleSheet,
   TouchableOpacity,
+  FlatList,
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { router, Href } from "expo-router";
-import { Text, Button, Container } from "@/components/ui";
-import { colors, spacing, shadows, fontSizes } from "@/theme";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { router } from "expo-router";
+import { Text, Button } from "@/components/ui";
+import {
+  GroceryListCard,
+  CreateListModal,
+} from "@/components/grocery";
+import { colors, spacing, shadows } from "@/theme";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  useActiveGroceryList,
-  useGroceryListItems,
-  useCreateGroceryList,
+  useGroceryListsWithStats,
+  useUpdateGroceryList,
+  useDeleteGroceryList,
 } from "@/hooks/useGroceryList";
+import type { GroceryList } from "@/types";
 
 export default function GroceryListsScreen() {
   const { user } = useAuth();
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [editingList, setEditingList] = useState<GroceryList | null>(null);
 
-  // Fetch active list
+  // Fetch all lists WITH stats (optimized query)
   const {
-    data: activeList,
-    isLoading: isLoadingList,
-    error: listError,
-    refetch: refetchList,
-  } = useActiveGroceryList(user?.id);
+    data: lists,
+    isLoading,
+    error,
+    refetch,
+  } = useGroceryListsWithStats(user?.id, false);
 
-  // Fetch items count for the active list
-  const { data: items } = useGroceryListItems(activeList?.id);
+  // Mutations
+  const updateList = useUpdateGroceryList();
+  const deleteList = useDeleteGroceryList();
 
-  // Create list mutation
-  const createList = useCreateGroceryList();
-
-  // Stats
-  const stats = useMemo(() => {
-    if (!items) return { total: 0, checked: 0 };
-    return {
-      total: items.length,
-      checked: items.filter((item) => item.isChecked).length,
-    };
-  }, [items]);
+  // Freemium check
+  const isPremium = user?.isPremium ?? false;
+  const activeListsCount =
+    lists?.filter((l) => l.isActive && !l.isArchived).length ?? 0;
+  const canCreateList = isPremium || activeListsCount < 1;
 
   // Handlers
-  const handleOpenList = useCallback(() => {
-    if (activeList) {
-      router.push(`/grocery-lists/${activeList.id}` as Href);
+  const handleCreatePress = useCallback(() => {
+    if (!canCreateList) {
+      Alert.alert(
+        "Limite atteinte",
+        "Vous avez atteint la limite de listes actives (1/1). Passez à Premium pour créer plusieurs listes ou archivez votre liste actuelle.",
+        [{ text: "OK" }]
+      );
+      return;
     }
-  }, [activeList]);
 
-  const handleCreateList = useCallback(async () => {
-    if (!user?.id) return;
+    setEditingList(null);
+    setIsModalVisible(true);
+  }, [canCreateList]);
 
-    try {
-      const list = await createList.mutateAsync({
-        userId: user.id,
-        name: "Ma Liste",
-      });
+  const handleEditPress = useCallback((list: GroceryList) => {
+    setEditingList(list);
+    setIsModalVisible(true);
+  }, []);
 
-      // Navigate to the new list
-      router.push(`/grocery-lists/${list.id}` as Href);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Impossible de créer la liste";
+  const handleDeletePress = useCallback(
+    (list: GroceryList) => {
+      Alert.alert(
+        "Supprimer la liste",
+        `Voulez-vous vraiment supprimer "${list.name}" ? Cette action est irréversible.`,
+        [
+          { text: "Annuler", style: "cancel" },
+          {
+            text: "Supprimer",
+            style: "destructive",
+            onPress: async () => {
+              if (!user?.id) return;
 
-      // Check for freemium limit error
-      if (message.includes("limit reached")) {
-        Alert.alert(
-          "Limite atteinte",
-          "Vous avez atteint la limite de listes actives (1). Passez à Premium pour des listes illimitées ou archivez votre liste actuelle.",
-          [{ text: "OK" }]
-        );
-      } else {
-        Alert.alert("Erreur", message);
-      }
-    }
-  }, [user?.id, createList]);
+              try {
+                await deleteList.mutateAsync({ listId: list.id, userId: user.id });
+              } catch (error) {
+                Alert.alert(
+                  "Erreur",
+                  error instanceof Error
+                    ? error.message
+                    : "Impossible de supprimer la liste"
+                );
+              }
+            },
+          },
+        ]
+      );
+    },
+    [user?.id, deleteList]
+  );
+
+  const handleListPress = useCallback((list: GroceryList) => {
+    router.push(`/grocery-lists/${list.id}`);
+  }, []);
+
+  const handleModalSuccess = useCallback(() => {
+    setIsModalVisible(false);
+    setEditingList(null);
+  }, []);
 
   // Loading state
-  if (isLoadingList) {
+  if (isLoading) {
     return (
-      <Container>
+      <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
           <Text variant="body" color="neutral" style={styles.loadingText}>
             Chargement...
           </Text>
         </View>
-      </Container>
+      </SafeAreaView>
     );
   }
 
   // Error state
-  if (listError) {
+  if (error) {
     return (
-      <Container>
+      <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
         <View style={styles.centered}>
           <Text variant="h1" style={styles.errorEmoji}>
             😕
@@ -113,18 +143,18 @@ export default function GroceryListsScreen() {
           <Text variant="body" color="neutral" style={styles.errorMessage}>
             Impossible de charger vos listes
           </Text>
-          <Button variant="primary" onPress={() => refetchList()}>
+          <Button variant="primary" onPress={() => refetch()}>
             Réessayer
           </Button>
         </View>
-      </Container>
+      </SafeAreaView>
     );
   }
 
-  // No active list - show empty state
-  if (!activeList) {
+  // Empty state
+  if (!lists || lists.length === 0) {
     return (
-      <Container>
+      <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
         <View style={styles.emptyContainer}>
           <Text variant="h1" style={styles.emptyEmoji}>
             🛒
@@ -135,79 +165,89 @@ export default function GroceryListsScreen() {
           <Text variant="body" color="neutral" style={styles.emptyMessage}>
             Créez une liste de courses pour commencer à organiser vos achats
           </Text>
-          <Button
-            variant="primary"
-            onPress={handleCreateList}
-            loading={createList.isPending}
-          >
+          <Button variant="primary" onPress={handleCreatePress}>
             Créer une liste
           </Button>
         </View>
-      </Container>
+
+        <CreateListModal
+          visible={isModalVisible}
+          userId={user?.id || null}
+          onClose={() => setIsModalVisible(false)}
+          onSuccess={handleModalSuccess}
+        />
+      </SafeAreaView>
     );
   }
 
-  // Has active list - show card
+  // Has lists - show cards
   return (
-    <Container>
-
-      <View style={styles.content}>
-        {/* Active List Card */}
-        <TouchableOpacity
-          style={styles.listCard}
-          onPress={handleOpenList}
-          activeOpacity={0.8}
-          accessibilityRole="button"
-          accessibilityLabel={`${activeList.name}, ${stats.total} articles`}
-        >
-          <View style={styles.listCardHeader}>
-            <Text style={styles.listIcon}>🛒</Text>
-            <View style={styles.listInfo}>
-              <Text variant="h3" style={styles.listName}>
-                {activeList.name}
-              </Text>
-              <Text variant="bodySmall" color="neutral">
-                {stats.total === 0
-                  ? "Liste vide"
-                  : stats.total === 1
-                  ? "1 article"
-                  : `${stats.total} articles`}
-              </Text>
-            </View>
-            <Text style={styles.chevron}>›</Text>
-          </View>
-
-          {/* Progress bar */}
-          {stats.total > 0 && (
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBackground}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    {
-                      width: `${(stats.checked / stats.total) * 100}%`,
-                    },
-                  ]}
-                />
-              </View>
-            </View>
-          )}
-        </TouchableOpacity>
-
-        {/* Tip */}
-        <View style={styles.tipCard}>
-          <Text style={styles.tipEmoji}>💡</Text>
-          <Text variant="bodySmall" color="neutral" style={styles.tipText}>
-            Astuce : Exportez les ingrédients d'une recette directement vers
-            votre liste de courses depuis la fiche recette.
-          </Text>
-        </View>
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text variant="h1">Mes Listes</Text>
+        <Text variant="bodySmall" color="neutral">
+          {lists.length} liste{lists.length > 1 ? "s" : ""}
+        </Text>
       </View>
-    </Container>
+
+      {/* Lists Grid */}
+      <GestureHandlerRootView style={{ flex: 1, paddingHorizontal: 0 }}>
+        <FlatList
+          data={lists}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <GroceryListCard
+              list={item}
+              itemsCount={item.itemCount}
+              checkedCount={item.checkedCount}
+              onPress={() => handleListPress(item)}
+              onEdit={() => handleEditPress(item)}
+              onDelete={() => handleDeletePress(item)}
+            />
+          )}
+          style={{ paddingHorizontal: 0 }}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
+      </GestureHandlerRootView>
+
+      {/* FAB */}
+      <TouchableOpacity
+        style={[styles.fab, !canCreateList && styles.fabDisabled]}
+        onPress={handleCreatePress}
+        activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Créer une nouvelle liste"
+      >
+        <Text style={styles.fabIcon}>+</Text>
+      </TouchableOpacity>
+
+      {/* Create/Edit Modal */}
+      <CreateListModal
+        visible={isModalVisible}
+        list={editingList}
+        userId={user?.id || null}
+        onClose={() => setIsModalVisible(false)}
+        onSuccess={handleModalSuccess}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.cream.DEFAULT,
+    paddingHorizontal: 0,
+  },
+
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.cream.DEFAULT,
+    paddingHorizontal: 0,
+  },
+
   // Centered states
   centered: {
     flex: 1,
@@ -260,82 +300,42 @@ const styles = StyleSheet.create({
     maxWidth: 280,
   },
 
-  // Content
-  content: {
-    flex: 1,
-    padding: spacing.lg,
-    gap: spacing.lg,
+  // Header
+  header: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
   },
 
-  // List Card
-  listCard: {
-    backgroundColor: colors.white,
-    borderRadius: spacing.md,
-    padding: spacing.lg,
-    ...shadows.md,
+  // List Content
+  listContent: {
+    paddingTop: spacing.sm,
+    paddingBottom: 100, // Space for FAB
   },
 
-  listCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-  },
-
-  listIcon: {
-    fontSize: 32,
-    lineHeight: 40,
-  },
-
-  listInfo: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-
-  listName: {
-    color: colors.warm.brown,
-  },
-
-  chevron: {
-    fontSize: 24,
-    color: colors.gray[400],
-    fontWeight: "300",
-  },
-
-  progressContainer: {
-    marginTop: spacing.md,
-  },
-
-  progressBackground: {
-    height: 6,
-    backgroundColor: colors.gray[200],
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-
-  progressFill: {
-    height: "100%",
+  // FAB
+  fab: {
+    position: "absolute",
+    bottom: spacing["2xl"],
+    right: spacing.lg,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: colors.primary.DEFAULT,
-    borderRadius: 3,
+    justifyContent: "center",
+    alignItems: "center",
+    ...shadows.lg,
+    elevation: 8,
   },
 
-  // Tip Card
-  tipCard: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    backgroundColor: colors.cream[50],
-    borderRadius: spacing.md,
-    padding: spacing.md,
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.gray[200],
+  fabDisabled: {
+    backgroundColor: colors.gray[400],
   },
 
-  tipEmoji: {
-    fontSize: fontSizes.lg,
-    lineHeight: fontSizes.lg + 8,
-  },
-
-  tipText: {
-    flex: 1,
+  fabIcon: {
+    fontSize: 32,
+    color: colors.white,
+    fontWeight: "bold",
+    lineHeight: 36,
   },
 });

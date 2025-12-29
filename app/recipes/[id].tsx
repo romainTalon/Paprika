@@ -20,11 +20,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Text, Button } from "@/components/ui";
 import { AppHeader } from "@/components/navigation";
+import { SelectGroceryListModal, CreateListModal } from "@/components/grocery";
 import { colors, spacing, fontSizes, fontWeights, shadows } from "@/theme";
 import { useRecipe, useToggleFavorite, useDeleteRecipe } from "@/hooks/useRecipes";
 import { useAddIngredientsFromRecipe } from "@/hooks/useGroceryList";
 import { useAuth } from "@/hooks/useAuth";
 import type { RecipeIngredient, RecipeStep } from "@/types/database";
+import type { GroceryList } from "@/types";
 
 const DEFAULT_COVER = "https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=800";
 
@@ -43,6 +45,8 @@ export default function RecipeDetailScreen() {
   const [servingsMultiplier, setServingsMultiplier] = useState(1);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [checkedSteps, setCheckedSteps] = useState<Set<number>>(new Set());
+  const [selectListModalVisible, setSelectListModalVisible] = useState(false);
+  const [createListModalVisible, setCreateListModalVisible] = useState(false);
 
   // Handlers
   const handleFavoriteToggle = useCallback(() => {
@@ -138,49 +142,59 @@ export default function RecipeDetailScreen() {
     return (recipe.prepTime || 0) + (recipe.cookTime || 0);
   }, [recipe]);
 
-  // Grocery list handler (after adjustedIngredients is defined)
+  // Grocery list handlers (after adjustedIngredients is defined)
   const handleAddToGroceryList = useCallback(() => {
     if (!recipe || !user?.id || !adjustedIngredients.length) return;
+    setSelectListModalVisible(true);
+  }, [recipe, user?.id, adjustedIngredients]);
 
-    Alert.alert(
-      "Ajouter aux courses",
-      `Ajouter ${adjustedIngredients.length} ingrédient${adjustedIngredients.length > 1 ? "s" : ""} à votre liste de courses ?`,
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Ajouter",
-          onPress: async () => {
-            try {
-              const result = await addToGroceryList.mutateAsync({
-                userId: user.id,
-                recipeId: recipe.id,
-                ingredients: adjustedIngredients,
-              });
+  const handleSelectList = useCallback(
+    async (listId: string) => {
+      if (!recipe || !user?.id) return;
 
-              const { added, merged } = result.stats;
-              let message = "";
-              if (added > 0 && merged > 0) {
-                message = `${added} ajouté${added > 1 ? "s" : ""}, ${merged} fusionné${merged > 1 ? "s" : ""}`;
-              } else if (added > 0) {
-                message = `${added} ingrédient${added > 1 ? "s" : ""} ajouté${added > 1 ? "s" : ""}`;
-              } else {
-                message = `${merged} ingrédient${merged > 1 ? "s" : ""} fusionné${merged > 1 ? "s" : ""}`;
-              }
+      try {
+        const result = await addToGroceryList.mutateAsync({
+          userId: user.id,
+          recipeId: recipe.id,
+          ingredients: adjustedIngredients,
+          listId,
+        });
 
-              Alert.alert("Succès", message);
-            } catch (error) {
-              Alert.alert(
-                "Erreur",
-                error instanceof Error
-                  ? error.message
-                  : "Impossible d'ajouter les ingrédients"
-              );
-            }
-          },
-        },
-      ]
-    );
-  }, [recipe, user, adjustedIngredients, addToGroceryList]);
+        const { added, merged } = result.stats;
+        let message = "";
+        if (added > 0 && merged > 0) {
+          message = `${added} ajouté${added > 1 ? "s" : ""}, ${merged} fusionné${merged > 1 ? "s" : ""}`;
+        } else if (added > 0) {
+          message = `${added} ingrédient${added > 1 ? "s" : ""} ajouté${added > 1 ? "s" : ""}`;
+        } else {
+          message = `${merged} ingrédient${merged > 1 ? "s" : ""} fusionné${merged > 1 ? "s" : ""}`;
+        }
+
+        Alert.alert("Succès", message);
+      } catch (error) {
+        Alert.alert(
+          "Erreur",
+          error instanceof Error
+            ? error.message
+            : "Impossible d'ajouter les ingrédients"
+        );
+      }
+    },
+    [recipe, user?.id, adjustedIngredients, addToGroceryList]
+  );
+
+  const handleCreateNewList = useCallback(() => {
+    setSelectListModalVisible(false);
+    setCreateListModalVisible(true);
+  }, []);
+
+  const handleListCreated = useCallback(
+    (newList: GroceryList) => {
+      // Auto-add ingredients to the newly created list
+      handleSelectList(newList.id);
+    },
+    [handleSelectList]
+  );
 
   // Loading State
   if (isLoading) {
@@ -567,6 +581,23 @@ export default function RecipeDetailScreen() {
         )}
 
       </ScrollView>
+
+      {/* Select Grocery List Modal */}
+      <SelectGroceryListModal
+        visible={selectListModalVisible}
+        userId={user?.id || null}
+        onClose={() => setSelectListModalVisible(false)}
+        onSelect={handleSelectList}
+        onCreateNew={handleCreateNewList}
+      />
+
+      {/* Create List Modal */}
+      <CreateListModal
+        visible={createListModalVisible}
+        userId={user?.id || null}
+        onClose={() => setCreateListModalVisible(false)}
+        onSuccess={handleListCreated}
+      />
     </SafeAreaView>
     </>
   );

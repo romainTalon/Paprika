@@ -10,13 +10,14 @@
 import React, { createContext, useState, useEffect, ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
 import type {
+  AppUser,
   AuthContextValue,
   SignUpCredentials,
   SignInCredentials,
   PasswordResetRequest,
   PasswordUpdate,
 } from "@/types/auth";
-import type { User, Session } from "@supabase/supabase-js";
+import type { Session } from "@supabase/supabase-js";
 
 /**
  * Authentication context
@@ -43,26 +44,58 @@ interface AuthProviderProps {
  * ```
  */
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  /**
+   * Enrich auth user with profile data from public.users table
+   */
+  const enrichUserWithProfile = async (authUser: AppUser | null): Promise<AppUser | null> => {
+    if (!authUser) return null;
+
+    try {
+      // Fetch user profile from public.users to get isPremium
+      const { data: profile, error } = await supabase
+        .from("users")
+        .select("is_premium")
+        .eq("id", authUser.id)
+        .single();
+
+      if (error) {
+        console.error("Failed to fetch user profile:", error);
+        return authUser; // Return auth user without premium status if fetch fails
+      }
+
+      // Merge isPremium into auth user
+      return {
+        ...authUser,
+        isPremium: profile?.is_premium ?? false,
+      };
+    } catch (error) {
+      console.error("Error enriching user profile:", error);
+      return authUser;
+    }
+  };
+
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       console.log("🔐 Initial session:", session?.user?.email ?? "No session");
       setSession(session);
-      setUser(session?.user ?? null);
+      const enrichedUser = await enrichUserWithProfile(session?.user ?? null);
+      setUser(enrichedUser);
       setLoading(false);
     });
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("🔐 Auth state changed:", event, "User:", session?.user?.email ?? "No user");
       setSession(session);
-      setUser(session?.user ?? null);
+      const enrichedUser = await enrichUserWithProfile(session?.user ?? null);
+      setUser(enrichedUser);
       setLoading(false);
     });
 

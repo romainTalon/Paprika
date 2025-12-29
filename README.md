@@ -139,13 +139,24 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
   - 4 nouveaux composants modulaires (+800 lignes)
   - Code découplé et maintenable
 
-**Listes de Courses** ✅ (7 décembre 2025) :
-- ✅ GroceryListsScreen - Écran tab avec carte liste active
-  - Affichage liste active avec compteur articles
-  - Barre de progression visuelle (cochés/total)
-  - Création nouvelle liste avec gestion limite freemium (1 max)
+**Listes de Courses** ✅ (7 décembre 2025 - Multi-listes Premium 29 décembre 2025) :
+- ✅ GroceryListsScreen - Écran sélection multi-listes (refonte complète 29 déc)
+  - **FlatList edge-to-edge** : Affichage de toutes les listes (pas seulement l'active)
+  - **GroceryListCard swipeable** : Swipe gauche pour révéler actions (Modifier/Supprimer)
+  - Compteur articles par liste (ex: "5 articles", "Aucun article")
+  - FAB "+" pour création (avec check freemium : 1 max gratuit, illimité premium)
   - Navigation vers détail au tap
   - Empty state si aucune liste
+  - **Premium support** : Users premium peuvent créer plusieurs listes actives
+- ✅ CreateListModal - Modal création/édition liste (174 lignes)
+  - Formulaire simple (nom uniquement)
+  - Mode création vs édition (détecté par prop list)
+  - Validation temps réel
+  - Gestion erreur trigger freemium (affiche alert claire)
+- ✅ SelectGroceryListModal - Modal sélection lors import recette (151 lignes)
+  - Liste des listes actives disponibles
+  - Bouton "+ Créer une nouvelle liste"
+  - Flow : Sélection → Import direct OU Création → Import auto
 - ✅ GroceryListDetailScreen - Vue détail avec catégories (422 lignes)
   - Affichage par sections catégories (🥬 Légumes, 🍎 Fruits, etc.)
   - Stats bar : "X articles (Y cochés)"
@@ -178,19 +189,22 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
   - Export ingrédients ajustés selon portions
   - Confirmation avec compteur ingrédients
   - Feedback succès avec stats (X ajoutés, Y fusionnés)
-- ✅ Hooks TanStack Query complets
+- ✅ Hooks TanStack Query complets (29 déc : multi-listes support)
+  - useGroceryListsWithStats (nouveau) : Fetch toutes les listes avec stats optimisées (2 queries au lieu de N+1)
   - useActiveGroceryList, useGroceryListItems
+  - useCreateGroceryList, useUpdateGroceryList, useDeleteGroceryList (invalidations multiples)
   - useAddGroceryItem (avec fusion doublons)
   - useToggleGroceryItem, useDeleteGroceryItem
   - useClearCheckedItems
-  - useAddIngredientsFromRecipe (bulk export)
-- ✅ Service Layer (GroceryListService) - 578 lignes
+  - useAddIngredientsFromRecipe (bulk export + support listId optionnel)
+- ✅ Service Layer (GroceryListService) - 638 lignes (29 déc)
   - CRUD complet listes + items
+  - **getUserListsWithStats** (nouveau) : Agrégation optimisée stats (itemCount, checkedCount) en 2 requêtes
   - **Fusion intelligente doublons** : normalizeItemName (lowercase, trim, remove accents)
   - addItemWithMerge : détection + addition quantités
-  - addItemsFromRecipe : export en masse avec merge
+  - addItemsFromRecipe : export en masse avec merge + support listId target
   - **Mapping snake_case ↔ camelCase** pour tous les appels Supabase
-  - Support freemium (1 liste active max)
+  - Support freemium (1 liste active max gratuit, illimité premium)
 - ✅ Gestion Gestures & Animations
   - react-native-gesture-handler installé et configuré
   - react-native-reanimated configuré (babel plugin)
