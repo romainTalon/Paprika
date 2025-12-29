@@ -18,7 +18,7 @@ import {
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Text, Button, Container } from "@/components/ui";
-import { BackButton } from "@/components/navigation";
+import { BackButton, AppHeader } from "@/components/navigation";
 import RecipeCard from "@/components/recipe/RecipeCard";
 import { colors, spacing, shadows } from "@/theme";
 import {
@@ -169,52 +169,63 @@ export default function CookbookDetailScreen() {
   // Loading state
   if (isCookbookLoading || isRecipesLoading) {
     return (
-      <Container centered useSafeArea>
-        <BackButton />
-        <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
-        <Text variant="body" color="neutral" style={{ marginTop: spacing.md }}>
-          Chargement...
-        </Text>
-      </Container>
+      <>
+        <AppHeader />
+        <Container centered useSafeArea safeAreaEdges={["bottom"]}>
+          <BackButton />
+          <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
+          <Text variant="body" color="neutral" style={{ marginTop: spacing.md }}>
+            Chargement...
+          </Text>
+        </Container>
+      </>
     );
   }
 
   // Error state
   if (cookbookError || recipesError) {
     return (
-      <Container useSafeArea>
-        <BackButton />
-        <ErrorState
-          error={(cookbookError || recipesError) as Error}
-          onRetry={() => refetch()}
-        />
-      </Container>
+      <>
+        <AppHeader />
+        <Container useSafeArea safeAreaEdges={["bottom"]}>
+          <BackButton />
+          <ErrorState
+            error={(cookbookError || recipesError) as Error}
+            onRetry={() => refetch()}
+          />
+        </Container>
+      </>
     );
   }
 
   // Empty state
   if (!recipes || recipes.length === 0) {
     return (
-      <Container useSafeArea>
-        <BackButton />
-        <View style={styles.header}>
-          <View>
-            <Text variant="h1">{cookbook?.name || "Livre de Recettes"}</Text>
-            <Text variant="bodySmall" color="neutral">
-              0 recette
-            </Text>
+      <>
+        <AppHeader />
+        <Container useSafeArea safeAreaEdges={["bottom"]}>
+          <BackButton />
+          <View style={styles.header}>
+            <View>
+              <Text variant="h1">{cookbook?.name || "Livre de Recettes"}</Text>
+              <Text variant="bodySmall" color="neutral">
+                0 recette
+              </Text>
+            </View>
           </View>
-        </View>
 
-        <EmptyState onCreatePress={handleCreatePress} />
-      </Container>
+          <EmptyState onCreatePress={handleCreatePress} />
+        </Container>
+      </>
     );
   }
 
   return (
-    <Container useSafeArea>
-      <BackButton />
-      <FlatList
+    <>
+      <AppHeader />
+      <Container useSafeArea safeAreaEdges={["bottom"]}>
+        <BackButton />
+        <FlatList
         data={recipes}
         renderItem={renderRecipe}
         keyExtractor={(item) => item.id}
@@ -247,6 +258,7 @@ export default function CookbookDetailScreen() {
         <Text style={styles.fabIcon}>+</Text>
       </TouchableOpacity>
     </Container>
+    </>
   );
 }
 

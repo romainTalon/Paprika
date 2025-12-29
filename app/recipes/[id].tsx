@@ -19,7 +19,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Text, Button } from "@/components/ui";
-import { BackButton } from "@/components/navigation";
+import { BackButton, AppHeader } from "@/components/navigation";
 import { colors, spacing, fontSizes, fontWeights, shadows } from "@/theme";
 import { useRecipe, useToggleFavorite, useDeleteRecipe } from "@/hooks/useRecipes";
 import { useAddIngredientsFromRecipe } from "@/hooks/useGroceryList";
@@ -185,63 +185,72 @@ export default function RecipeDetailScreen() {
   // Loading State
   if (isLoading) {
     return (
-      <SafeAreaView edges={["top"]} style={styles.safeArea}>
-        <View style={styles.container}>
-          <BackButton />
-          <View style={styles.centered}>
-            <Text variant="body" color="neutral">
-              Chargement...
-            </Text>
+      <>
+        <AppHeader />
+        <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
+          <View style={styles.container}>
+            <BackButton />
+            <View style={styles.centered}>
+              <Text variant="body" color="neutral">
+                Chargement...
+              </Text>
+            </View>
           </View>
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </>
     );
   }
 
   // Error State
   if (error) {
     return (
-      <SafeAreaView edges={["top"]} style={styles.safeArea}>
-        <View style={styles.container}>
-          <BackButton />
-          <View style={styles.centered}>
-            <Text variant="h2" style={styles.errorTitle}>
-              Erreur
-            </Text>
-            <Text variant="body" color="neutral" style={styles.errorMessage}>
-              Impossible de charger la recette
-            </Text>
-            <Button variant="primary" onPress={() => refetch()}>
-              Réessayer
-            </Button>
+      <>
+        <AppHeader />
+        <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
+          <View style={styles.container}>
+            <BackButton />
+            <View style={styles.centered}>
+              <Text variant="h2" style={styles.errorTitle}>
+                Erreur
+              </Text>
+              <Text variant="body" color="neutral" style={styles.errorMessage}>
+                Impossible de charger la recette
+              </Text>
+              <Button variant="primary" onPress={() => refetch()}>
+                Réessayer
+              </Button>
+            </View>
           </View>
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </>
     );
   }
 
   // Not Found State
   if (!recipe) {
     return (
-      <SafeAreaView edges={["top"]} style={styles.safeArea}>
-        <View style={styles.container}>
-          <BackButton />
-          <View style={styles.centered}>
-            <Text variant="h1" style={{ fontSize: 64, lineHeight: 72 }}>
-              🔍
-            </Text>
-            <Text variant="h2" style={styles.errorTitle}>
-              Recette introuvable
-            </Text>
-            <Text variant="body" color="neutral" style={styles.errorMessage}>
-              Cette recette n'existe pas ou a été supprimée
-            </Text>
-            <Button variant="primary" onPress={() => router.back()}>
-              Retour
-            </Button>
+      <>
+        <AppHeader />
+        <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
+          <View style={styles.container}>
+            <BackButton />
+            <View style={styles.centered}>
+              <Text variant="h1" style={{ fontSize: 64, lineHeight: 72 }}>
+                🔍
+              </Text>
+              <Text variant="h2" style={styles.errorTitle}>
+                Recette introuvable
+              </Text>
+              <Text variant="body" color="neutral" style={styles.errorMessage}>
+                Cette recette n'existe pas ou a été supprimée
+              </Text>
+              <Button variant="primary" onPress={() => router.back()}>
+                Retour
+              </Button>
+            </View>
           </View>
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </>
     );
   }
 
@@ -263,8 +272,10 @@ export default function RecipeDetailScreen() {
   };
 
   return (
-    <SafeAreaView edges={["top"]} style={styles.safeArea}>
-      <ScrollView
+    <>
+      <AppHeader />
+      <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
+        <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -278,6 +289,13 @@ export default function RecipeDetailScreen() {
             style={styles.coverImage}
             resizeMode="cover"
           />
+        </View>
+
+        {/* Title */}
+        <View style={styles.header}>
+          <Text variant="h1" style={styles.title}>
+            {recipe.title}
+          </Text>
         </View>
 
         {/* Action Icons Bar */}
@@ -329,18 +347,14 @@ export default function RecipeDetailScreen() {
           </View>
         </View>
 
-        {/* Header */}
-        <View style={styles.header}>
-          <Text variant="h1" style={styles.title}>
-            {recipe.title}
-          </Text>
-
-          {recipe.description && (
+        {/* Description */}
+        {recipe.description && (
+          <View style={styles.descriptionContainer}>
             <Text variant="body" color="neutral" style={styles.description}>
               {recipe.description}
             </Text>
-          )}
-        </View>
+          </View>
+        )}
 
         {/* Metadata Bar */}
         <View style={styles.metadataBar}>
@@ -558,6 +572,7 @@ export default function RecipeDetailScreen() {
 
       </ScrollView>
     </SafeAreaView>
+    </>
   );
 }
 
@@ -608,8 +623,8 @@ const styles = StyleSheet.create({
 
   actionsBar: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xs,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm,
     backgroundColor: colors.cream.DEFAULT,
   },
 
@@ -617,12 +632,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.sm,
     alignItems: "center",
-    justifyContent: "flex-end",
+    justifyContent: "flex-start",
   },
 
   header: {
-    padding: spacing.lg,
-    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xs,
   },
 
   title: {
@@ -643,6 +659,11 @@ const styles = StyleSheet.create({
   actionIcon: {
     fontSize: 24,
     lineHeight: 32,
+  },
+
+  descriptionContainer: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
   },
 
   description: {
