@@ -9,8 +9,10 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { RecipeService } from "@/services";
+import { supabase } from "@/lib/supabase";
 import type { ServiceResponse } from "@/types/database";
 import type { RecipeIngredient, RecipeStep } from "@/types/database";
+import type { ImportedRecipeData, ImportStrategy } from "@/types/ai";
 
 /**
  * Recipe data structure
@@ -352,6 +354,143 @@ export function useToggleFavorite() {
       if (data.cookbookId) {
         queryClient.invalidateQueries({
           queryKey: ["cookbook-recipes", data.cookbookId],
+        });
+      }
+    },
+  });
+}
+
+// =============================================================================
+// RECIPE IMPORT HOOKS
+// =============================================================================
+
+/**
+ * Hook to import a recipe from web URL via Edge Function
+ *
+ * This calls the Supabase Edge Function that implements the 3-tier scraping strategy.
+ * The hook returns the imported recipe data WITHOUT saving it to the database.
+ * Use useSaveImportedRecipe() to save the recipe after user preview/edit.
+ *
+ * @returns Mutation function and status
+ *
+ * @example
+ * ```typescript
+ * const importRecipe = useImportRecipe();
+ *
+ * const handleImport = async () => {
+ *   const result = await importRecipe.mutateAsync({
+ *     url: "https://example.com/recipe",
+ *     userId: user.id,
+ *     onProgress: (progress) => console.log(`${progress}%`)
+ *   });
+ *
+ *   // Navigate to preview screen with result.recipe
+ * };
+ * ```
+ */
+export function useImportRecipe() {
+  return useMutation({
+    mutationFn: async (params: {
+      url: string;
+      userId: string;
+      cookbookId?: string;
+      onProgress?: (progress: number) => void;
+    }) => {
+      const { url, userId, cookbookId, onProgress } = params;
+
+      onProgress?.(20); // Starting...
+
+      // Call Edge Function
+      const { data, error } = await supabase.functions.invoke("recipe-import", {
+        body: { url, userId, cookbookId },
+      });
+
+      onProgress?.(80); // Processing...
+
+      if (error) {
+        throw new Error(error.message || "Failed to import recipe");
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || "Import failed");
+      }
+
+      onProgress?.(100); // Done!
+
+      return data as {
+        success: true;
+        recipe: ImportedRecipeData;
+        strategy: ImportStrategy;
+        cost: number;
+        duration: number;
+      };
+    },
+    // No cache invalidation - recipe not saved yet
+  });
+}
+
+/**
+ * Hook to save imported recipe to database
+ *
+ * After importing a recipe via useImportRecipe(), the user can preview and edit
+ * the recipe data. This hook saves the final recipe to the database.
+ *
+ * @returns Mutation function and status
+ *
+ * @example
+ * ```typescript
+ * const saveRecipe = useSaveImportedRecipe();
+ *
+ * const handleSave = async () => {
+ *   const recipe = await saveRecipe.mutateAsync({
+ *     userId: user.id,
+ *     cookbookId: selectedCookbookId,
+ *     recipe: importedRecipeData,
+ *   });
+ *
+ *   router.push(`/recipes/${recipe.id}`);
+ * };
+ * ```
+ */
+export function useSaveImportedRecipe() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: {
+      userId: string;
+      cookbookId?: string;
+      recipe: ImportedRecipeData;
+    }) => {
+      const { userId, cookbookId, recipe } = params;
+
+      const { data, error } = await RecipeService.createRecipe(userId, {
+        title: recipe.title,
+        description: recipe.description,
+        cookbookId: cookbookId,
+        coverImageUrl: recipe.coverImageUrl,
+        servings: recipe.servings,
+        prepTime: recipe.prepTime,
+        cookTime: recipe.cookTime,
+        difficulty: recipe.difficulty,
+        tags: recipe.tags,
+        ingredients: recipe.ingredients,
+        steps: recipe.steps,
+        importSource: recipe.importSource,
+        importUrl: recipe.importUrl,
+      });
+
+      if (error) throw error;
+      if (!data) throw new Error("Failed to save recipe");
+
+      return data as Recipe;
+    },
+    onSuccess: (data, variables) => {
+      // Invalidate recipes cache
+      queryClient.invalidateQueries({ queryKey: ["recipes", variables.userId] });
+      // Invalidate cookbook recipes cache if assigned to cookbook
+      if (variables.cookbookId) {
+        queryClient.invalidateQueries({
+          queryKey: ["cookbook-recipes", variables.cookbookId],
         });
       }
     },

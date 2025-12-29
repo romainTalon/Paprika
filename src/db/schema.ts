@@ -11,7 +11,7 @@ import { sql } from "drizzle-orm";
 // =============================================================================
 
 export const users = pgTable("users", {
-  id: uuid("id").primaryKey().references(() => sql`auth.users(id)`, { onDelete: "cascade" }),
+  id: uuid("id").primaryKey(), // FK to auth.users(id) defined in SQL schema
   email: text("email").notNull().unique(),
   fullName: text("full_name"),
   avatarUrl: text("avatar_url"),

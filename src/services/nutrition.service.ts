@@ -137,7 +137,7 @@ export class NutritionService {
 
         if (nutrition) {
           // Convert ingredient quantity to grams
-          const grams = this.convertToGrams(ingredient.quantity, ingredient.unit);
+          const grams = this.convertToGrams(ingredient.quantity, ingredient.unit || "g");
 
           // Calculate nutrition for this quantity
           const factor = grams / 100; // OpenFoodFacts data is per 100g

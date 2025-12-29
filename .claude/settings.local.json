@@ -56,7 +56,8 @@
       "Bash(powershell -Command \"Get-Content ''C:\\Repositories\\Paprika\\app\\(tabs)\\meal-plan.tsx'' | Select-String ''export'' | Select-Object -Last 5\")",
       "Bash(npm uninstall:*)",
       "Bash(powershell:*)",
-      "Bash(npx expo install:*)"
+      "Bash(npx expo install:*)",
+      "Bash(Select-Object -First 30)"
     ],
     "deny": [],
     "ask": []
