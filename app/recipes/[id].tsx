@@ -280,21 +280,60 @@ export default function RecipeDetailScreen() {
           />
         </View>
 
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.titleRow}>
-            <Text variant="h1" style={styles.title}>
-              {recipe.title}
-            </Text>
+        {/* Action Icons Bar */}
+        <View style={styles.actionsBar}>
+          <View style={styles.actionsRow}>
+            {/* Favorite */}
             <TouchableOpacity
               onPress={handleFavoriteToggle}
-              style={styles.favoriteButton}
+              style={styles.actionButton}
               accessibilityRole="button"
               accessibilityLabel={recipe.isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
             >
-              <Text style={styles.favoriteIcon}>{recipe.isFavorite ? "❤️" : "🤍"}</Text>
+              <Text style={styles.actionIcon}>{recipe.isFavorite ? "❤️" : "🤍"}</Text>
+            </TouchableOpacity>
+
+            {/* Grocery List (conditional) */}
+            {adjustedIngredients.length > 0 && (
+              <TouchableOpacity
+                onPress={handleAddToGroceryList}
+                disabled={addToGroceryList.isPending}
+                style={[styles.actionButton, addToGroceryList.isPending && styles.actionButtonDisabled]}
+                accessibilityRole="button"
+                accessibilityLabel="Ajouter les ingrédients aux courses"
+              >
+                <Text style={styles.actionIcon}>🛒</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Edit */}
+            <TouchableOpacity
+              onPress={handleEdit}
+              style={styles.actionButton}
+              accessibilityRole="button"
+              accessibilityLabel="Modifier la recette"
+            >
+              <Text style={styles.actionIcon}>✏️</Text>
+            </TouchableOpacity>
+
+            {/* Delete */}
+            <TouchableOpacity
+              onPress={handleDelete}
+              disabled={deleteRecipe.isPending}
+              style={[styles.actionButton, deleteRecipe.isPending && styles.actionButtonDisabled]}
+              accessibilityRole="button"
+              accessibilityLabel="Supprimer la recette"
+            >
+              <Text style={styles.actionIcon}>🗑️</Text>
             </TouchableOpacity>
           </View>
+        </View>
+
+        {/* Header */}
+        <View style={styles.header}>
+          <Text variant="h1" style={styles.title}>
+            {recipe.title}
+          </Text>
 
           {recipe.description && (
             <Text variant="body" color="neutral" style={styles.description}>
@@ -517,40 +556,7 @@ export default function RecipeDetailScreen() {
           </View>
         )}
 
-        {/* Footer Spacer */}
-        <View style={styles.footerSpacer} />
       </ScrollView>
-
-      {/* Sticky Footer Actions */}
-      <View style={styles.footer}>
-        {adjustedIngredients.length > 0 && (
-          <Button
-            variant="outline"
-            onPress={handleAddToGroceryList}
-            loading={addToGroceryList.isPending}
-            style={styles.footerButton}
-          >
-            🛒 Courses
-          </Button>
-        )}
-
-        <Button
-          variant="outline"
-          onPress={handleEdit}
-          style={styles.footerButton}
-        >
-          Modifier
-        </Button>
-
-        <Button
-          variant="primary"
-          onPress={handleDelete}
-          loading={deleteRecipe.isPending}
-          style={styles.footerButton}
-        >
-          Supprimer
-        </Button>
-      </View>
     </SafeAreaView>
   );
 }
@@ -568,7 +574,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100, // Space for footer
+    paddingBottom: spacing.xl, // Normal padding
   },
 
   centered: {
@@ -600,33 +606,43 @@ const styles = StyleSheet.create({
     height: "100%",
   },
 
+  actionsBar: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
+    backgroundColor: colors.cream.DEFAULT,
+  },
+
+  actionsRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+
   header: {
     padding: spacing.lg,
     gap: spacing.sm,
   },
 
-  titleRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: spacing.md,
-  },
-
   title: {
-    flex: 1,
     color: colors.warm.brown,
   },
 
-  favoriteButton: {
+  actionButton: {
     width: 44,
     height: 44,
     justifyContent: "center",
     alignItems: "center",
   },
 
-  favoriteIcon: {
-    fontSize: 28,
-    lineHeight: 36,
+  actionButtonDisabled: {
+    opacity: 0.4,
+  },
+
+  actionIcon: {
+    fontSize: 24,
+    lineHeight: 32,
   },
 
   description: {
@@ -799,23 +815,5 @@ const styles = StyleSheet.create({
   nutritionValue: {
     fontWeight: fontWeights.semibold as any,
     color: colors.warm.brown,
-  },
-
-  footerSpacer: {
-    height: spacing.xl,
-  },
-
-  footer: {
-    flexDirection: "row",
-    gap: spacing.md,
-    padding: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.gray[200],
-    backgroundColor: colors.white,
-    ...shadows.lg,
-  },
-
-  footerButton: {
-    flex: 1,
   },
 });

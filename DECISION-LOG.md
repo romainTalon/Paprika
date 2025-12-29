@@ -2087,5 +2087,188 @@ const handleEdit = useCallback(() => {
 
 ---
 
+## 2025-12-29 - Refactoring UI Fiche Recette : Actions Bar et Suppression Footer
+
+**Contexte** : La fiche recette (`app/recipes/[id].tsx`) présentait plusieurs problèmes UX :
+- **Footer sticky encombrant** : Une barre fixe en bas avec 3 gros boutons texte ("🛒 Courses", "Modifier", "Supprimer") occupait ~80px verticaux et bloquait la visibilité du contenu
+- **Texte débordant** : Les boutons avec `flex: 1` ne laissaient pas assez d'espace pour le texte, causant des retours à la ligne non désirés
+- **Titre compressé** : Dans une première itération où les icônes étaient à côté du titre, celui-ci était compressé sur 2+ lignes même pour des titres courts
+- **Manque de cohérence visuelle** : Fond blanc des boutons créait une rupture visuelle avec le reste de la page (fond crème)
+
+**Décision** : **Supprimer le footer sticky et déplacer les actions dans une barre dédiée sous l'image de couverture avec icônes uniquement**
+
+**Implémentation** :
+
+### 1. Structure Layout
+
+**Avant** :
+```tsx
+[Image de couverture]
+[Header : Titre + Favori ❤️]
+[Description]
+[Metadata bar]
+[Ingrédients/Étapes/Nutrition]
+[Footer sticky : 🛒 Courses | Modifier | Supprimer]  ← 80px fixes en bas
+```
+
+**Après** :
+```tsx
+[Image de couverture]
+[Actions Bar : ❤️ 🛒 ✏️ 🗑️ alignées à droite]  ← Nouveau
+[Header : Titre complet]
+[Description]
+[Metadata bar]
+[Ingrédients/Étapes/Nutrition]
+[Fin naturelle du scroll]  ← Footer supprimé
+```
+
+### 2. Actions Bar - Code
+
+**Nouveau conteneur** (lignes 283-330) :
+```tsx
+{/* Action Icons Bar */}
+<View style={styles.actionsBar}>
+  <View style={styles.actionsRow}>
+    {/* Favorite ❤️ */}
+    <TouchableOpacity onPress={handleFavoriteToggle} style={styles.actionButton}>
+      <Text style={styles.actionIcon}>{recipe.isFavorite ? "❤️" : "🤍"}</Text>
+    </TouchableOpacity>
+
+    {/* Grocery 🛒 - Conditionnel */}
+    {adjustedIngredients.length > 0 && (
+      <TouchableOpacity
+        onPress={handleAddToGroceryList}
+        disabled={addToGroceryList.isPending}
+        style={[styles.actionButton, addToGroceryList.isPending && styles.actionButtonDisabled]}
+      >
+        <Text style={styles.actionIcon}>🛒</Text>
+      </TouchableOpacity>
+    )}
+
+    {/* Edit ✏️ */}
+    <TouchableOpacity onPress={handleEdit} style={styles.actionButton}>
+      <Text style={styles.actionIcon}>✏️</Text>
+    </TouchableOpacity>
+
+    {/* Delete 🗑️ */}
+    <TouchableOpacity
+      onPress={handleDelete}
+      disabled={deleteRecipe.isPending}
+      style={[styles.actionButton, deleteRecipe.isPending && styles.actionButtonDisabled]}
+    >
+      <Text style={styles.actionIcon}>🗑️</Text>
+    </TouchableOpacity>
+  </View>
+</View>
+```
+
+### 3. Styles
+
+**Actions Bar** :
+```typescript
+actionsBar: {
+  paddingHorizontal: spacing.lg,
+  paddingTop: spacing.sm,      // 8px
+  paddingBottom: spacing.xs,   // 4px - Espacement réduit avec titre
+  backgroundColor: colors.cream.DEFAULT,  // Cohérence avec page
+},
+
+actionsRow: {
+  flexDirection: "row",
+  gap: spacing.sm,              // 8px entre icônes
+  alignItems: "center",
+  justifyContent: "flex-end",   // Alignement à droite
+},
+
+actionButton: {
+  width: 44,
+  height: 44,
+  justifyContent: "center",
+  alignItems: "center",
+  // Pas de backgroundColor ni borderRadius → transparent
+},
+
+actionIcon: {
+  fontSize: 24,
+  lineHeight: 32,
+},
+```
+
+**Supprimé** :
+```typescript
+// Plus de footer sticky
+footer: { ... }
+footerSpacer: { ... }
+footerIconButton: { ... }
+footerIconButtonDisabled: { ... }
+footerIcon: { ... }
+```
+
+### 4. Ordre des Icônes
+
+**❤️ 🛒 ✏️ 🗑️** (gauche → droite)
+
+**Justification** :
+1. **❤️ Favori** : Action fréquente, positive, non-destructive
+2. **🛒 Courses** : Action constructive, usage fréquent (conditionnel)
+3. **✏️ Modifier** : Action neutre, usage modéré
+4. **🗑️ Supprimer** : Action destructive en dernier (distance pour éviter clics accidentels)
+
+**Raisons** :
+- **Gain d'espace vertical** : Libère ~80px (footer) pour afficher plus d'ingrédients/étapes
+- **Titre non compressé** : Le titre dispose de toute la largeur, pas de conflit avec les icônes
+- **Actions toujours visibles** : Pas besoin de scroller en bas pour accéder aux actions
+- **Icônes universelles** : 🛒 ✏️ 🗑️ sont compris internationalement
+- **Design épuré** : Icônes transparentes sur fond crème, cohérence visuelle totale
+- **Scroll fluide** : Plus de barre sticky qui occulte le contenu
+
+**Alternatives considérées** :
+
+1. **Icônes dans le header à côté du titre (Option initiale)** :
+   - ❌ Rejetée : Titre compressé sur 2+ lignes même pour titres courts
+   - ❌ Conflit d'espace horizontal sur mobile (360px - 32px padding = 328px)
+   - ❌ Avec 4 icônes (200px), il reste seulement 128px pour le titre
+
+2. **Footer avec icônes uniquement** :
+   - ❌ Rejetée : Garde le problème du footer sticky qui cache le contenu
+   - ❌ N'apporte pas de gain d'espace vertical
+
+3. **Action bar après description** :
+   - ❌ Rejetée : Nécessite scroll pour accéder aux actions
+   - ❌ Incohérent visuellement (barre au milieu du contenu)
+
+4. **Menu overflow (3 points)** :
+   - ❌ Rejetée : Nécessite 2 taps au lieu d'1
+   - ❌ Cache les actions disponibles
+   - ❌ Moins accessible
+
+**Conséquences** :
+- ✅ **+80px d'espace vertical** : Plus d'ingrédients/étapes visibles sans scroll
+- ✅ **Titre lisible** : Peut s'étendre naturellement sur plusieurs lignes si nécessaire
+- ✅ **Actions accessibles immédiatement** : Visibles dès le chargement de la page
+- ✅ **UX cohérente** : Pattern mobile standard (actions en haut)
+- ✅ **Design unifié** : Fond crème partout, pas de rupture visuelle
+- ✅ **Maintenance simple** : Moins de composants, moins de styles
+- ✅ **Performance** : Suppression du footer = moins de renders (pas de sticky position)
+
+**Statut** : ✅ Validée et implémentée
+
+**Fichiers modifiés** :
+- `app/recipes/[id].tsx` :
+  - Lignes 283-330 : Ajout Actions Bar sous l'image
+  - Lignes 332-343 : Simplification Header (titre seul)
+  - Lignes 559 : Suppression footer sticky complet
+  - Lignes 577 : Réduction `paddingBottom` de 100px → `spacing.xl`
+  - Lignes 609-620 : Styles `actionsBar` et `actionsRow`
+  - Lignes 632-643 : Styles `actionButton` et `actionIcon` (transparents)
+  - Suppression : `titleRow`, `favoriteButton`, `favoriteIcon`, `footer*` styles
+
+**Métriques** :
+- **Espace gagné** : ~80px verticaux (footer padding + border + shadow)
+- **Largeur Actions Bar** : ~200px (4 icônes × 44px + 3 gaps × 8px)
+- **Espacement icônes ↔ titre** : 12px total (8px top + 4px bottom)
+
+---
+
 **Maintenu par** : Équipe Paprika
 **Dernière mise à jour** : 29 décembre 2025
