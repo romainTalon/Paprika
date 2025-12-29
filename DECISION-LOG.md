@@ -1820,6 +1820,123 @@ Stack Navigation
 
 ---
 
+## 2025-12-29 - Navigation Unifiée avec AppHeader
+
+**Contexte** : Les écrans de détail (cookbook, recipe, grocery list) utilisaient chacun leur propre header personnalisé avec SafeAreaView. Cela créait une expérience incohérente par rapport aux écrans à onglets qui utilisent tous le composant AppHeader avec le logo "Paprika" et le bouton de profil.
+
+**Décision** : **Intégrer AppHeader à tous les écrans de détail pour une navigation cohérente**
+
+**Implémentation** :
+1. **Ajout de AppHeader** à 3 écrans :
+   - `app/cookbooks/[id].tsx` - Liste des recettes d'un cookbook
+   - `app/recipes/[id].tsx` - Fiche détaillée d'une recette
+   - `app/grocery-lists/[id].tsx` - Liste de courses détaillée
+
+2. **Pattern appliqué** :
+   ```tsx
+   // AVANT
+   <SafeAreaView edges={["top"]} style={styles.safeArea}>
+     <Content />
+   </SafeAreaView>
+
+   // APRÈS
+   <>
+     <AppHeader />
+     <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
+       <Content />
+     </SafeAreaView>
+   </>
+   ```
+
+3. **Gestion du Safe Area** :
+   - AppHeader gère le safe area supérieur (`edges={["top"]}`)
+   - Le contenu gère uniquement le safe area inférieur (`edges={["bottom"]}`)
+   - Évite le double padding au sommet
+
+**Raisons** :
+- ✅ **Cohérence visuelle** : Tous les écrans ont le même header avec logo et profil
+- ✅ **Navigation intuitive** : L'utilisateur reconnaît immédiatement le header Paprika
+- ✅ **Accès rapide au profil** : Disponible depuis n'importe quel écran de détail
+- ✅ **Design unifié** : Branding cohérent dans toute l'application
+
+**Conséquences** :
+- ✅ Expérience utilisateur homogène
+- ✅ Réduction de la duplication de code (headers personnalisés supprimés)
+- ✅ Meilleure reconnaissance de la marque (logo "Paprika" toujours visible)
+
+**Statut** : ✅ Validée et implémentée
+
+---
+
+## 2025-12-29 - Réorganisation Layout Fiche Recette
+
+**Contexte** : Suite à l'ajout du AppHeader, la fiche recette avait une disposition sous-optimale :
+- Les icônes d'action (❤️ 🛒 ✏️ 🗑️) étaient positionnées avant le titre
+- Les icônes étaient alignées à droite
+- Trop d'espace entre le titre et les icônes
+- La description était incluse dans le même bloc que le titre
+
+**Décision** : **Réorganiser la hiérarchie visuelle pour prioriser le titre et optimiser les espacements**
+
+**Implémentation** :
+
+1. **Nouvel ordre des éléments** :
+   ```
+   1. Image de couverture
+   2. Titre (h1)
+   3. Icônes d'action (❤️ 🛒 ✏️ 🗑️)
+   4. Description
+   5. Barre de métadonnées (portions, temps)
+   ```
+
+2. **Alignement des icônes** :
+   - Changé de `justifyContent: "flex-end"` à `justifyContent: "flex-start"`
+   - Les icônes sont maintenant alignées à gauche, cohérentes avec le titre
+
+3. **Optimisation des espacements** :
+   ```typescript
+   header: {
+     paddingHorizontal: spacing.lg,
+     paddingTop: spacing.lg,
+     paddingBottom: spacing.xs,    // Réduit pour rapprocher des icônes
+   },
+
+   actionsBar: {
+     paddingHorizontal: spacing.lg,
+     paddingTop: spacing.xs,        // Réduit pour rapprocher du titre
+     paddingBottom: spacing.sm,
+   },
+
+   descriptionContainer: {
+     paddingHorizontal: spacing.lg,
+     paddingBottom: spacing.md,
+   },
+   ```
+
+**Raisons** :
+- ✅ **Hiérarchie visuelle claire** : Titre → Actions → Description suit la logique de lecture
+- ✅ **Titre prioritaire** : Le nom de la recette est la première chose visible après l'image
+- ✅ **Actions accessibles** : Icônes proches du titre, faciles à repérer
+- ✅ **Alignement cohérent** : Icônes alignées à gauche comme le titre
+- ✅ **Meilleure densité** : Moins d'espace vide, plus de contenu visible
+
+**Alternatives considérées** :
+- **Icônes dans le header à droite du titre** : Rejetée car compressait le titre sur petit écran
+- **Footer sticky avec actions** : Rejetée car masquait du contenu et créait de la redondance
+
+**Conséquences** :
+- ✅ Meilleure lisibilité du titre
+- ✅ Actions plus intuitives (alignement gauche = primaires)
+- ✅ Utilisation optimisée de l'espace vertical
+- ✅ Flux de lecture naturel (haut → bas, gauche → droite)
+
+**Statut** : ✅ Validée et implémentée
+
+**Fichiers modifiés** :
+- `app/recipes/[id].tsx` - Réorganisation JSX + ajustement styles
+
+---
+
 ## 2025-12-29 - Fonctionnalité édition d'items listes de courses
 
 **Contexte** : Les utilisateurs pouvaient uniquement ajouter et supprimer des items de liste de courses, mais pas les modifier (nom, quantité, unité, catégorie).
