@@ -19,7 +19,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Text, Button } from "@/components/ui";
-import { BackButton, AppHeader } from "@/components/navigation";
+import { AppHeader } from "@/components/navigation";
 import { colors, spacing, fontSizes, fontWeights, shadows } from "@/theme";
 import { useRecipe, useToggleFavorite, useDeleteRecipe } from "@/hooks/useRecipes";
 import { useAddIngredientsFromRecipe } from "@/hooks/useGroceryList";
@@ -186,10 +186,9 @@ export default function RecipeDetailScreen() {
   if (isLoading) {
     return (
       <>
-        <AppHeader />
+        <AppHeader showBackButton />
         <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
           <View style={styles.container}>
-            <BackButton />
             <View style={styles.centered}>
               <Text variant="body" color="neutral">
                 Chargement...
@@ -205,10 +204,9 @@ export default function RecipeDetailScreen() {
   if (error) {
     return (
       <>
-        <AppHeader />
+        <AppHeader showBackButton />
         <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
           <View style={styles.container}>
-            <BackButton />
             <View style={styles.centered}>
               <Text variant="h2" style={styles.errorTitle}>
                 Erreur
@@ -230,10 +228,9 @@ export default function RecipeDetailScreen() {
   if (!recipe) {
     return (
       <>
-        <AppHeader />
+        <AppHeader showBackButton />
         <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
           <View style={styles.container}>
-            <BackButton />
             <View style={styles.centered}>
               <Text variant="h1" style={{ fontSize: 64, lineHeight: 72 }}>
                 🔍
@@ -273,14 +270,13 @@ export default function RecipeDetailScreen() {
 
   return (
     <>
-      <AppHeader />
+      <AppHeader showBackButton />
       <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
         <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <BackButton />
 
         {/* Cover Image */}
         <View style={styles.coverContainer}>

@@ -1937,6 +1937,119 @@ Stack Navigation
 
 ---
 
+## 2025-12-29 - Intégration Bouton Retour dans AppHeader
+
+**Contexte** : Après l'ajout du AppHeader aux écrans de détail, chaque écran avait deux composants de navigation séparés :
+- `<AppHeader />` - Logo "Paprika" + bouton profil
+- `<BackButton />` - Bouton retour positionné sous le header
+
+Cette séparation créait :
+- Incohérence visuelle (deux "headers" distincts)
+- Code dupliqué (BackButton importé dans chaque écran)
+- Gestion manuelle du spacing entre les deux composants
+- Design moins professionnel
+
+**Décision** : **Intégrer le bouton retour directement dans le AppHeader comme composant optionnel**
+
+**Implémentation** :
+
+1. **Modification AppHeader.tsx** :
+   ```tsx
+   interface AppHeaderProps {
+     showBackButton?: boolean;
+     onBackPress?: () => void;
+   }
+
+   export function AppHeader({ showBackButton = false, onBackPress }: AppHeaderProps) {
+     // ...
+     return (
+       <SafeAreaView edges={["top"]}>
+         <View style={styles.container}>
+           {/* Back Button (conditionnel) */}
+           {showBackButton && (
+             <TouchableOpacity onPress={handleBackPress}>
+               <Text style={styles.backText}>←</Text>
+             </TouchableOpacity>
+           )}
+
+           {/* Logo "Paprika" */}
+           <View style={styles.titleContainer}>
+             <Text style={styles.logo}>Paprika</Text>
+           </View>
+
+           {/* Avatar Profil */}
+           <TouchableOpacity onPress={handleProfilePress}>
+             {/* ... */}
+           </TouchableOpacity>
+         </View>
+       </SafeAreaView>
+     );
+   }
+   ```
+
+2. **Mise à jour des écrans de détail** :
+   ```tsx
+   // AVANT
+   <>
+     <AppHeader />
+     <Container>
+       <BackButton />
+       <Content />
+     </Container>
+   </>
+
+   // APRÈS
+   <>
+     <AppHeader showBackButton />
+     <Container>
+       <Content />
+     </Container>
+   </>
+   ```
+
+3. **Nettoyage** :
+   - Suppression de l'import `BackButton` dans les 3 écrans
+   - Suppression du header personnalisé dans grocery-lists (était redondant)
+   - Réduction du code de ~15 lignes par écran
+
+**Structure visuelle finale** :
+```
+┌─────────────────────────────────────┐
+│  ← Retour  |  Paprika  |  Avatar   │ ← AppHeader unifié
+├─────────────────────────────────────┤
+│                                     │
+│   Contenu de l'écran               │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+**Raisons** :
+- ✅ **Cohérence totale** : Un seul composant header sur tous les écrans
+- ✅ **DRY (Don't Repeat Yourself)** : Pas de duplication du bouton retour
+- ✅ **Design professionnel** : Bouton retour toujours au même endroit
+- ✅ **Maintenance facilitée** : Changement dans AppHeader = impact partout
+- ✅ **Code simplifié** : Moins de composants à gérer par écran
+
+**Alternatives considérées** :
+- **Bouton retour sous le header** : Rejetée car créait une séparation visuelle inutile
+- **Header différent par écran** : Rejetée car incohérent et difficile à maintenir
+
+**Conséquences** :
+- ✅ Navigation plus intuitive (position fixe du bouton retour)
+- ✅ Branding renforcé (logo "Paprika" toujours visible)
+- ✅ Codebase allégée (~45 lignes supprimées au total)
+- ✅ Composant AppHeader plus flexible et réutilisable
+
+**Statut** : ✅ Validée et implémentée
+
+**Fichiers modifiés** :
+- `src/components/navigation/AppHeader.tsx` - Ajout props showBackButton + onBackPress
+- `app/cookbooks/[id].tsx` - Suppression BackButton, utilisation AppHeader showBackButton
+- `app/recipes/[id].tsx` - Suppression BackButton, utilisation AppHeader showBackButton
+- `app/grocery-lists/[id].tsx` - Suppression BackButton + header personnalisé, utilisation AppHeader showBackButton
+
+---
+
 ## 2025-12-29 - Fonctionnalité édition d'items listes de courses
 
 **Contexte** : Les utilisateurs pouvaient uniquement ajouter et supprimer des items de liste de courses, mais pas les modifier (nom, quantité, unité, catégorie).

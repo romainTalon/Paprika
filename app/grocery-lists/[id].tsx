@@ -18,7 +18,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
 import { Text, Button } from "@/components/ui";
-import { BackButton, AppHeader } from "@/components/navigation";
+import { AppHeader } from "@/components/navigation";
 import { CategorySection, AddItemModal, EditItemModal } from "@/components/grocery";
 import { colors, spacing, shadows } from "@/theme";
 import { useAuth } from "@/hooks/useAuth";
@@ -163,15 +163,8 @@ export default function GroceryListDetailScreen() {
   if (isLoading) {
     return (
       <>
-        <AppHeader />
+        <AppHeader showBackButton />
         <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
-          <View style={styles.header}>
-            <BackButton />
-            <Text variant="h2" style={styles.headerTitle}>
-              Liste de courses
-            </Text>
-            <View style={styles.headerSpacer} />
-          </View>
           <View style={styles.centered}>
             <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
             <Text variant="body" color="neutral" style={styles.loadingText}>
@@ -187,15 +180,8 @@ export default function GroceryListDetailScreen() {
   if (error) {
     return (
       <>
-        <AppHeader />
+        <AppHeader showBackButton />
         <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
-          <View style={styles.header}>
-            <BackButton />
-            <Text variant="h2" style={styles.headerTitle}>
-              Liste de courses
-            </Text>
-            <View style={styles.headerSpacer} />
-          </View>
           <View style={styles.centered}>
             <Text variant="h1" style={styles.errorEmoji}>
               😕
@@ -220,16 +206,8 @@ export default function GroceryListDetailScreen() {
 
   return (
     <>
-      <AppHeader />
+      <AppHeader showBackButton />
       <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
-      {/* Header */}
-      <View style={styles.header}>
-        <BackButton />
-        <Text variant="h2" style={styles.headerTitle}>
-          Liste de courses
-        </Text>
-        <View style={styles.headerSpacer} />
-      </View>
 
       {/* Stats Bar */}
       {!isEmpty && (

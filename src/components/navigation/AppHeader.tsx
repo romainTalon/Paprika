@@ -2,6 +2,7 @@
  * App Header Component
  *
  * Custom header with logo and profile icon
+ * Optional back button for detail screens
  */
 
 import React from "react";
@@ -12,16 +13,43 @@ import { Text } from "@/components/ui";
 import { colors, spacing, fontSizes } from "@/theme";
 import { useAuth } from "@/hooks/useAuth";
 
-export function AppHeader() {
+interface AppHeaderProps {
+  /** Show back button on the left */
+  showBackButton?: boolean;
+  /** Custom back button handler (default: router.back()) */
+  onBackPress?: () => void;
+}
+
+export function AppHeader({ showBackButton = false, onBackPress }: AppHeaderProps) {
   const { user } = useAuth();
 
   const handleProfilePress = () => {
     router.push("/settings");
   };
 
+  const handleBackPress = () => {
+    if (onBackPress) {
+      onBackPress();
+    } else {
+      router.back();
+    }
+  };
+
   return (
     <SafeAreaView edges={["top"]} style={styles.safeArea}>
       <View style={styles.container}>
+        {/* Back Button (optional) */}
+        {showBackButton && (
+          <TouchableOpacity
+            onPress={handleBackPress}
+            style={styles.backButton}
+            accessibilityLabel="Retour"
+            accessibilityRole="button"
+          >
+            <Text style={styles.backText}>←</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Logo/Title */}
         <View style={styles.titleContainer}>
           <Text style={styles.logo}>Paprika</Text>
@@ -65,6 +93,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cream.DEFAULT,
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[200],
+  },
+  backButton: {
+    paddingRight: spacing.md,
+  },
+  backText: {
+    fontSize: fontSizes["2xl"],
+    color: colors.primary.DEFAULT,
+    fontWeight: "600",
   },
   titleContainer: {
     flex: 1,
