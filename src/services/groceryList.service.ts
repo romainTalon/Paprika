@@ -12,7 +12,7 @@ import type {
   ServiceResponse,
   RecipeIngredient,
 } from "@/types";
-import { DEFAULT_CATEGORY_ID } from "@/constants/categories";
+import { DEFAULT_CATEGORY_ID, getCategoryDisplay } from "@/constants/categories";
 
 export class GroceryListService {
   // =============================================================================
@@ -300,12 +300,30 @@ export class GroceryListService {
    */
   static async updateItem(
     itemId: string,
-    updates: Partial<Omit<GroceryItem, "id" | "groceryListId" | "createdAt">>
+    updates: {
+      name?: string;
+      quantity?: string | null;
+      unit?: string | null;
+      category?: string;
+      imageUrl?: string | null;
+      isChecked?: boolean;
+      notes?: string | null;
+    }
   ): Promise<ServiceResponse<GroceryItem>> {
     try {
+      // Map camelCase to snake_case for database
+      const dbUpdates: any = {};
+      if (updates.name !== undefined) dbUpdates.name = updates.name;
+      if (updates.quantity !== undefined) dbUpdates.quantity = updates.quantity;
+      if (updates.unit !== undefined) dbUpdates.unit = updates.unit;
+      if (updates.category !== undefined) dbUpdates.category = updates.category;
+      if (updates.imageUrl !== undefined) dbUpdates.image_url = updates.imageUrl;
+      if (updates.isChecked !== undefined) dbUpdates.is_checked = updates.isChecked;
+      if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+
       const { data, error } = await supabase
         .from("grocery_items")
-        .update(updates)
+        .update(dbUpdates)
         .eq("id", itemId)
         .select()
         .single();
@@ -512,7 +530,7 @@ export class GroceryListService {
 
       for (const ingredient of ingredients) {
         const normalizedName = this.normalizeItemName(ingredient.name);
-        const itemCategory = category || DEFAULT_CATEGORY_ID;
+        const itemCategory = category || getCategoryDisplay(DEFAULT_CATEGORY_ID);
 
         // Check if item already exists
         const { data: existingItems } = await supabase

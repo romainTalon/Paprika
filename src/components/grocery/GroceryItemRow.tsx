@@ -16,9 +16,10 @@ interface GroceryItemRowProps {
   item: GroceryItem;
   onToggle: (itemId: string) => void;
   onDelete: (itemId: string) => void;
+  onEdit: (item: GroceryItem) => void;
 }
 
-export function GroceryItemRow({ item, onToggle, onDelete }: GroceryItemRowProps) {
+export function GroceryItemRow({ item, onToggle, onDelete, onEdit }: GroceryItemRowProps) {
   const swipeableRef = useRef<Swipeable>(null);
 
   const handleToggle = useCallback(() => {
@@ -29,6 +30,11 @@ export function GroceryItemRow({ item, onToggle, onDelete }: GroceryItemRowProps
     swipeableRef.current?.close();
     onDelete(item.id);
   }, [item.id, onDelete]);
+
+  const handleEdit = useCallback(() => {
+    swipeableRef.current?.close();
+    onEdit(item);
+  }, [item, onEdit]);
 
   // Format quantity display
   const quantityDisplay = (() => {
@@ -42,32 +48,44 @@ export function GroceryItemRow({ item, onToggle, onDelete }: GroceryItemRowProps
     return `${qty} ${unit}`.trim();
   })();
 
-  // Render right action (delete button)
+  // Render right actions (edit and delete buttons)
   const renderRightActions = (
     progress: Animated.AnimatedInterpolation<number>,
     dragX: Animated.AnimatedInterpolation<number>
   ) => {
     const translateX = dragX.interpolate({
-      inputRange: [-80, 0],
-      outputRange: [0, 80],
+      inputRange: [-160, 0],
+      outputRange: [0, 160],
       extrapolate: "clamp",
     });
 
     return (
       <Animated.View
         style={[
-          styles.deleteAction,
+          styles.actionsContainer,
           { transform: [{ translateX }] },
         ]}
       >
+        {/* Edit Button */}
         <TouchableOpacity
-          style={styles.deleteButton}
+          style={styles.editAction}
+          onPress={handleEdit}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Modifier l'article"
+        >
+          <Text style={styles.actionText}>Modifier</Text>
+        </TouchableOpacity>
+
+        {/* Delete Button */}
+        <TouchableOpacity
+          style={styles.deleteAction}
           onPress={handleDelete}
           activeOpacity={0.8}
           accessibilityRole="button"
           accessibilityLabel="Supprimer l'article"
         >
-          <Text style={styles.deleteText}>Supprimer</Text>
+          <Text style={styles.actionText}>Supprimer</Text>
         </TouchableOpacity>
       </Animated.View>
     );
@@ -77,7 +95,7 @@ export function GroceryItemRow({ item, onToggle, onDelete }: GroceryItemRowProps
     <Swipeable
       ref={swipeableRef}
       renderRightActions={renderRightActions}
-      rightThreshold={40}
+      rightThreshold={80}
       overshootRight={false}
     >
       <TouchableOpacity
@@ -98,19 +116,18 @@ export function GroceryItemRow({ item, onToggle, onDelete }: GroceryItemRowProps
           <Text
             variant="body"
             style={[styles.name, item.isChecked && styles.nameChecked]}
-            numberOfLines={2}
+            numberOfLines={1}
           >
             {item.name}
+            {quantityDisplay && (
+              <Text
+                variant="bodySmall"
+                style={[styles.quantity, item.isChecked && styles.quantityChecked]}
+              >
+                {" "}· {quantityDisplay}
+              </Text>
+            )}
           </Text>
-
-          {quantityDisplay && (
-            <Text
-              variant="bodySmall"
-              style={[styles.quantity, item.isChecked && styles.quantityChecked]}
-            >
-              {quantityDisplay}
-            </Text>
-          )}
         </View>
       </TouchableOpacity>
     </Swipeable>
@@ -154,7 +171,6 @@ const styles = StyleSheet.create({
   // Content
   content: {
     flex: 1,
-    gap: spacing.xs,
   },
 
   name: {
@@ -175,7 +191,19 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
 
-  // Delete Action
+  // Swipe Actions
+  actionsContainer: {
+    flexDirection: "row",
+    width: 160,
+  },
+
+  editAction: {
+    width: 80,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.primary.DEFAULT,
+  },
+
   deleteAction: {
     width: 80,
     justifyContent: "center",
@@ -183,14 +211,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.error,
   },
 
-  deleteButton: {
-    flex: 1,
-    width: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  deleteText: {
+  actionText: {
     color: colors.white,
     fontSize: fontSizes.sm,
     fontWeight: "600",

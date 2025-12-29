@@ -263,7 +263,15 @@ export function useUpdateGroceryItem() {
     mutationFn: async (params: {
       itemId: string;
       listId: string;
-      updates: Partial<Omit<GroceryItem, "id" | "groceryListId" | "createdAt">>;
+      updates: {
+        name?: string;
+        quantity?: string | null;
+        unit?: string | null;
+        category?: string;
+        imageUrl?: string | null;
+        isChecked?: boolean;
+        notes?: string | null;
+      };
     }) => {
       const { data, error } = await GroceryListService.updateItem(params.itemId, params.updates);
 

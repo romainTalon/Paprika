@@ -19,7 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
 import { Text, Button } from "@/components/ui";
 import { BackButton } from "@/components/navigation";
-import { CategorySection, AddItemModal } from "@/components/grocery";
+import { CategorySection, AddItemModal, EditItemModal } from "@/components/grocery";
 import { colors, spacing, shadows } from "@/theme";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -29,6 +29,7 @@ import {
   useClearCheckedItems,
 } from "@/hooks/useGroceryList";
 import { GROCERY_CATEGORIES } from "@/constants/categories";
+import type { GroceryItem } from "@/types";
 
 export default function GroceryListDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -51,6 +52,8 @@ export default function GroceryListDetailScreen() {
 
   // Local state
   const [addModalVisible, setAddModalVisible] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<GroceryItem | null>(null);
 
   // Group items by category
   const itemsByCategory = useMemo(() => {
@@ -59,8 +62,16 @@ export default function GroceryListDetailScreen() {
     const grouped: Record<string, typeof items> = {};
 
     items.forEach((item) => {
-      // Category is stored as full label "🥬 Légumes" in DB
-      const category = item.category || "🛒 Autres";
+      // Normalize category: handle both old format ("autres") and new format ("🛒 Autres")
+      let category = item.category || "🛒 Autres";
+
+      // If category is just an ID (old format), convert to full label
+      if (!category.includes(" ")) {
+        // It's an ID like "autres", "legumes", etc.
+        const cat = GROCERY_CATEGORIES.find(c => c.id === category);
+        category = cat ? `${cat.emoji} ${cat.label}` : "🛒 Autres";
+      }
+
       if (!grouped[category]) {
         grouped[category] = [];
       }
@@ -136,6 +147,16 @@ export default function GroceryListDetailScreen() {
 
   const handleCloseAddModal = useCallback(() => {
     setAddModalVisible(false);
+  }, []);
+
+  const handleEditItem = useCallback((item: GroceryItem) => {
+    setSelectedItem(item);
+    setEditModalVisible(true);
+  }, []);
+
+  const handleEditSuccess = useCallback(() => {
+    setEditModalVisible(false);
+    setSelectedItem(null);
   }, []);
 
   // Loading state
@@ -266,6 +287,7 @@ export default function GroceryListDetailScreen() {
               items={itemsByCategory[categoryLabel] || []}
               onToggleItem={handleToggleItem}
               onDeleteItem={handleDeleteItem}
+              onEditItem={handleEditItem}
             />
           ))}
 
@@ -292,6 +314,17 @@ export default function GroceryListDetailScreen() {
         onClose={handleCloseAddModal}
         onSuccess={handleCloseAddModal}
       />
+
+      {/* Edit Item Modal */}
+      {selectedItem && (
+        <EditItemModal
+          visible={editModalVisible}
+          item={selectedItem}
+          listId={listId}
+          onClose={() => setEditModalVisible(false)}
+          onSuccess={handleEditSuccess}
+        />
+      )}
     </SafeAreaView>
   );
 }

@@ -199,6 +199,24 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
   - 🥬 Légumes, 🍎 Fruits, 🍖 Viandes, 🐟 Poissons
   - 🥛 Produits laitiers, 🥖 Boulangerie, 🥫 Épicerie
   - 🧊 Surgelés, 🍷 Boissons, 🛒 Autres
+- ✅ **Mise à jour 29 décembre 2025** :
+  - **Fix bug affichage items importés** : Normalisation catégories (ID → label emoji)
+    - Double fix : côté écriture (getCategoryDisplay) + côté lecture (normalisation display)
+    - Rétrocompatibilité anciens items (gère formats "autres" et "🛒 Autres")
+  - **Édition d'items complète** :
+    - EditItemModal (319 lignes) - Clone AddItemModal avec pré-remplissage
+    - updateItem() dans GroceryListService avec mapping snake_case
+    - useUpdateGroceryItem() hook TanStack Query
+    - Modification nom, quantité, unité, catégorie (déplace item si changement)
+  - **UX Swipe actions améliorée** :
+    - Bouton Edit déplacé dans swipe (plus de bouton visible au repos)
+    - Swipe révèle 2 boutons : Modifier (bleu 80px) + Supprimer (rouge 80px)
+    - Pattern natif cohérent (Mail, Messages)
+    - Fermeture automatique swipe à l'ouverture du modal
+  - **UX Modals optimisée** :
+    - Affichage inline : "Item · quantité" (1 ligne au lieu de 2)
+    - Pas d'autofocus → Clavier sous contrôle utilisateur
+    - Gain ~30% espace vertical par item
   - Helper getCategoryDisplay(id) pour format complet
 
 **Navigation & UI** :

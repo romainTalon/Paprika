@@ -1757,5 +1757,335 @@ Stack Navigation
 
 ---
 
+## 2025-12-29 - Fix bug affichage items importés dans listes de courses
+
+**Contexte** : Les ingrédients importés depuis les fiches recettes vers les listes de courses étaient comptabilisés (le nombre total d'items augmentait) mais n'étaient PAS visibles dans la liste.
+
+**Cause racine** :
+- **addItemsFromRecipe()** stockait `category: "autres"` (ID seul, ancien format) au lieu de `"🛒 Autres"` (label complet avec emoji)
+- **Code d'affichage** groupait les items par `item.category` directement :
+  - Items avec `category: "autres"` → groupés dans `itemsByCategory["autres"]`
+  - Sections affichées cherchaient `"🛒 Autres"` → pas de match → items invisibles
+- Le compteur total fonctionnait car il comptait TOUS les items sans filtrer par catégorie
+
+**Décision** : **Double fix - Normalisation entrée + sortie**
+
+1. **Fix côté écriture** (groceryList.service.ts ligne 533) :
+   ```typescript
+   // AVANT (BUG)
+   const itemCategory = category || DEFAULT_CATEGORY_ID; // "autres"
+
+   // APRÈS (FIX)
+   const itemCategory = category || getCategoryDisplay(DEFAULT_CATEGORY_ID); // "🛒 Autres"
+   ```
+
+2. **Fix côté lecture** (GroceryListDetailScreen lignes 65-73) :
+   ```typescript
+   items.forEach((item) => {
+     let category = item.category || "🛒 Autres";
+
+     // Si catégorie = ID seul (ancien format), convertir en label complet
+     if (!category.includes(" ")) {
+       const cat = GROCERY_CATEGORIES.find(c => c.id === category);
+       category = cat ? `${cat.emoji} ${cat.label}` : "🛒 Autres";
+     }
+
+     // Grouper avec catégorie normalisée
+     grouped[category].push(item);
+   });
+   ```
+
+**Raisons** :
+- ✅ **Fix immédiat** : Les anciens items deviennent visibles sans migration DB
+- ✅ **Rétrocompatibilité** : Gère les deux formats (ancien ID + nouveau label)
+- ✅ **Future-proof** : Les nouveaux imports utilisent le bon format dès le départ
+- ✅ **Pas de breaking change** : Pas besoin de migration massive de données
+
+**Alternatives considérées** :
+- **Migration DB one-time** : `UPDATE grocery_items SET category = '🛒 Autres' WHERE category = 'autres'` → Risqué, nécessite downtime
+- **Fix côté écriture uniquement** : Ne résout pas les anciens items déjà en base
+- **Fix côté lecture uniquement** : Continue à stocker mauvais format, problème persistant
+
+**Conséquences** :
+- ✅ Tous les items (anciens et nouveaux) s'affichent correctement
+- ✅ Cohérence visuelle : tous les imports apparaissent dans "🛒 Autres"
+- ✅ Base de code robuste pour gérer inconsistances data futures
+- ✅ L'utilisateur peut ensuite éditer la catégorie pour réorganiser (feature ajoutée)
+
+**Statut** : ✅ Validée et implémentée
+
+**Fichiers modifiés** :
+- `src/services/groceryList.service.ts` - Import getCategoryDisplay + fix ligne 533
+- `app/grocery-lists/[id].tsx` - Normalisation catégories à l'affichage
+
+---
+
+## 2025-12-29 - Fonctionnalité édition d'items listes de courses
+
+**Contexte** : Les utilisateurs pouvaient uniquement ajouter et supprimer des items de liste de courses, mais pas les modifier (nom, quantité, unité, catégorie).
+
+**Décision** : **Implémenter édition complète avec modal réutilisant pattern AddItemModal**
+
+**Architecture implémentée** :
+
+```
+User swipe item → Boutons Edit/Delete
+    ↓ Clic Edit
+GroceryItemRow → onEdit(item)
+    ↓
+GroceryListDetailScreen → handleEditItem()
+    ↓ setSelectedItem + open modal
+EditItemModal (clone AddItemModal)
+    ↓ useUpdateGroceryItem()
+GroceryListService.updateItem()
+    ↓ Supabase update avec mapping snake_case
+DB updated → TanStack Query invalidation → UI refresh
+```
+
+**Raisons** :
+- ✅ **UX cohérente** : Même pattern que AddItemModal (validation, layout, flow)
+- ✅ **Pré-remplissage automatique** : Les valeurs de l'item s'affichent dans le formulaire
+- ✅ **Changement catégorie** : L'item se déplace automatiquement vers la nouvelle section
+- ✅ **Mapping snake_case** : Correction de la méthode updateItem() existante qui ne mappait pas correctement
+- ✅ **Optimistic updates** : TanStack Query invalide le cache automatiquement → UI instantanée
+
+**Implémentation détaillée** :
+
+1. **Service Layer** - `groceryList.service.ts` (lignes 298-337)
+   - Correction de `updateItem()` pour mapper camelCase → snake_case
+   ```typescript
+   const dbUpdates: any = {};
+   if (updates.name !== undefined) dbUpdates.name = updates.name;
+   if (updates.quantity !== undefined) dbUpdates.quantity = updates.quantity;
+   if (updates.category !== undefined) dbUpdates.category = updates.category;
+   // ... etc
+   ```
+
+2. **Hook TanStack Query** - `useGroceryList.ts` (lignes 259-287)
+   - `useUpdateGroceryItem()` avec invalidation automatique du cache
+
+3. **Composant EditItemModal** - `src/components/grocery/EditItemModal.tsx` (NOUVEAU - 319 lignes)
+   - Clone de AddItemModal avec :
+     - Pré-remplissage des champs depuis `item` prop
+     - Extraction ID catégorie depuis label complet : `GROCERY_CATEGORIES.find(cat => cat.emoji + " " + cat.label === item.category)`
+     - Titre "Modifier l'article" + bouton "Enregistrer"
+
+4. **UI Row** - `GroceryItemRow.tsx`
+   - Bouton Edit initialement visible (refactoré plus tard en swipe)
+
+5. **Intégration** - `GroceryListDetailScreen`
+   - État modal : `editModalVisible`, `selectedItem`
+   - Handlers : `handleEditItem()`, `handleEditSuccess()`
+
+**Validation** :
+- ✅ Nom obligatoire (min 1 caractère)
+- ✅ Quantité optionnelle mais doit être numérique si remplie
+- ✅ Unité optionnelle
+- ✅ Catégorie obligatoire (avec picker)
+
+**Conséquences** :
+- ✅ Utilisateurs peuvent corriger typos, ajuster quantités, réorganiser par catégorie
+- ✅ UX fluide avec pattern modal familier
+- ✅ Pas de duplication de code (EditItemModal réutilise composants communs)
+- ✅ Performance optimisée via TanStack Query
+
+**Statut** : ✅ Validée et implémentée
+
+**Fichiers modifiés/créés** :
+- `src/services/groceryList.service.ts` - updateItem() corrigée
+- `src/hooks/useGroceryList.ts` - useUpdateGroceryItem() mis à jour
+- `src/components/grocery/EditItemModal.tsx` - NOUVEAU composant (319 lignes)
+- `src/components/grocery/GroceryItemRow.tsx` - Bouton Edit ajouté (puis refactoré)
+- `src/components/grocery/CategorySection.tsx` - Prop onEditItem ajoutée
+- `src/components/grocery/index.ts` - Export EditItemModal
+- `app/grocery-lists/[id].tsx` - Intégration modal + handlers
+
+---
+
+## 2025-12-29 - UX swipe actions (Edit + Delete ensemble)
+
+**Contexte** : Après implémentation de l'édition, le bouton "Modifier" (✎) était toujours visible à gauche de chaque item, créant un encombrement visuel.
+
+**Décision** : **Déplacer le bouton Edit dans le swipe actions avec Delete** → Swipe révèle deux boutons côte à côte
+
+**Architecture swipe** :
+
+```
+État repos    : [☐] Item name · quantity
+Swipe gauche : [☐] Item name · quantity  [Modifier] [Supprimer]
+                                            (bleu)     (rouge)
+```
+
+**Raisons** :
+- ✅ **UI plus propre** : Pas de bouton visible au repos, plus de focus sur le contenu
+- ✅ **Pattern standard** : Swipe pour actions = pattern iOS/Android natif (Mail, Messages)
+- ✅ **Découvrabilité** : Les utilisateurs testent naturellement le swipe sur les listes
+- ✅ **Cohérence visuelle** : Deux boutons de même taille, couleurs distinctes (bleu/rouge)
+- ✅ **Touch targets optimaux** : 80px de largeur chacun (standard accessibilité)
+
+**Implémentation** - `GroceryItemRow.tsx` :
+
+1. **Suppression du bouton visible** :
+   - Retiré le `TouchableOpacity` avec icône ✎ entre checkbox et content
+
+2. **Refactoring renderRightActions** :
+   ```typescript
+   const renderRightActions = () => {
+     const translateX = dragX.interpolate({
+       inputRange: [-160, 0],  // ← Doublé (était 80)
+       outputRange: [0, 160],
+     });
+
+     return (
+       <Animated.View style={styles.actionsContainer}>
+         {/* Edit Button - Bleu */}
+         <TouchableOpacity style={styles.editAction} onPress={handleEdit}>
+           <Text style={styles.actionText}>Modifier</Text>
+         </TouchableOpacity>
+
+         {/* Delete Button - Rouge */}
+         <TouchableOpacity style={styles.deleteAction} onPress={handleDelete}>
+           <Text style={styles.actionText}>Supprimer</Text>
+         </TouchableOpacity>
+       </Animated.View>
+     );
+   };
+   ```
+
+3. **Styles** :
+   ```typescript
+   actionsContainer: { flexDirection: "row", width: 160 },
+   editAction: { width: 80, backgroundColor: colors.primary.DEFAULT },
+   deleteAction: { width: 80, backgroundColor: colors.error },
+   actionText: { color: colors.white, fontSize: fontSizes.sm, fontWeight: "600" },
+   ```
+
+4. **Swipeable config** :
+   ```typescript
+   <Swipeable
+     rightThreshold={80}  // ← Augmenté (était 40)
+     overshootRight={false}
+   />
+   ```
+
+**Alternatives considérées** :
+- **Bouton Edit toujours visible** : Encombrement visuel, moins d'espace pour le contenu
+- **Menu contextuel (long press)** : Moins découvrable, moins intuitif sur mobile
+- **Boutons dans header** : Trop loin du contexte de l'item
+
+**Conséquences** :
+- ✅ Interface plus épurée (pas de boutons visibles au repos)
+- ✅ Pattern cohérent avec apps natives (Mail, Messages)
+- ✅ Meilleure utilisation de l'espace horizontal
+- ✅ Actions groupées logiquement (Edit = modification, Delete = suppression)
+
+**Statut** : ✅ Validée et implémentée
+
+**Fichiers modifiés** :
+- `src/components/grocery/GroceryItemRow.tsx` - Swipe actions refactorisées (80px → 160px total)
+
+---
+
+## 2025-12-29 - UX modals : Affichage sur une ligne + Pas d'autofocus
+
+**Contexte** : Deux problèmes UX mineurs mais impactants :
+1. **Affichage multi-lignes** : Nom et quantité affichés sur 2 lignes → perte d'espace vertical
+2. **Autofocus clavier** : Le champ "Nom" avait `autoFocus`, ouvrant le clavier automatiquement à l'ouverture du modal → UX intrusive
+
+**Décision** : **Affichage condensé + Pas d'autofocus**
+
+### 1. Affichage sur une ligne
+
+**AVANT** :
+```
+Tomates
+500 g
+```
+
+**APRÈS** :
+```
+Tomates · 500 g
+```
+
+**Implémentation** - `GroceryItemRow.tsx` (lignes 113-128) :
+```typescript
+<Text variant="body" numberOfLines={1}>
+  {item.name}
+  {quantityDisplay && (
+    <Text variant="bodySmall">
+      {" "}· {quantityDisplay}
+    </Text>
+  )}
+</Text>
+```
+
+**Raisons** :
+- ✅ **Gain d'espace vertical** : ~30% de réduction de hauteur par item
+- ✅ **Plus d'items visibles** : Scrolling réduit, meilleure vue d'ensemble
+- ✅ **Séparateur clair** : Le point médian `·` distingue bien nom et quantité
+- ✅ **Lisibilité préservée** : `numberOfLines={1}` évite le wrap disgracieux
+
+### 2. Suppression autofocus clavier
+
+**Implémentation** - `AddItemModal.tsx` + `EditItemModal.tsx` :
+```typescript
+// AVANT
+<TextInput
+  autoFocus  // ← Supprimé
+  value={name}
+  ...
+/>
+
+// APRÈS
+<TextInput
+  value={name}
+  ...
+/>
+```
+
+**Raisons** :
+- ✅ **Contrôle utilisateur** : L'utilisateur décide QUAND ouvrir le clavier (en tapant sur le champ)
+- ✅ **Moins intrusif** : Le modal s'ouvre sans bloquer l'écran avec le clavier
+- ✅ **Performance** : Pas d'animation clavier automatique qui peut ralentir l'ouverture du modal
+- ✅ **Accessibilité** : Certains utilisateurs avec clavier externe ne veulent pas l'overlay tactile
+
+### 3. Fermeture swipe après édition
+
+**Problème** : Après avoir cliqué "Modifier" depuis le swipe, le modal s'ouvrait mais le swipe restait ouvert. À la fermeture du modal, l'utilisateur voyait encore les boutons "Modifier/Supprimer" au lieu du nom de l'item.
+
+**Solution** - `GroceryItemRow.tsx` :
+```typescript
+const handleEdit = useCallback(() => {
+  swipeableRef.current?.close();  // ← Ferme le swipe AVANT d'ouvrir le modal
+  onEdit(item);
+}, [item, onEdit]);
+```
+
+**Flow complet** :
+1. User swipe item → Boutons apparaissent
+2. User clic "Modifier" → **Swipe se ferme** + Modal s'ouvre
+3. User édite → Enregistrer/Annuler → Modal se ferme
+4. **État normal restauré** : Item affiche son nom, pas les boutons
+
+**Alternatives considérées** :
+- **Autofocus optionnel** : Complexité inutile, comportement par défaut doit être non-intrusif
+- **Affichage 2 lignes avec ellipsis** : Perte d'espace, moins d'items visibles
+- **Ne pas fermer le swipe** : UX confuse, boutons restent visibles sans raison
+
+**Conséquences** :
+- ✅ Liste plus compacte et scannable
+- ✅ Clavier sous contrôle de l'utilisateur
+- ✅ Flow d'édition plus fluide (pas de résidus visuels)
+- ✅ Expérience cohérente et prévisible
+
+**Statut** : ✅ Validée et implémentée
+
+**Fichiers modifiés** :
+- `src/components/grocery/GroceryItemRow.tsx` - Affichage inline + fermeture swipe
+- `src/components/grocery/AddItemModal.tsx` - Suppression autoFocus
+- `src/components/grocery/EditItemModal.tsx` - Suppression autoFocus
+
+---
+
 **Maintenu par** : Équipe Paprika
-**Dernière mise à jour** : 17 novembre 2025
+**Dernière mise à jour** : 29 décembre 2025

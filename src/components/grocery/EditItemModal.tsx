@@ -1,7 +1,7 @@
 /**
- * AddItemModal Component
+ * EditItemModal Component
  *
- * Modal for adding a new item to the grocery list.
+ * Modal for editing an existing grocery item.
  * Includes name (required), quantity (optional), unit (optional), and category selection.
  */
 
@@ -20,65 +20,73 @@ import {
 import { Text, Button } from "@/components/ui";
 import { CategoryPicker } from "./CategoryPicker";
 import { colors, spacing, shadows, fontSizes, fontWeights } from "@/theme";
-import { DEFAULT_CATEGORY_ID, getCategoryDisplay } from "@/constants/categories";
-import { useAddGroceryItem } from "@/hooks/useGroceryList";
+import { DEFAULT_CATEGORY_ID, GROCERY_CATEGORIES, getCategoryDisplay } from "@/constants/categories";
+import { useUpdateGroceryItem } from "@/hooks/useGroceryList";
+import type { GroceryItem } from "@/types";
 
-interface AddItemModalProps {
+interface EditItemModalProps {
   visible: boolean;
+  item: GroceryItem;
   listId: string;
   onClose: () => void;
   onSuccess?: () => void;
 }
 
-export function AddItemModal({
+export function EditItemModal({
   visible,
+  item,
   listId,
   onClose,
   onSuccess,
-}: AddItemModalProps) {
+}: EditItemModalProps) {
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState("");
   const [category, setCategory] = useState(DEFAULT_CATEGORY_ID);
 
-  const addItem = useAddGroceryItem();
+  const updateItem = useUpdateGroceryItem();
 
-  // Reset form when modal opens
+  // Pre-fill form when modal opens
   useEffect(() => {
-    if (visible) {
-      setName("");
-      setQuantity("");
-      setUnit("");
-      setCategory(DEFAULT_CATEGORY_ID);
+    if (visible && item) {
+      setName(item.name);
+      setQuantity(item.quantity || "");
+      setUnit(item.unit || "");
+
+      // Extract category ID from full label (e.g., "🛒 Autres" → "autres")
+      const categoryId = GROCERY_CATEGORIES.find(
+        cat => `${cat.emoji} ${cat.label}` === item.category
+      )?.id || DEFAULT_CATEGORY_ID;
+      setCategory(categoryId);
     }
-  }, [visible]);
+  }, [visible, item]);
 
   // Validation
   const isNameValid = name.trim().length >= 1;
   const isQuantityValid = quantity === "" || !isNaN(parseFloat(quantity));
   const isValid = isNameValid && isQuantityValid;
-  const isLoading = addItem.isPending;
+  const isLoading = updateItem.isPending;
 
   // Handlers
   const handleSave = useCallback(async () => {
     if (!isValid) return;
 
     try {
-      await addItem.mutateAsync({
+      await updateItem.mutateAsync({
+        itemId: item.id,
         listId,
-        item: {
+        updates: {
           name: name.trim(),
-          quantity: quantity || null, // Keep as string for decimal type
+          quantity: quantity || null,
           unit: unit.trim() || null,
           category: getCategoryDisplay(category), // Convert ID to full label (emoji + name)
-          addedFrom: "manual",
         },
       });
 
       onSuccess?.();
       onClose();
     } catch (error) {
-      console.error("AddItemModal error:", error);
+      console.error("EditItemModal error:", error);
       Alert.alert(
         "Erreur",
         error instanceof Error
@@ -86,7 +94,7 @@ export function AddItemModal({
           : JSON.stringify(error)
       );
     }
-  }, [isValid, listId, name, quantity, unit, category, addItem, onSuccess, onClose]);
+  }, [isValid, item.id, listId, name, quantity, unit, category, updateItem, onSuccess, onClose]);
 
   const handleCancel = useCallback(() => {
     onClose();
@@ -112,7 +120,7 @@ export function AddItemModal({
         <View style={styles.modal}>
           {/* Header */}
           <View style={styles.header}>
-            <Text variant="h2">Ajouter un article</Text>
+            <Text variant="h2">Modifier l'article</Text>
             <TouchableOpacity
               onPress={handleCancel}
               style={styles.closeButton}
@@ -206,7 +214,7 @@ export function AddItemModal({
               loading={isLoading}
               style={styles.actionButton}
             >
-              Ajouter
+              Enregistrer
             </Button>
           </View>
         </View>

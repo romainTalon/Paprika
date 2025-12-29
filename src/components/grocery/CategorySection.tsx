@@ -18,6 +18,7 @@ interface CategorySectionProps {
   items: GroceryItem[];
   onToggleItem: (itemId: string) => void;
   onDeleteItem: (itemId: string) => void;
+  onEditItem: (item: GroceryItem) => void;
 }
 
 export function CategorySection({
@@ -25,6 +26,7 @@ export function CategorySection({
   items,
   onToggleItem,
   onDeleteItem,
+  onEditItem,
 }: CategorySectionProps) {
   // Sort items: unchecked first, then checked
   const sortedItems = useMemo(() => {
@@ -67,6 +69,7 @@ export function CategorySection({
             item={item}
             onToggle={onToggleItem}
             onDelete={onDeleteItem}
+            onEdit={onEditItem}
           />
         ))}
       </View>

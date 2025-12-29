@@ -6,5 +6,6 @@
 
 export { CategoryPicker } from "./CategoryPicker";
 export { AddItemModal } from "./AddItemModal";
+export { EditItemModal } from "./EditItemModal";
 export { GroceryItemRow } from "./GroceryItemRow";
 export { CategorySection } from "./CategorySection";
