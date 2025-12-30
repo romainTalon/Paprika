@@ -25,8 +25,8 @@ const recipeDifficultySchema = z.enum(["easy", "medium", "hard"]);
 
 const aiIngredientSchema = z.object({
   name: z.string().min(1, "Ingredient name cannot be empty"),
-  quantity: z.number().positive("Quantity must be positive"),
-  unit: z.string().min(1, "Unit cannot be empty"),
+  quantity: z.number().nonnegative("Quantity must be non-negative"),
+  unit: z.string(),
   notes: z.string().nullable().optional(),
 });
 
@@ -148,6 +148,7 @@ function extractJSON(text: string): string {
 // =============================================================================
 
 async function extractJSONLD(url: string) {
+  console.log("📊 Trying JSON-LD extraction for URL:", url);
   try {
     // Fetch HTML with timeout
     const controller = new AbortController();
@@ -267,11 +268,13 @@ async function extractJSONLD(url: string) {
       }
     }
 
+    console.log("ℹ️ No JSON-LD recipe data found, will try Claude AI fallback");
     return {
       success: false,
       error: "No JSON-LD recipe data found on this page",
     };
   } catch (error) {
+    console.error("❌ JSON-LD extraction error:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "JSON-LD extraction failed",
@@ -284,6 +287,7 @@ async function extractJSONLD(url: string) {
 // =============================================================================
 
 async function parseHTMLWithClaude(url: string, apiKey: string) {
+  console.log("🤖 Starting Claude AI parsing for URL:", url);
   try {
     // Fetch HTML
     const controller = new AbortController();
@@ -317,7 +321,7 @@ async function parseHTMLWithClaude(url: string, apiKey: string) {
 
     // Call Claude
     const claudeResponse = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+      model: "claude-sonnet-4-5-20250929",
       max_tokens: 4096,
       system: `Tu es un expert en extraction de recettes de cuisine.
 Ton rôle est d'analyser du contenu web (HTML ou images) et d'en extraire les informations de recette de manière structurée.
@@ -325,10 +329,12 @@ Ton rôle est d'analyser du contenu web (HTML ou images) et d'en extraire les in
 IMPORTANT:
 - Extrais UNIQUEMENT les informations présentes dans le contenu fourni
 - Ne jamais inventer ou halluciner des données
-- Si une information est manquante, retourne null pour ce champ
+- Si une information est manquante, retourne null pour ce champ (sauf pour servings)
+- Si le nombre de portions n'est pas spécifié, utilise 4 comme valeur par défaut
 - Respecte strictement le format JSON demandé
 - Pour les quantités, utilise des nombres décimaux (ex: 1.5, 0.25)
-- Pour les unités, normalise en français (cuillère à soupe, tasse, grammes, etc.)`,
+- Pour les unités, normalise en français (cuillère à soupe, tasse, grammes, etc.)
+- Si un ingrédient n'a pas de quantité spécifique (ex: "sel", "poivre"), utilise quantity: 0 et unit: ""`,
       messages: [
         {
           role: "user",
@@ -340,7 +346,7 @@ Format JSON attendu:
 {
   "title": "string",
   "description": "string | null",
-  "servings": number,
+  "servings": number (> 0, utilise 4 si non spécifié),
   "prepTime": number | null (en minutes),
   "cookTime": number | null (en minutes),
   "difficulty": "easy" | "medium" | "hard" | null,
@@ -348,8 +354,8 @@ Format JSON attendu:
   "ingredients": [
     {
       "name": "string",
-      "quantity": number,
-      "unit": "string",
+      "quantity": number (>= 0, utilise 0 si pas de quantité spécifique),
+      "unit": "string (peut être vide "" si pas d'unité)",
       "notes": "string | null"
     }
   ],
@@ -379,9 +385,31 @@ ${cleanedHTML.slice(0, 100000)}`,
     }
 
     const jsonString = extractJSON(content.text);
-    const validation = safeParseAIResponse(jsonString, aiRecipeImportSchema);
+
+    // Parse JSON and fix servings if needed before validation
+    let parsedData;
+    try {
+      parsedData = JSON.parse(jsonString);
+      // Fix servings if 0 or missing
+      if (!parsedData.servings || parsedData.servings === 0) {
+        console.log("⚠️ Servings was 0 or missing, setting to default value of 4");
+        parsedData.servings = 4;
+      }
+    } catch (parseError) {
+      console.error("❌ Failed to parse JSON:", parseError);
+      return {
+        success: false,
+        error: "Claude returned invalid JSON",
+      };
+    }
+
+    const validation = safeParseAIResponse(JSON.stringify(parsedData), aiRecipeImportSchema);
 
     if (!validation.success) {
+      console.error("❌ Claude validation failed:");
+      console.error("Raw Claude response:", content.text.substring(0, 500));
+      console.error("Extracted JSON:", jsonString.substring(0, 500));
+      console.error("Validation error:", validation.error.message);
       return {
         success: false,
         error: `Claude returned invalid recipe data: ${validation.error.message}`,
@@ -415,6 +443,7 @@ ${cleanedHTML.slice(0, 100000)}`,
       },
     };
   } catch (error) {
+    console.error("❌ Claude parsing error:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "HTML parsing with Claude failed",

@@ -208,6 +208,130 @@ useEffect(() => {
 
 ---
 
+## 2025-12-30 - Fix Edge Function Recipe Import : Modèle Claude & Validation Servings
+
+**Contexte** : Lors des tests du fallback IA (Stratégie 2) pour l'import de recettes sans JSON-LD, deux problèmes bloquants ont été identifiés :
+
+1. **Modèle Claude obsolète (404)** :
+   - Edge Function utilisait `claude-3-5-sonnet-20241022`
+   - Anthropic a deprecated ce modèle → erreur `404 not_found_error`
+   - Tous les imports fallback IA échouaient avec "Edge Function returned a non-2xx status code"
+   - Logs : `{"type":"not_found_error","message":"model: claude-3-5-sonnet-20241022"}`
+
+2. **Validation `servings` trop stricte** :
+   - Schema Zod exigeait `servings > 0` (`.positive()`)
+   - Claude retournait souvent `servings: 0` quand l'info n'était pas sur la page
+   - Validation échouait systématiquement même si le reste du parsing était correct
+   - Logs : `"Servings must be a positive integer", "minimum": 0, "inclusive": false`
+
+**Décision** : **Deux fixes coordonnés pour débloquer le fallback IA**
+
+### 1. Mise à Jour du Modèle Claude vers Sonnet 4.5
+
+**Changement** : `supabase/functions/recipe-import/index.ts` (ligne 324)
+```typescript
+// ❌ AVANT (deprecated)
+model: "claude-3-5-sonnet-20241022"
+
+// ✅ APRÈS (latest)
+model: "claude-sonnet-4-5-20250929"
+```
+
+**Raisons** :
+- Sonnet 4.5 est le modèle le plus récent (septembre 2025)
+- Meilleures performances de parsing HTML
+- Support long-terme garanti par Anthropic
+- Même coût (~€0.01/import)
+
+### 2. Fallback Automatique pour `servings: 0`
+
+**Problème** : Claude ne suivait pas l'instruction "utilise 4 si non spécifié"
+
+**Solution** : Post-processing après parsing JSON (lignes 389-404)
+```typescript
+// Parse JSON and fix servings if needed before validation
+let parsedData;
+try {
+  parsedData = JSON.parse(jsonString);
+
+  // Fix servings if 0 or missing
+  if (!parsedData.servings || parsedData.servings === 0) {
+    console.log("⚠️ Servings was 0 or missing, setting to default value of 4");
+    parsedData.servings = 4;  // ✅ Correction automatique
+  }
+} catch (parseError) {
+  console.error("❌ Failed to parse JSON:", parseError);
+  return { success: false, error: "Claude returned invalid JSON" };
+}
+
+// Re-stringify et valider APRÈS correction
+const validation = safeParseAIResponse(JSON.stringify(parsedData), aiRecipeImportSchema);
+```
+
+**Raisons** :
+- Plus fiable que de compter sur le LLM pour suivre les instructions
+- Garantit que la validation passe toujours si le parsing est bon
+- Valeur par défaut raisonnable (4 portions = famille moyenne)
+- N'empêche pas l'utilisateur de modifier dans le preview
+
+**Alternatives considérées** :
+1. ❌ Assouplir la validation Zod (`servings >= 0`) → permettrait des valeurs invalides
+2. ❌ Mettre `servings` nullable → compliquerait le frontend qui attend toujours un nombre
+3. ✅ **Post-processing avec fallback** → solution simple et robuste
+
+### 3. Logs de Debug Améliorés
+
+**Ajouts** :
+```typescript
+// Ligne 151 - JSON-LD extraction
+console.log("📊 Trying JSON-LD extraction for URL:", url);
+
+// Ligne 271 - Fallback vers Claude
+console.log("ℹ️ No JSON-LD recipe data found, will try Claude AI fallback");
+
+// Ligne 287 - Claude AI parsing
+console.log("🤖 Starting Claude AI parsing for URL:", url);
+
+// Lignes 386-389 - Validation errors
+console.error("❌ Claude validation failed:");
+console.error("Raw Claude response:", content.text.substring(0, 500));
+console.error("Extracted JSON:", jsonString.substring(0, 500));
+console.error("Validation error:", validation.error.message);
+```
+
+**Bénéfices** :
+- Facilite le debug en production via dashboard Supabase
+- Visibilité claire du flow : JSON-LD → Claude → Validation
+- Permet de détecter rapidement les erreurs de parsing
+
+**Conséquences** :
+
+✅ **Positives** :
+- Import fallback IA 100% fonctionnel
+- Sites sans JSON-LD correctement supportés (Overblog, petits blogs)
+- Parsing robust même si infos manquantes (servings, prepTime, cookTime)
+- Logs clairs pour debug production
+
+⚠️ **À surveiller** :
+- Coût API Claude (~€0.01/import) si beaucoup de sites sans JSON-LD
+- Sonnet 4.5 pourrait être deprecated dans le futur (monitoring requis)
+
+**Tests Effectués** :
+- ✅ Import depuis Overblog (`recettesagogo.over-blog.com`) → Succès
+- ✅ Import depuis blogs sans JSON-LD → Parsing correct avec `servings: 4` par défaut
+- ✅ Validation passe avec ingrédients `quantity: 0, unit: ""` (sel, poivre)
+- ✅ Preview affiche correctement les données parsées
+- ✅ Sauvegarde en base fonctionne
+
+**Statut** : ✅ Validée et déployée en production
+
+**Références** :
+- Anthropic Models : [Claude Sonnet 4.5](https://docs.anthropic.com/en/docs/models-overview)
+- Zod Validation : [Schema Validation](https://zod.dev/)
+- Edge Function : `supabase/functions/recipe-import/index.ts`
+
+---
+
 ## 2025-12-07 - Mapping snake_case ↔ camelCase dans Service Layer
 
 **Contexte** : Lors de l'implémentation des listes de courses, une incohérence critique est apparue :

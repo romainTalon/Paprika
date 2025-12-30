@@ -58,7 +58,18 @@
       "Bash(powershell:*)",
       "Bash(npx expo install:*)",
       "Bash(Select-Object -First 30)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "WebFetch(domain:www.lacuisinecestsimple.com)",
+      "WebFetch(domain:lacuisinededoria.com)",
+      "WebFetch(domain:www.lesrecettesdevirginie.com)",
+      "WebFetch(domain:www.cestnathaliequicuisine.com)",
+      "WebFetch(domain:www.adeline-cuisine.fr)",
+      "WebFetch(domain:lacuisinedesandy-desrecettessimples.over-blog.com)",
+      "WebFetch(domain:recettesagogo.over-blog.com)",
+      "Bash(npx supabase functions logs:*)",
+      "Bash(npx supabase:*)",
+      "Bash(timeout /t 5)",
+      "Bash(dir /b C:RepositoriesPaprikasupabase.env*)"
     ],
     "deny": [],
     "ask": []
