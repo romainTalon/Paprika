@@ -1,12 +1,49 @@
-// Supabase Edge Function: Recipe Import from Web URL
-// Implements 3-tier scraping strategy: JSON-LD → Claude HTML → Vision AI
-// Cost optimization: 70% free (JSON-LD), 20% ~€0.01 (Claude), 10% ~€0.03 (Vision)
+// Supabase Edge Function: Recipe Import
+// 100% AI parsing with DeepSeek V3 (cost-optimized)
+// Supports multiple AI models via AI_MODEL env var
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.28.0";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
 import { z } from "npm:zod@3.22.4";
+
+// =============================================================================
+// AI Model Configuration
+// =============================================================================
+
+type AIProvider = "anthropic" | "openai" | "deepseek";
+
+interface ModelConfig {
+  provider: AIProvider;
+  model: string;
+  costPer1kInputTokens: number;  // in euros
+  costPer1kOutputTokens: number; // in euros
+}
+
+const AI_MODELS: Record<string, ModelConfig> = {
+  "claude-sonnet-4.5": {
+    provider: "anthropic",
+    model: "claude-sonnet-4-5-20250929",
+    costPer1kInputTokens: 0.003,
+    costPer1kOutputTokens: 0.015,
+  },
+  "gpt-4o-mini": {
+    provider: "openai",
+    model: "gpt-4o-mini",
+    costPer1kInputTokens: 0.00015,
+    costPer1kOutputTokens: 0.0006,
+  },
+  "deepseek-chat": {
+    provider: "deepseek",
+    model: "deepseek-chat",
+    costPer1kInputTokens: 0.00014,
+    costPer1kOutputTokens: 0.00028,
+  },
+};
+
+// Default model (can be overridden with AI_MODEL env var)
+const DEFAULT_MODEL = "deepseek-chat";
 
 // =============================================================================
 // CORS Configuration
@@ -53,56 +90,9 @@ const aiRecipeImportSchema = z.object({
   coverImageUrl: z.string().url().nullable().optional(),
 });
 
-const jsonLDRecipeSchema = z.object({
-  "@type": z.literal("Recipe").or(z.array(z.string()).refine(arr => arr.includes("Recipe"))),
-  name: z.string().optional(),
-  description: z.string().optional(),
-  recipeYield: z.union([z.string(), z.number()]).optional(),
-  prepTime: z.string().optional(),
-  cookTime: z.string().optional(),
-  totalTime: z.string().optional(),
-  recipeIngredient: z.array(z.string()).optional(),
-  recipeInstructions: z.union([
-    z.array(z.string()),
-    z.array(z.object({ "@type": z.string(), text: z.string() })),
-    z.string(),
-  ]).optional(),
-  image: z.union([z.string(), z.array(z.string()), z.object({ url: z.string() })]).optional(),
-  keywords: z.union([z.string(), z.array(z.string())]).optional(),
-});
-
 // =============================================================================
 // Helper Functions
 // =============================================================================
-
-/**
- * Convert ISO 8601 duration to minutes
- */
-function parseDuration(duration: string | undefined): number | null {
-  if (!duration) return null;
-
-  const match = duration.match(/PT?(?:(\d+)H)?(?:(\d+)M)?/);
-  if (!match) return null;
-
-  const hours = parseInt(match[1] || "0", 10);
-  const minutes = parseInt(match[2] || "0", 10);
-
-  return hours * 60 + minutes;
-}
-
-/**
- * Normalize servings from various formats
- */
-function parseServings(recipeYield: string | number | undefined): number {
-  if (!recipeYield) return 4;
-
-  if (typeof recipeYield === "number") {
-    return Math.max(1, Math.floor(recipeYield));
-  }
-
-  const match = recipeYield.match(/\d+/);
-  return match ? Math.max(1, parseInt(match[0], 10)) : 4;
-}
 
 /**
  * Safe parse AI JSON response with Zod validation
@@ -144,150 +134,137 @@ function extractJSON(text: string): string {
 }
 
 // =============================================================================
-// Strategy 1: Extract JSON-LD from HTML (Free, 70% success rate)
+// AI Model Abstraction
 // =============================================================================
 
-async function extractJSONLD(url: string) {
-  console.log("📊 Trying JSON-LD extraction for URL:", url);
-  try {
-    // Fetch HTML with timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+/**
+ * Call any AI model with unified interface
+ */
+async function callAIModel(
+  modelKey: string,
+  systemPrompt: string,
+  userPrompt: string,
+  apiKeys: { anthropic?: string; openai?: string; deepseek?: string }
+): Promise<{ text: string; inputTokens: number; outputTokens: number }> {
+  const config = AI_MODELS[modelKey];
+  if (!config) {
+    throw new Error(`Unknown model: ${modelKey}`);
+  }
 
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; PaprikaBot/1.0)",
-      },
-      signal: controller.signal,
+  console.log(`🤖 Calling ${config.provider} ${config.model}`);
+
+  if (config.provider === "anthropic") {
+    if (!apiKeys.anthropic) throw new Error("Anthropic API key not configured");
+
+    const anthropic = new Anthropic({ apiKey: apiKeys.anthropic });
+    const response = await anthropic.messages.create({
+      model: config.model,
+      max_tokens: 4096,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
     });
 
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      return {
-        success: false,
-        error: `HTTP ${response.status}: ${response.statusText}`,
-      };
+    const content = response.content[0];
+    if (content.type !== "text") {
+      throw new Error("Expected text response from Anthropic");
     }
 
-    const html = await response.text();
-    const $ = cheerio.load(html);
-
-    // Find all JSON-LD script tags
-    const jsonLDScripts = $('script[type="application/ld+json"]');
-
-    // Parse each JSON-LD block
-    for (let i = 0; i < jsonLDScripts.length; i++) {
-      const scriptContent = $(jsonLDScripts[i]).html();
-      if (!scriptContent) continue;
-
-      try {
-        const jsonLD = JSON.parse(scriptContent);
-        const items = Array.isArray(jsonLD) ? jsonLD : [jsonLD];
-
-        for (const item of items) {
-          const isRecipe =
-            item["@type"] === "Recipe" ||
-            (Array.isArray(item["@type"]) && item["@type"].includes("Recipe"));
-
-          if (isRecipe) {
-            const validation = jsonLDRecipeSchema.safeParse(item);
-            if (!validation.success) continue;
-
-            const recipe = validation.data;
-
-            // Convert to ImportedRecipeData format
-            const ingredients = (recipe.recipeIngredient || []).map((ing: string) => ({
-              name: ing,
-              quantity: 0,
-              unit: "",
-              notes: null,
-            }));
-
-            // Extract steps
-            let steps: any[] = [];
-            if (typeof recipe.recipeInstructions === "string") {
-              const instructions = recipe.recipeInstructions
-                .split(/\n|(?<=\.)\s/)
-                .filter((s) => s.trim().length > 0);
-              steps = instructions.map((instruction, index) => ({
-                order: index + 1,
-                instruction: instruction.trim(),
-                duration: null,
-              }));
-            } else if (Array.isArray(recipe.recipeInstructions)) {
-              steps = recipe.recipeInstructions.map((inst: any, index: number) => {
-                if (typeof inst === "string") {
-                  return { order: index + 1, instruction: inst, duration: null };
-                } else {
-                  return { order: index + 1, instruction: inst.text, duration: null };
-                }
-              });
-            }
-
-            // Extract image URL
-            let coverImageUrl: string | null = null;
-            if (typeof recipe.image === "string") {
-              coverImageUrl = recipe.image;
-            } else if (Array.isArray(recipe.image)) {
-              coverImageUrl = recipe.image[0];
-            } else if (recipe.image && typeof recipe.image === "object") {
-              coverImageUrl = (recipe.image as any).url;
-            }
-
-            // Extract tags
-            let tags: string[] = [];
-            if (typeof recipe.keywords === "string") {
-              tags = recipe.keywords.split(",").map((t) => t.trim());
-            } else if (Array.isArray(recipe.keywords)) {
-              tags = recipe.keywords;
-            }
-
-            return {
-              success: true,
-              recipe: {
-                title: recipe.name || "Untitled Recipe",
-                description: recipe.description || null,
-                servings: parseServings(recipe.recipeYield),
-                prepTime: parseDuration(recipe.prepTime),
-                cookTime: parseDuration(recipe.cookTime),
-                difficulty: null,
-                tags,
-                ingredients,
-                steps,
-                coverImageUrl,
-                importUrl: url,
-                importSource: "web",
-                importStrategy: "json-ld",
-              },
-            };
-          }
-        }
-      } catch (parseError) {
-        continue;
-      }
-    }
-
-    console.log("ℹ️ No JSON-LD recipe data found, will try Claude AI fallback");
     return {
-      success: false,
-      error: "No JSON-LD recipe data found on this page",
-    };
-  } catch (error) {
-    console.error("❌ JSON-LD extraction error:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "JSON-LD extraction failed",
+      text: content.text,
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
     };
   }
+
+  if (config.provider === "openai") {
+    if (!apiKeys.openai) throw new Error("OpenAI API key not configured");
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKeys.openai}`,
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: 4096,
+        temperature: 0.1,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`OpenAI API error: ${error}`);
+    }
+
+    const data = await response.json();
+    return {
+      text: data.choices[0].message.content,
+      inputTokens: data.usage.prompt_tokens,
+      outputTokens: data.usage.completion_tokens,
+    };
+  }
+
+  if (config.provider === "deepseek") {
+    if (!apiKeys.deepseek) throw new Error("DeepSeek API key not configured");
+
+    const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKeys.deepseek}`,
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: 4096,
+        temperature: 0.1,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`DeepSeek API error: ${error}`);
+    }
+
+    const data = await response.json();
+    return {
+      text: data.choices[0].message.content,
+      inputTokens: data.usage.prompt_tokens,
+      outputTokens: data.usage.completion_tokens,
+    };
+  }
+
+  throw new Error(`Unsupported provider: ${config.provider}`);
+}
+
+/**
+ * Calculate actual cost based on token usage
+ */
+function calculateCost(modelKey: string, inputTokens: number, outputTokens: number): number {
+  const config = AI_MODELS[modelKey];
+  const inputCost = (inputTokens / 1000) * config.costPer1kInputTokens;
+  const outputCost = (outputTokens / 1000) * config.costPer1kOutputTokens;
+  return inputCost + outputCost;
 }
 
 // =============================================================================
-// Strategy 2: Parse HTML with Claude AI (~€0.01, 20% success rate)
+// AI-Powered HTML Parsing
 // =============================================================================
 
-async function parseHTMLWithClaude(url: string, apiKey: string) {
-  console.log("🤖 Starting Claude AI parsing for URL:", url);
+async function parseHTMLWithAI(
+  url: string,
+  apiKeys: { anthropic?: string; openai?: string; deepseek?: string }
+) {
+  const modelKey = Deno.env.get("AI_MODEL") || DEFAULT_MODEL;
+  console.log(`🤖 Starting AI parsing with ${modelKey} for URL:`, url);
   try {
     // Fetch HTML
     const controller = new AbortController();
@@ -316,14 +293,8 @@ async function parseHTMLWithClaude(url: string, apiKey: string) {
     $("script, style, nav, footer, header").remove();
     const cleanedHTML = $.html();
 
-    // Initialize Anthropic client
-    const anthropic = new Anthropic({ apiKey });
-
-    // Call Claude
-    const claudeResponse = await anthropic.messages.create({
-      model: "claude-sonnet-4-5-20250929",
-      max_tokens: 4096,
-      system: `Tu es un expert en extraction de recettes de cuisine.
+    // Prepare prompts
+    const systemPrompt = `Tu es un expert en extraction de recettes de cuisine.
 Ton rôle est d'analyser du contenu web (HTML ou images) et d'en extraire les informations de recette de manière structurée.
 
 IMPORTANT:
@@ -334,11 +305,9 @@ IMPORTANT:
 - Respecte strictement le format JSON demandé
 - Pour les quantités, utilise des nombres décimaux (ex: 1.5, 0.25)
 - Pour les unités, normalise en français (cuillère à soupe, tasse, grammes, etc.)
-- Si un ingrédient n'a pas de quantité spécifique (ex: "sel", "poivre"), utilise quantity: 0 et unit: ""`,
-      messages: [
-        {
-          role: "user",
-          content: `Analyse ce HTML de recette et extrais les informations en JSON.
+- Si un ingrédient n'a pas de quantité spécifique (ex: "sel", "poivre"), utilise quantity: 0 et unit: ""`;
+
+    const userPrompt = `Analyse ce HTML de recette et extrais les informations en JSON.
 
 URL source: ${url}
 
@@ -370,21 +339,16 @@ Format JSON attendu:
 }
 
 HTML:
-${cleanedHTML.slice(0, 100000)}`,
-        },
-      ],
-    });
+${cleanedHTML.slice(0, 100000)}`;
 
-    // Extract and validate JSON
-    const content = claudeResponse.content[0];
-    if (content.type !== "text") {
-      return {
-        success: false,
-        error: "Expected text response from Claude",
-      };
-    }
+    // Call AI model (universal)
+    const aiResponse = await callAIModel(modelKey, systemPrompt, userPrompt, apiKeys);
 
-    const jsonString = extractJSON(content.text);
+    // Calculate actual cost
+    const cost = calculateCost(modelKey, aiResponse.inputTokens, aiResponse.outputTokens);
+    console.log(`💰 Cost: €${cost.toFixed(6)} (${aiResponse.inputTokens} input + ${aiResponse.outputTokens} output tokens)`);
+
+    const jsonString = extractJSON(aiResponse.text);
 
     // Parse JSON and fix servings if needed before validation
     let parsedData;
@@ -399,20 +363,20 @@ ${cleanedHTML.slice(0, 100000)}`,
       console.error("❌ Failed to parse JSON:", parseError);
       return {
         success: false,
-        error: "Claude returned invalid JSON",
+        error: "AI returned invalid JSON",
       };
     }
 
     const validation = safeParseAIResponse(JSON.stringify(parsedData), aiRecipeImportSchema);
 
     if (!validation.success) {
-      console.error("❌ Claude validation failed:");
-      console.error("Raw Claude response:", content.text.substring(0, 500));
+      console.error("❌ AI validation failed:");
+      console.error("Raw AI response:", aiResponse.text.substring(0, 500));
       console.error("Extracted JSON:", jsonString.substring(0, 500));
       console.error("Validation error:", validation.error.message);
       return {
         success: false,
-        error: `Claude returned invalid recipe data: ${validation.error.message}`,
+        error: `AI returned invalid recipe data: ${validation.error.message}`,
       };
     }
 
@@ -439,14 +403,16 @@ ${cleanedHTML.slice(0, 100000)}`,
         coverImageUrl: aiRecipe.coverImageUrl ?? null,
         importUrl: url,
         importSource: "web",
-        importStrategy: "html-llm",
+        importStrategy: "ai",
       },
+      cost,
+      modelUsed: modelKey,
     };
   } catch (error) {
-    console.error("❌ Claude parsing error:", error);
+    console.error("❌ AI parsing error:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "HTML parsing with Claude failed",
+      error: error instanceof Error ? error.message : "HTML parsing with AI failed",
     };
   }
 }
@@ -544,32 +510,18 @@ serve(async (req) => {
       );
     }
 
-    // Strategy 1: Try JSON-LD extraction (free)
-    const jsonLDResult = await extractJSONLD(url);
-    if (jsonLDResult.success) {
-      // Increment import counter
-      await supabaseClient.rpc("increment_import_count", {
-        p_user_id: userId,
-      });
+    // Get AI API keys
+    const apiKeys = {
+      anthropic: Deno.env.get("ANTHROPIC_API_KEY"),
+      openai: Deno.env.get("OPENAI_API_KEY"),
+      deepseek: Deno.env.get("DEEPSEEK_API_KEY"),
+    };
 
-      return new Response(
-        JSON.stringify({
-          success: true,
-          recipe: jsonLDResult.recipe,
-          strategy: "json-ld",
-          cost: 0,
-          duration: Date.now() - startTime,
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        }
-      );
-    }
+    // Check that required API key is configured
+    const modelKey = Deno.env.get("AI_MODEL") || DEFAULT_MODEL;
+    const requiredProvider = AI_MODELS[modelKey]?.provider;
 
-    // Strategy 2: Try Claude HTML parsing (~€0.01)
-    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!anthropicKey) {
+    if (requiredProvider === "anthropic" && !apiKeys.anthropic) {
       return new Response(
         JSON.stringify({
           success: false,
@@ -582,8 +534,35 @@ serve(async (req) => {
       );
     }
 
-    const claudeResult = await parseHTMLWithClaude(url, anthropicKey);
-    if (claudeResult.success) {
+    if (requiredProvider === "openai" && !apiKeys.openai) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "OpenAI API key not configured",
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
+    }
+
+    if (requiredProvider === "deepseek" && !apiKeys.deepseek) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "DeepSeek API key not configured",
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+        }
+      );
+    }
+
+    // Parse with AI
+    const aiResult = await parseHTMLWithAI(url, apiKeys);
+    if (aiResult.success) {
       // Increment import counter
       await supabaseClient.rpc("increment_import_count", {
         p_user_id: userId,
@@ -592,9 +571,10 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          recipe: claudeResult.recipe,
-          strategy: "html-llm",
-          cost: 0.01,
+          recipe: aiResult.recipe,
+          strategy: "ai",
+          model: aiResult.modelUsed,
+          cost: aiResult.cost,
           duration: Date.now() - startTime,
         }),
         {
@@ -604,11 +584,11 @@ serve(async (req) => {
       );
     }
 
-    // All strategies failed
+    // AI parsing failed
     return new Response(
       JSON.stringify({
         success: false,
-        error: "Could not extract recipe from this URL. Please try a different URL or create the recipe manually.",
+        error: aiResult.error || "Could not extract recipe from this URL.",
         duration: Date.now() - startTime,
       }),
       {

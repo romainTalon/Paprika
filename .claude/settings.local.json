@@ -69,7 +69,18 @@
       "Bash(npx supabase functions logs:*)",
       "Bash(npx supabase:*)",
       "Bash(timeout /t 5)",
-      "Bash(dir /b C:RepositoriesPaprikasupabase.env*)"
+      "Bash(dir /b C:RepositoriesPaprikasupabase.env*)",
+      "Bash(git checkout:*)",
+      "Bash(powershell -Command \"Get-Content ''C:\\\\Repositories\\\\Paprika\\\\DECISION-LOG.md'' | Measure-Object -Line\")",
+      "Bash(powershell -Command \"Get-Content ''C:\\\\Repositories\\\\Paprika\\\\DECISION-LOG.md'' -Tail 100\")",
+      "Bash(powershell -Command \"Get-Content ''C:\\\\Repositories\\\\Paprika\\\\DECISION-LOG.md'' -Tail 20\")",
+      "Bash(powershell -Command \"Get-Content ''C:\\\\Repositories\\\\Paprika\\\\.temp-decision-append.md'' | Add-Content ''C:\\\\Repositories\\\\Paprika\\\\DECISION-LOG.md''\")",
+      "Bash(del \"C:\\\\Repositories\\\\Paprika\\\\.temp-decision-append.md\")",
+      "Bash(powershell -Command \"Remove-Item ''C:\\\\Repositories\\\\Paprika\\\\.temp-decision-append.md''\")",
+      "Bash(powershell -Command \"Get-Content ''C:\\\\Repositories\\\\Paprika\\\\.temp-decision-results.md'' | Add-Content ''C:\\\\Repositories\\\\Paprika\\\\DECISION-LOG.md''\")",
+      "Bash(powershell -Command \"Remove-Item ''C:\\\\Repositories\\\\Paprika\\\\.temp-decision-results.md''\")",
+      "Bash(powershell -Command \"Remove-Item -Recurse -Force ''C:\\\\Repositories\\\\Paprika\\\\supabase\\\\functions\\\\recipe-import-ai''\")",
+      "Bash(powershell -Command \"Remove-Item ''C:\\\\Repositories\\\\Paprika\\\\DEPLOY-RECIPE-IMPORT-AI.md''\")"
     ],
     "deny": [],
     "ask": []
