@@ -189,11 +189,10 @@ export default function PreviewRecipeScreen() {
   }, []);
 
   return (
-    <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
+    <SafeAreaView edges={["top"]} style={styles.safeArea}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
       >
         <ScrollView
           style={styles.container}
@@ -446,7 +445,7 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     padding: spacing.lg,
-    paddingBottom: spacing["3xl"],
+    paddingBottom: 100,
   },
 
   // Badge
@@ -596,7 +595,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.md,
     padding: spacing.lg,
-    paddingBottom: spacing.xl,
     backgroundColor: colors.white,
     borderTopWidth: 1,
     borderTopColor: colors.gray[200],

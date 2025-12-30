@@ -198,8 +198,8 @@ async function extractJSONLD(url: string) {
             // Convert to ImportedRecipeData format
             const ingredients = (recipe.recipeIngredient || []).map((ing: string) => ({
               name: ing,
-              quantity: 1,
-              unit: "unité",
+              quantity: 0,
+              unit: "",
               notes: null,
             }));
 

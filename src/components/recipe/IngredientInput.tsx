@@ -38,6 +38,11 @@ export default function IngredientInput({
   // Local state for quantity input (supports fractions)
   const [quantityText, setQuantityText] = useState("");
 
+  // State to control visibility of quantity/unit fields
+  const [showAllFields, setShowAllFields] = useState(
+    ingredient.quantity > 0 || (ingredient.unit && ingredient.unit.length > 0)
+  );
+
   // Initialize quantity text from ingredient
   useEffect(() => {
     if (ingredient.quantity === 0) {
@@ -46,6 +51,13 @@ export default function IngredientInput({
       setQuantityText(String(ingredient.quantity));
     }
   }, [ingredient.quantity]);
+
+  // Auto-show all fields when quantity or unit is filled
+  useEffect(() => {
+    if (ingredient.quantity > 0 || (ingredient.unit && ingredient.unit.length > 0)) {
+      setShowAllFields(true);
+    }
+  }, [ingredient.quantity, ingredient.unit]);
 
   // Handle quantity change with fraction parsing
   const handleQuantityChange = (text: string) => {
@@ -64,51 +76,57 @@ export default function IngredientInput({
 
   return (
     <View style={styles.container}>
-      {/* Name Input */}
-      <TextInput
-        style={[styles.input, styles.nameInput]}
-        value={ingredient.name}
-        onChangeText={(text) =>
-          onChange({ ...ingredient, name: text })
-        }
-        placeholder="Ingrédient"
-        placeholderTextColor={colors.gray[400]}
-        editable={!disabled}
-      />
+      {/* Row 1: Name + Remove Button */}
+      <View style={styles.row}>
+        <TextInput
+          style={[styles.input, styles.nameInputFull]}
+          value={ingredient.name}
+          onChangeText={(text) =>
+            onChange({ ...ingredient, name: text })
+          }
+          onFocus={() => setShowAllFields(true)}
+          placeholder="Ingrédient"
+          placeholderTextColor={colors.gray[400]}
+          editable={!disabled}
+        />
 
-      {/* Quantity Input with Fraction Support */}
-      <TextInput
-        style={[styles.input, styles.quantityInput]}
-        value={quantityText}
-        onChangeText={handleQuantityChange}
-        placeholder="Qté"
-        placeholderTextColor={colors.gray[400]}
-        keyboardType="default"
-        editable={!disabled}
-      />
+        {/* Remove Button */}
+        {showRemove && (
+          <TouchableOpacity
+            style={styles.removeButton}
+            onPress={onRemove}
+            disabled={disabled}
+            accessibilityLabel="Remove ingredient"
+          >
+            <Text style={styles.removeIcon}>✕</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
-      {/* Unit Input (Optional) */}
-      <TextInput
-        style={[styles.input, styles.unitInput]}
-        value={ingredient.unit || ""}
-        onChangeText={(text) =>
-          onChange({ ...ingredient, unit: text || undefined })
-        }
-        placeholder="Unité (opt.)"
-        placeholderTextColor={colors.gray[400]}
-        editable={!disabled}
-      />
+      {/* Row 2: Quantity + Unit (conditionally shown below) */}
+      {showAllFields && (
+        <View style={styles.row}>
+          <TextInput
+            style={[styles.input, styles.quantityInput]}
+            value={quantityText}
+            onChangeText={handleQuantityChange}
+            placeholder="Quantité"
+            placeholderTextColor={colors.gray[400]}
+            keyboardType="default"
+            editable={!disabled}
+          />
 
-      {/* Remove Button */}
-      {showRemove && (
-        <TouchableOpacity
-          style={styles.removeButton}
-          onPress={onRemove}
-          disabled={disabled}
-          accessibilityLabel="Remove ingredient"
-        >
-          <Text style={styles.removeIcon}>✕</Text>
-        </TouchableOpacity>
+          <TextInput
+            style={[styles.input, styles.unitInput]}
+            value={ingredient.unit || ""}
+            onChangeText={(text) =>
+              onChange({ ...ingredient, unit: text || undefined })
+            }
+            placeholder="Unité (opt.)"
+            placeholderTextColor={colors.gray[400]}
+            editable={!disabled}
+          />
+        </View>
       )}
     </View>
   );
@@ -116,10 +134,15 @@ export default function IngredientInput({
 
 const styles = StyleSheet.create({
   container: {
+    flexDirection: "column",
+    marginBottom: spacing.sm,
+  },
+
+  row: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: spacing.sm,
     gap: spacing.sm,
+    marginBottom: spacing.xs,
   },
 
   input: {
@@ -132,18 +155,16 @@ const styles = StyleSheet.create({
     color: colors.warm.brown,
   },
 
-  nameInput: {
-    flex: 2,
+  nameInputFull: {
+    flex: 1,
   },
 
   quantityInput: {
     flex: 1,
-    minWidth: 70,
   },
 
   unitInput: {
     flex: 1,
-    minWidth: 80,
   },
 
   removeButton: {
