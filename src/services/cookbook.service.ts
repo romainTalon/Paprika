@@ -86,6 +86,54 @@ export class CookbookService {
   }
 
   /**
+   * Get or create the default import cookbook
+   * Used when importing recipes without selecting a cookbook
+   * Creates a "📥 Recettes importées" cookbook if it doesn't exist
+   */
+  static async getOrCreateDefaultImportCookbook(userId: string): Promise<ServiceResponse<Cookbook>> {
+    const IMPORT_COOKBOOK_NAME = "📥 Recettes importées";
+
+    try {
+      // Try to find existing import cookbook by name
+      const { data: existing, error: findError } = await supabase
+        .from("cookbooks")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("name", IMPORT_COOKBOOK_NAME)
+        .single();
+
+      // If found, return it
+      if (existing && !findError) {
+        return { data: mapDbRowToCookbook(existing), error: null };
+      }
+
+      // If not found, create it
+      const { data: created, error: createError } = await supabase
+        .from("cookbooks")
+        .insert({
+          user_id: userId,
+          name: IMPORT_COOKBOOK_NAME,
+          description: "Recettes importées automatiquement",
+          is_default: false,
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        // Check if it's a freemium limit error
+        if (createError.message?.includes("limit reached")) {
+          throw new Error("Limite de livres atteinte (2/2). Passez Premium pour des livres illimités.");
+        }
+        throw createError;
+      }
+
+      return { data: mapDbRowToCookbook(created), error: null };
+    } catch (error) {
+      return { data: null, error: error as Error };
+    }
+  }
+
+  /**
    * Create a new cookbook
    * Freemium limit: 2 cookbooks for free users (enforced by DB trigger)
    */

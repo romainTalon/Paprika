@@ -8,7 +8,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { RecipeService } from "@/services";
+import { RecipeService, CookbookService } from "@/services";
 import { supabase } from "@/lib/supabase";
 import type { ServiceResponse } from "@/types/database";
 import type { RecipeIngredient, RecipeStep } from "@/types/database";
@@ -406,6 +406,13 @@ export function useImportRecipe() {
       // Check data first (contains detailed error message from Edge Function)
       if (data && !data.success) {
         console.error("❌ Data error detected:", data.error);
+
+        // Check if it's a limit error
+        if (data.limitReached) {
+          console.error("🚫 Import limit reached");
+          throw new Error(data.error || "Import limit reached");
+        }
+
         // Prefix error message with flag if it's a social media error
         const errorMessage = data.socialMediaError
           ? `SOCIAL_MEDIA_ERROR: ${data.error}`
@@ -416,9 +423,24 @@ export function useImportRecipe() {
       // Then check generic error
       if (error) {
         console.error("❌ Generic error detected:", error.message);
-        // Try to parse error context for detailed message
-        const detailedMessage =
-          error.context?.message || error.details || error.message;
+        console.error("📋 Full error object:", JSON.stringify(error, null, 2));
+
+        // Try to extract the actual error message from the response
+        // Supabase wraps Edge Function errors in a generic message
+        // The real error is usually in error.context or the data object
+        let detailedMessage = error.message;
+
+        // If data exists but has an error, use that message
+        if (data && data.error) {
+          detailedMessage = data.error;
+          if (data.limitReached) {
+            console.error("🚫 Import limit reached (from error path)");
+          }
+        } else {
+          // Otherwise try to find it in error properties
+          detailedMessage = error.context?.message || error.details || error.message;
+        }
+
         throw new Error(detailedMessage || "Failed to import recipe");
       }
 
@@ -469,7 +491,22 @@ export function useSaveImportedRecipe() {
       recipe: ImportedRecipeData;
       isPremium?: boolean; // Add isPremium flag
     }) => {
-      const { userId, cookbookId, recipe } = params;
+      const { userId, recipe } = params;
+      let { cookbookId } = params;
+
+      // If no cookbook selected, get or create default import cookbook
+      if (!cookbookId) {
+        const { data: defaultCookbook, error: cookbookError } =
+          await CookbookService.getOrCreateDefaultImportCookbook(userId);
+
+        if (cookbookError || !defaultCookbook) {
+          console.error("❌ Failed to get/create default import cookbook:", cookbookError);
+          throw cookbookError || new Error("Failed to create default import cookbook");
+        }
+
+        cookbookId = defaultCookbook.id;
+        console.log("📥 Using default import cookbook:", defaultCookbook.name);
+      }
 
       const { data, error } = await RecipeService.createRecipe(userId, {
         title: recipe.title,
@@ -495,10 +532,14 @@ export function useSaveImportedRecipe() {
     onSuccess: (data, variables) => {
       // Invalidate recipes cache
       queryClient.invalidateQueries({ queryKey: ["recipes", variables.userId] });
-      // Invalidate cookbook recipes cache if assigned to cookbook
-      if (variables.cookbookId) {
+
+      // Invalidate cookbooks cache (in case default import cookbook was created)
+      queryClient.invalidateQueries({ queryKey: ["cookbooks", variables.userId] });
+
+      // Invalidate cookbook recipes cache (using the final cookbookId from the saved recipe)
+      if (data.cookbookId) {
         queryClient.invalidateQueries({
-          queryKey: ["cookbook-recipes", variables.cookbookId],
+          queryKey: ["cookbook-recipes", data.cookbookId],
         });
       }
 

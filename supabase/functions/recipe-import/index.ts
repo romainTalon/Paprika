@@ -986,12 +986,12 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: false,
-          error: `Import limit reached. You have used ${importsUsed}/${importsLimit} imports this month. Upgrade to Premium for unlimited imports.`,
+          error: `Limite d'imports atteinte. Vous avez utilisé ${importsUsed}/${importsLimit} imports ce mois-ci. Passez Premium pour des imports illimités.`,
           limitReached: true,
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 403,
+          status: 200, // Changed from 403 to 200 so client receives JSON in data
         }
       );
     }
