@@ -308,7 +308,36 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 - ✅ Token refresh automatique (AppState listener)
 - ⏳ Deep links pour confirmation email (désactivée temporairement)
 
-**Dernière mise à jour** : 29 décembre 2025
+**Dernière mise à jour** : 31 décembre 2025
+
+**Derniers changements** (31 décembre 2025) :
+
+## 🔧 **Fix Critique - Stabilité Application**
+
+### **✅ Correction Cycle de Dépendance**
+- ✅ **Bug identifié** : Require cycle `ui/index.ts ↔ PlaceholderScreen.tsx`
+  - Symptôme : Chargement infini au démarrage de l'app
+  - Cause : PlaceholderScreen importait depuis barrel export `@/components/ui` qui l'exportait lui-même
+  - Impact : App bloquée, impossible de démarrer
+- ✅ **Solution implémentée** : Imports directs dans PlaceholderScreen.tsx
+  ```typescript
+  // Avant (cause le cycle)
+  import { Text, Button, Container } from "@/components/ui";
+
+  // Après (résout le cycle)
+  import { Text } from "./Text";
+  import { Button } from "./Button";
+  import { Container } from "./Container";
+  ```
+- ✅ **Résultat** : App démarre normalement, cycle éliminé
+- ✅ **Fichier modifié** : `src/components/ui/PlaceholderScreen.tsx` (3 lignes)
+
+### **📈 Impact sur le Projet**
+- **Stabilité** : Critique fix - App fonctionnelle
+- **Qualité code** : Maintenue à 9/10 (cycles dépendance éliminés)
+- **Production ready** : Fix bloquant résolu
+
+---
 
 **Derniers changements** (29 décembre 2025) :
 

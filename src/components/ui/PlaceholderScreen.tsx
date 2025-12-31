@@ -7,7 +7,9 @@
 
 import React from "react";
 import { View, StyleSheet } from "react-native";
-import { Text, Button, Container } from "@/components/ui";
+import { Text } from "./Text";
+import { Button } from "./Button";
+import { Container } from "./Container";
 import { colors, spacing } from "@/theme";
 
 interface PlaceholderScreenProps {

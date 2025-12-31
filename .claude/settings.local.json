@@ -80,7 +80,8 @@
       "Bash(powershell -Command \"Get-Content ''C:\\\\Repositories\\\\Paprika\\\\.temp-decision-results.md'' | Add-Content ''C:\\\\Repositories\\\\Paprika\\\\DECISION-LOG.md''\")",
       "Bash(powershell -Command \"Remove-Item ''C:\\\\Repositories\\\\Paprika\\\\.temp-decision-results.md''\")",
       "Bash(powershell -Command \"Remove-Item -Recurse -Force ''C:\\\\Repositories\\\\Paprika\\\\supabase\\\\functions\\\\recipe-import-ai''\")",
-      "Bash(powershell -Command \"Remove-Item ''C:\\\\Repositories\\\\Paprika\\\\DEPLOY-RECIPE-IMPORT-AI.md''\")"
+      "Bash(powershell -Command \"Remove-Item ''C:\\\\Repositories\\\\Paprika\\\\DEPLOY-RECIPE-IMPORT-AI.md''\")",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []
