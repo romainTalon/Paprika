@@ -7,7 +7,7 @@
  * @module app/recipes/[id]
  */
 
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   View,
   ScrollView,
@@ -21,9 +21,11 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Text, Button } from "@/components/ui";
 import { AppHeader } from "@/components/navigation";
 import { SelectGroceryListModal, CreateListModal } from "@/components/grocery";
+import { NutritionSummary } from "@/components/recipe/NutritionSummary";
 import { colors, spacing, fontSizes, fontWeights, shadows } from "@/theme";
 import { useRecipe, useToggleFavorite, useDeleteRecipe } from "@/hooks/useRecipes";
 import { useAddIngredientsFromRecipe } from "@/hooks/useGroceryList";
+import { useCalculateNutrition } from "@/hooks/useNutrition";
 import { useAuth } from "@/hooks/useAuth";
 import type { RecipeIngredient, RecipeStep } from "@/types/database";
 import type { GroceryList } from "@/types";
@@ -40,6 +42,7 @@ export default function RecipeDetailScreen() {
   const toggleFavorite = useToggleFavorite();
   const deleteRecipe = useDeleteRecipe();
   const addToGroceryList = useAddIngredientsFromRecipe();
+  const calculateNutrition = useCalculateNutrition();
 
   // Local State
   const [servingsMultiplier, setServingsMultiplier] = useState(1);
@@ -122,6 +125,31 @@ export default function RecipeDetailScreen() {
       ]
     );
   }, [recipe, user, deleteRecipe]);
+
+  const handleCalculateNutrition = useCallback(() => {
+    if (!recipe || !user?.id) return;
+
+    calculateNutrition.mutate({
+      recipeId: recipe.id,
+      userId: user.id,
+      ingredients: recipe.ingredients,
+      servings: recipe.servings,
+    });
+  }, [recipe, user, calculateNutrition]);
+
+  // Auto-calculate nutrition for Premium users (progressive calculation)
+  useEffect(() => {
+    // Only auto-calculate if:
+    // 1. User is Premium
+    // 2. Recipe exists and has no nutrition data yet
+    // 3. Not already calculating
+    const isPremium = user?.isPremium === true;
+
+    if (isPremium && recipe && !recipe.nutrition && !calculateNutrition.isPending) {
+      console.log("🎁 Premium auto-calculation triggered");
+      handleCalculateNutrition();
+    }
+  }, [recipe, user, calculateNutrition.isPending, handleCalculateNutrition]);
 
   // Computed Values
   const adjustedIngredients = useMemo(() => {
@@ -522,63 +550,12 @@ export default function RecipeDetailScreen() {
         )}
 
         {/* Nutrition Section */}
-        {recipe.nutrition && (
-          <View style={styles.section}>
-            <Text variant="h3" style={styles.sectionTitle}>
-              Informations nutritionnelles
-            </Text>
-            <View style={styles.nutritionCard}>
-              <View style={styles.nutritionRow}>
-                <Text variant="body" style={styles.nutritionLabel}>
-                  Calories
-                </Text>
-                <Text variant="body" style={styles.nutritionValue}>
-                  {recipe.nutrition.calories} kcal
-                </Text>
-              </View>
-              {recipe.nutrition.protein !== undefined && (
-                <View style={styles.nutritionRow}>
-                  <Text variant="body" style={styles.nutritionLabel}>
-                    Protéines
-                  </Text>
-                  <Text variant="body" style={styles.nutritionValue}>
-                    {recipe.nutrition.protein}g
-                  </Text>
-                </View>
-              )}
-              {recipe.nutrition.carbs !== undefined && (
-                <View style={styles.nutritionRow}>
-                  <Text variant="body" style={styles.nutritionLabel}>
-                    Glucides
-                  </Text>
-                  <Text variant="body" style={styles.nutritionValue}>
-                    {recipe.nutrition.carbs}g
-                  </Text>
-                </View>
-              )}
-              {recipe.nutrition.fat !== undefined && (
-                <View style={styles.nutritionRow}>
-                  <Text variant="body" style={styles.nutritionLabel}>
-                    Lipides
-                  </Text>
-                  <Text variant="body" style={styles.nutritionValue}>
-                    {recipe.nutrition.fat}g
-                  </Text>
-                </View>
-              )}
-              {recipe.nutrition.fiber !== undefined && (
-                <View style={styles.nutritionRow}>
-                  <Text variant="body" style={styles.nutritionLabel}>
-                    Fibres
-                  </Text>
-                  <Text variant="body" style={styles.nutritionValue}>
-                    {recipe.nutrition.fiber}g
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
-        )}
+        <NutritionSummary
+          nutrition={recipe.nutrition || null}
+          isCalculating={calculateNutrition.isPending}
+          onCalculate={handleCalculateNutrition}
+          isPremium={user?.isPremium === true}
+        />
 
       </ScrollView>
 
@@ -838,30 +815,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: colors.white,
-  },
-
-  nutritionCard: {
-    backgroundColor: colors.cream[50],
-    borderRadius: spacing.md,
-    padding: spacing.md,
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-  },
-
-  nutritionRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: spacing.xs,
-  },
-
-  nutritionLabel: {
-    color: colors.warm.gray,
-  },
-
-  nutritionValue: {
-    fontWeight: fontWeights.semibold as any,
-    color: colors.warm.brown,
   },
 });

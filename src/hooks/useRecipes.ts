@@ -467,6 +467,7 @@ export function useSaveImportedRecipe() {
       userId: string;
       cookbookId?: string;
       recipe: ImportedRecipeData;
+      isPremium?: boolean; // Add isPremium flag
     }) => {
       const { userId, cookbookId, recipe } = params;
 
@@ -499,6 +500,35 @@ export function useSaveImportedRecipe() {
         queryClient.invalidateQueries({
           queryKey: ["cookbook-recipes", variables.cookbookId],
         });
+      }
+
+      // AUTO-TRIGGER: Calculate nutrition in background (Premium only)
+      if (variables.isPremium) {
+        console.log("🎁 Auto-calculating nutrition for Premium user...");
+        supabase.functions
+          .invoke("nutrition-calculate", {
+            body: {
+              recipeId: data.id,
+              userId: variables.userId,
+              ingredients: data.ingredients.map((ing) => ({
+                name: ing.name,
+                quantity: ing.quantity,
+                unit: ing.unit,
+              })),
+              servings: data.servings,
+            },
+          })
+          .then((result) => {
+            if (result.error) {
+              console.error("❌ Background nutrition calculation failed:", result.error);
+            } else {
+              console.log("✅ Background nutrition calculated automatically");
+              // Invalidate recipe to update UI
+              queryClient.invalidateQueries({ queryKey: ["recipe", data.id] });
+            }
+          });
+      } else {
+        console.log("ℹ️ Nutrition not calculated (Premium feature)");
       }
     },
   });

@@ -140,6 +140,7 @@ export default function PreviewRecipeScreen() {
       const recipe = await saveRecipe.mutateAsync({
         userId: user.id,
         cookbookId: cookbookId || undefined,
+        isPremium: user.isPremium === true,
         recipe: {
           ...imported,
           title,

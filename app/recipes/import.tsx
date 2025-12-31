@@ -116,7 +116,7 @@ export default function ImportRecipeScreen() {
     }
 
     // Progress timer reference
-    let progressTimer: NodeJS.Timeout | null = null;
+    let progressTimer: ReturnType<typeof setInterval> | null = null;
 
     try {
       // Reset progress
