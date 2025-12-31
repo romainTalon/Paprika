@@ -14,7 +14,12 @@ import type { RecipeIngredient, RecipeStep, NutritionInfo } from "./database";
 /**
  * Import strategies for recipe extraction
  */
-export type ImportStrategy = "json-ld" | "html-llm" | "vision-ai";
+export type ImportStrategy =
+  | "json-ld"
+  | "html-llm"
+  | "vision-ai"
+  | "instagram"
+  | "tiktok";
 
 /**
  * Import source tracking
@@ -221,6 +226,8 @@ export interface ImportStatistics {
     "json-ld": number;
     "html-llm": number;
     "vision-ai": number;
+    instagram: number;
+    tiktok: number;
   };
   /** Average cost per import */
   averageCost: number;

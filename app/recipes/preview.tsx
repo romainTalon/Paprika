@@ -117,13 +117,17 @@ export default function PreviewRecipeScreen() {
       return;
     }
 
-    if (ingredients.length === 0 || ingredients.every((ing) => !ing.name.trim())) {
-      Alert.alert("Erreur", "Au moins un ingrédient est requis");
-      return;
-    }
+    // Validate: at least ingredients OR steps (partial import support)
+    const hasValidIngredients =
+      ingredients.length > 0 && ingredients.some((ing) => ing.name.trim());
+    const hasValidSteps =
+      steps.length > 0 && steps.some((step) => step.instruction.trim());
 
-    if (steps.length === 0 || steps.every((step) => !step.instruction.trim())) {
-      Alert.alert("Erreur", "Au moins une étape est requise");
+    if (!hasValidIngredients && !hasValidSteps) {
+      Alert.alert(
+        "Erreur",
+        "La recette doit avoir au moins des ingrédients OU des étapes"
+      );
       return;
     }
 
@@ -206,10 +210,33 @@ export default function PreviewRecipeScreen() {
           <View style={styles.badgeContainer}>
             <View style={styles.badge}>
               <Text variant="caption" style={styles.badgeText}>
-                ✓ Importée via {strategy === "json-ld" ? "JSON-LD" : "IA Claude"}
+                ✓ Importée via{" "}
+                {strategy === "instagram"
+                  ? "Instagram 📸"
+                  : strategy === "tiktok"
+                  ? "TikTok 🎵"
+                  : strategy === "json-ld"
+                  ? "JSON-LD"
+                  : "IA Claude"}
               </Text>
             </View>
           </View>
+
+          {/* Warnings for missing data */}
+          {ingredients.length === 0 && (
+            <View style={styles.warningBanner}>
+              <Text variant="bodySmall" style={styles.warningText}>
+                ⚠️ Aucun ingrédient trouvé - Ajoutez-les manuellement ci-dessous
+              </Text>
+            </View>
+          )}
+          {steps.length === 0 && (
+            <View style={styles.warningBanner}>
+              <Text variant="bodySmall" style={styles.warningText}>
+                ⚠️ Aucune étape trouvée - Ajoutez-les manuellement ci-dessous
+              </Text>
+            </View>
+          )}
 
           {/* Header */}
           <View style={styles.header}>
@@ -464,6 +491,21 @@ const styles = StyleSheet.create({
   badgeText: {
     color: colors.white,
     fontWeight: fontWeights.semibold as any,
+  },
+
+  // Warning Banner
+  warningBanner: {
+    backgroundColor: "#FEF3C7", // warning yellow-100
+    padding: spacing.md,
+    borderRadius: spacing.sm,
+    marginVertical: spacing.sm,
+    borderLeftWidth: 4,
+    borderLeftColor: "#F59E0B", // warning yellow-500
+  },
+
+  warningText: {
+    color: "#92400E", // warning yellow-900
+    lineHeight: 20,
   },
 
   // Header

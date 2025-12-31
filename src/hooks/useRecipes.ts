@@ -398,21 +398,28 @@ export function useImportRecipe() {
     }) => {
       const { url, userId, cookbookId, onProgress } = params;
 
-      onProgress?.(20); // Starting...
-
       // Call Edge Function
       const { data, error } = await supabase.functions.invoke("recipe-import", {
         body: { url, userId, cookbookId },
       });
 
-      onProgress?.(80); // Processing...
-
-      if (error) {
-        throw new Error(error.message || "Failed to import recipe");
+      // Check data first (contains detailed error message from Edge Function)
+      if (data && !data.success) {
+        console.error("❌ Data error detected:", data.error);
+        // Prefix error message with flag if it's a social media error
+        const errorMessage = data.socialMediaError
+          ? `SOCIAL_MEDIA_ERROR: ${data.error}`
+          : data.error;
+        throw new Error(errorMessage || "Import failed");
       }
 
-      if (!data.success) {
-        throw new Error(data.error || "Import failed");
+      // Then check generic error
+      if (error) {
+        console.error("❌ Generic error detected:", error.message);
+        // Try to parse error context for detailed message
+        const detailedMessage =
+          error.context?.message || error.details || error.message;
+        throw new Error(detailedMessage || "Failed to import recipe");
       }
 
       onProgress?.(100); // Done!

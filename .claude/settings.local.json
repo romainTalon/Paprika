@@ -81,7 +81,9 @@
       "Bash(powershell -Command \"Remove-Item ''C:\\\\Repositories\\\\Paprika\\\\.temp-decision-results.md''\")",
       "Bash(powershell -Command \"Remove-Item -Recurse -Force ''C:\\\\Repositories\\\\Paprika\\\\supabase\\\\functions\\\\recipe-import-ai''\")",
       "Bash(powershell -Command \"Remove-Item ''C:\\\\Repositories\\\\Paprika\\\\DEPLOY-RECIPE-IMPORT-AI.md''\")",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(supabase functions deploy:*)",
+      "Bash(npx supabase functions deploy recipe-import)"
     ],
     "deny": [],
     "ask": []

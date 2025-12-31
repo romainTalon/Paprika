@@ -34,6 +34,52 @@ export default function ImportRecipeScreen() {
   const [url, setUrl] = useState("");
   const [selectedCookbookId, setSelectedCookbookId] = useState<string | undefined>(undefined);
   const [progress, setProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState("");
+
+  // URL source type detection
+  type URLSourceType = "instagram" | "tiktok" | "web" | "invalid";
+  const [urlSource, setUrlSource] = useState<URLSourceType>("invalid");
+
+  // Detect URL source (Instagram/TikTok/web)
+  const detectURLSource = useCallback((url: string): URLSourceType => {
+    try {
+      const trimmed = url.trim();
+      if (!trimmed) return "invalid";
+
+      // Check for http/https protocol
+      if (!trimmed.match(/^https?:\/\//i)) return "invalid";
+
+      // Try to create URL object
+      const urlObj = new URL(trimmed);
+      const hostname = urlObj.hostname.toLowerCase();
+
+      // Instagram: /p/{post_id}/ or /reel/{reel_id}/
+      if (hostname.includes("instagram.com")) {
+        const postMatch = urlObj.pathname.match(/\/(p|reel)\/([A-Za-z0-9_-]+)/);
+        if (postMatch) {
+          return "instagram";
+        }
+      }
+
+      // TikTok: /@{username}/video/{video_id}
+      if (hostname.includes("tiktok.com")) {
+        const videoMatch = urlObj.pathname.match(/\/@([^/]+)\/video\/(\d+)/);
+        if (videoMatch) {
+          return "tiktok";
+        }
+      }
+
+      // Valid web URL
+      return "web";
+    } catch {
+      return "invalid";
+    }
+  }, []);
+
+  // Update URL source when URL changes
+  React.useEffect(() => {
+    setUrlSource(detectURLSource(url));
+  }, [url, detectURLSource]);
 
   // Validate URL
   const isValidUrl = useCallback((url: string): boolean => {
@@ -69,17 +115,48 @@ export default function ImportRecipeScreen() {
       return;
     }
 
+    // Progress timer reference
+    let progressTimer: NodeJS.Timeout | null = null;
+
     try {
       // Reset progress
       setProgress(0);
+      setProgressMessage("Connexion...");
+
+      // Simulate progress updates for better UX
+      progressTimer = setInterval(() => {
+        setProgress((prev) => {
+          if (prev < 20) {
+            setProgressMessage("Extraction de la description...");
+            return prev + 5;
+          } else if (prev < 80) {
+            setProgressMessage("Analyse avec IA...");
+            return prev + 3;
+          } else if (prev < 95) {
+            setProgressMessage("Finalisation...");
+            return prev + 2;
+          }
+          return prev;
+        });
+      }, 500);
 
       // Call import mutation
       const result = await importRecipe.mutateAsync({
         url: url.trim(),
         userId: user.id,
         cookbookId: selectedCookbookId,
-        onProgress: setProgress,
+        onProgress: (p) => {
+          setProgress(p);
+          if (p === 100) {
+            setProgressMessage("Import terminé !");
+          }
+        },
       });
+
+      // Stop timer and set to 100%
+      clearInterval(progressTimer);
+      setProgress(100);
+      setProgressMessage("Import terminé !");
 
       // Navigate to preview screen with recipe data
       router.push({
@@ -91,8 +168,23 @@ export default function ImportRecipeScreen() {
         },
       });
     } catch (error: any) {
+      // Clean up timer
+      if (progressTimer) {
+        clearInterval(progressTimer);
+      }
+
       // Handle different error types
       const errorMessage = error?.message || "Une erreur inconnue est survenue";
+      console.error("❌ Import error:", errorMessage);
+
+      const isSocialMediaError =
+        errorMessage.includes("SOCIAL_MEDIA_ERROR:") ||
+        errorMessage.includes("Instagram") ||
+        errorMessage.includes("TikTok") ||
+        errorMessage.includes("limite l'accès");
+
+      // Clean up the error message (remove prefix)
+      const cleanMessage = errorMessage.replace("SOCIAL_MEDIA_ERROR: ", "");
 
       if (errorMessage.includes("limit")) {
         // Freemium limit reached
@@ -105,6 +197,24 @@ export default function ImportRecipeScreen() {
               text: "Devenir Premium",
               onPress: () => router.push("/settings/premium"),
             },
+          ]
+        );
+      } else if (isSocialMediaError) {
+        // Social media import error - offer manual creation
+        Alert.alert(
+          "Import impossible",
+          `${cleanMessage}\n\nVous pouvez créer la recette manuellement.`,
+          [
+            { text: "Annuler", style: "cancel" },
+            {
+              text: "Créer manuellement",
+              onPress: () =>
+                router.push({
+                  pathname: "/recipes/create",
+                  params: { sourceUrl: url, sourcePlatform: urlSource },
+                }),
+            },
+            { text: "Réessayer", onPress: handleImport },
           ]
         );
       } else {
@@ -121,6 +231,7 @@ export default function ImportRecipeScreen() {
 
       // Reset progress
       setProgress(0);
+      setProgressMessage("");
     }
   }, [url, user, selectedCookbookId, importRecipe, isValidUrl]);
 
@@ -156,6 +267,22 @@ export default function ImportRecipeScreen() {
           <Text variant="body" color="neutral" style={styles.subtitle}>
             Collez l'URL d'une recette et notre IA l'importera automatiquement
           </Text>
+
+          {/* Source Badge */}
+          {urlSource === "instagram" && (
+            <View style={styles.sourceBadge}>
+              <Text variant="caption" style={styles.sourceBadgeText}>
+                📸 Instagram Post/Reel
+              </Text>
+            </View>
+          )}
+          {urlSource === "tiktok" && (
+            <View style={styles.sourceBadge}>
+              <Text variant="caption" style={styles.sourceBadgeText}>
+                🎵 TikTok Video
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* URL Input */}
@@ -235,10 +362,14 @@ export default function ImportRecipeScreen() {
           <View style={styles.progressContainer}>
             <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
             <Text variant="body" style={styles.progressText}>
-              Import en cours... {progress}%
+              {progressMessage || "Import en cours..."} {progress}%
             </Text>
             <Text variant="caption" color="neutral" style={styles.progressHint}>
-              Analyse de la recette avec IA
+              {progress < 20
+                ? "Connexion au serveur"
+                : progress < 80
+                ? "Extraction et analyse IA en cours"
+                : "Presque terminé"}
             </Text>
           </View>
         )}
@@ -316,6 +447,22 @@ const styles = StyleSheet.create({
 
   subtitle: {
     lineHeight: 22,
+  },
+
+  sourceBadge: {
+    marginTop: spacing.md,
+    backgroundColor: colors.primary[100],
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: spacing["2xl"],
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: colors.primary.DEFAULT,
+  },
+
+  sourceBadgeText: {
+    color: colors.primary.DEFAULT,
+    fontWeight: fontWeights.semibold as any,
   },
 
   // Section
