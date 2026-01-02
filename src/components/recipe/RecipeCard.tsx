@@ -90,75 +90,41 @@ export default function RecipeCard({
 
       {/* Content */}
       <View style={styles.cardContent}>
-        <Text variant="h3" numberOfLines={2} style={styles.cardTitle}>
+        <Text variant="h3" numberOfLines={1} style={styles.cardTitle}>
           {recipe.title}
         </Text>
 
-        {recipe.description && (
-          <Text
-            variant="bodySmall"
-            color="neutral"
-            numberOfLines={2}
-            style={styles.cardDescription}
-          >
-            {recipe.description}
-          </Text>
-        )}
-
-        {/* Metadata */}
+        {/* Metadata - Compact */}
         <View style={styles.metadata}>
-          <View style={styles.metadataItem}>
-            <Text variant="caption" color="neutral">
-              👥 {recipe.servings} pers
-            </Text>
-          </View>
-
-          {recipe.prepTime && (
-            <View style={styles.metadataItem}>
-              <Text variant="caption" color="neutral">
-                ⏱️ {recipe.prepTime} min
-              </Text>
-            </View>
-          )}
-
-          {recipe.cookTime && (
-            <View style={styles.metadataItem}>
-              <Text variant="caption" color="neutral">
-                🔥 {recipe.cookTime} min
-              </Text>
-            </View>
-          )}
-
           {totalTime > 0 && (
-            <View style={styles.metadataItem}>
-              <Text variant="caption" color="neutral">
-                Total: {totalTime} min
-              </Text>
-            </View>
+            <Text variant="caption" color="neutral">
+              ⏱️ {totalTime} min
+            </Text>
           )}
+          <Text variant="caption" color="neutral">
+            👥 {recipe.servings}
+          </Text>
         </View>
 
         {/* Difficulty Badge */}
         {recipe.difficulty && (
-          <View style={styles.difficultyContainer}>
-            <View
-              style={[
-                styles.difficultyBadge,
-                recipe.difficulty === "easy" && styles.difficultyEasy,
-                recipe.difficulty === "medium" && styles.difficultyMedium,
-                recipe.difficulty === "hard" && styles.difficultyHard,
-              ]}
-            >
-              <Text variant="caption" style={styles.difficultyText}>
-                {recipe.difficulty === "easy" && "Facile"}
-                {recipe.difficulty === "medium" && "Moyen"}
-                {recipe.difficulty === "hard" && "Difficile"}
-              </Text>
-            </View>
+          <View
+            style={[
+              styles.difficultyBadge,
+              recipe.difficulty === "easy" && styles.difficultyEasy,
+              recipe.difficulty === "medium" && styles.difficultyMedium,
+              recipe.difficulty === "hard" && styles.difficultyHard,
+            ]}
+          >
+            <Text variant="caption" style={styles.difficultyText}>
+              {recipe.difficulty === "easy" && "Facile"}
+              {recipe.difficulty === "medium" && "Moyen"}
+              {recipe.difficulty === "hard" && "Difficile"}
+            </Text>
           </View>
         )}
 
-        {/* Actions */}
+        {/* Actions - Icons only */}
         <View style={styles.cardActions}>
           <TouchableOpacity
             onPress={(e) => {
@@ -170,9 +136,7 @@ export default function RecipeCard({
               recipe.isFavorite ? "Remove from favorites" : "Add to favorites"
             }
           >
-            <Text variant="bodySmall" color={recipe.isFavorite ? "error" : "neutral"}>
-              {recipe.isFavorite ? "❤️" : "🤍"} Favori
-            </Text>
+            <Text variant="bodySmall">{recipe.isFavorite ? "❤️" : "🤍"}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -183,9 +147,7 @@ export default function RecipeCard({
             style={styles.actionButton}
             accessibilityLabel="Edit recipe"
           >
-            <Text variant="bodySmall" color="primary">
-              ✏️ Modifier
-            </Text>
+            <Text variant="bodySmall">✏️</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -196,9 +158,7 @@ export default function RecipeCard({
             style={styles.actionButton}
             accessibilityLabel="Delete recipe"
           >
-            <Text variant="bodySmall" color="error">
-              🗑️ Supprimer
-            </Text>
+            <Text variant="bodySmall">🗑️</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -210,14 +170,14 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.white,
     borderRadius: 12,
-    marginBottom: spacing.md,
+    width: "48%", // 2 columns with 4% gap
     overflow: "hidden",
     ...shadows.md,
   },
 
   cardImage: {
     width: "100%",
-    height: 180,
+    height: 140,
     backgroundColor: colors.gray[200],
   },
 
@@ -250,7 +210,7 @@ const styles = StyleSheet.create({
   },
 
   cardContent: {
-    padding: spacing.md,
+    padding: spacing.sm,
   },
 
   cardTitle: {
@@ -258,15 +218,10 @@ const styles = StyleSheet.create({
     color: colors.warm.brown,
   },
 
-  cardDescription: {
-    marginBottom: spacing.sm,
-    lineHeight: 20,
-  },
-
   metadata: {
     flexDirection: "row",
     flexWrap: "wrap",
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
     gap: spacing.sm,
   },
 
@@ -275,15 +230,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  difficultyContainer: {
-    marginBottom: spacing.sm,
-  },
-
   difficultyBadge: {
     alignSelf: "flex-start",
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
     borderRadius: spacing.xs,
+    marginBottom: spacing.xs,
   },
 
   difficultyEasy: {
@@ -305,16 +257,12 @@ const styles = StyleSheet.create({
 
   cardActions: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.gray[200],
+    justifyContent: "flex-end",
+    gap: spacing.sm,
+    marginTop: spacing.xs,
   },
 
   actionButton: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: spacing.xs,
+    padding: 2,
   },
 });

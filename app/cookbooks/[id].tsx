@@ -221,27 +221,28 @@ export default function CookbookDetailScreen() {
     <>
       <AppHeader showBackButton />
       <Container useSafeArea safeAreaEdges={["bottom"]}>
-        <FlatList
-        data={recipes}
-        renderItem={renderRecipe}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        ListHeaderComponent={
-          <View style={styles.header}>
-            <View>
-              <Text variant="h1">{cookbook?.name || "Livre de Recettes"}</Text>
-              <Text variant="bodySmall" color="neutral">
-                {recipes.length} recette{recipes.length > 1 ? "s" : ""}
-              </Text>
-            </View>
+        <View style={styles.header}>
+          <View>
+            <Text variant="h1">{cookbook?.name || "Livre de Recettes"}</Text>
+            <Text variant="bodySmall" color="neutral">
+              {recipes.length} recette{recipes.length > 1 ? "s" : ""}
+            </Text>
           </View>
-        }
-        showsVerticalScrollIndicator={false}
-        removeClippedSubviews={true}
-        maxToRenderPerBatch={10}
-        windowSize={10}
-        initialNumToRender={10}
-      />
+        </View>
+
+        <FlatList
+          data={recipes}
+          renderItem={renderRecipe}
+          keyExtractor={(item) => item.id}
+          numColumns={2}
+          columnWrapperStyle={styles.row}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          windowSize={10}
+          initialNumToRender={10}
+        />
 
       {/* Floating Action Button */}
       <TouchableOpacity
@@ -268,6 +269,11 @@ const styles = StyleSheet.create({
 
   listContent: {
     paddingBottom: 80, // Space for FAB
+  },
+
+  row: {
+    justifyContent: "space-between",
+    marginBottom: spacing.md,
   },
 
   // Empty State
