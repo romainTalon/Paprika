@@ -75,18 +75,21 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 
 **Frontend fonctionnel** 🚧 :
 
-**Cookbooks** ✅ :
-- ✅ CookbooksScreen avec liste, création, édition, suppression
+**Cookbooks** ✅ (2 janvier 2026 - UI Polish) :
+- ✅ CookbooksScreen avec grille 2 colonnes, création, édition, suppression
+- ✅ CookbookCoverMosaic - Mosaïque dynamique d'images de recettes (1 large + 3 petites)
 - ✅ CreateCookbookModal avec validation et gestion d'état
 - ✅ Hooks TanStack Query (useCookbooks, useCreateCookbook, etc.)
 - ✅ UI freemium (limite 2 cookbooks affichée)
+- ✅ Menu contextuel (⋮) pour actions (Modifier/Supprimer)
 
-**Recettes** ✅ (24 novembre 2025) :
-- ✅ RecipeListScreen - Affichage des recettes d'un cookbook
+**Recettes** ✅ (2 janvier 2026 - UI Polish) :
+- ✅ RecipeListScreen - Grille 2 colonnes responsive
 - ✅ CreateRecipeScreen - Formulaire complet de création manuelle avec TimeStepper et fractions
-- ✅ RecipeEditScreen - Édition complète de recettes (735 lignes, réutilise CreateRecipeScreen) (24 nov)
-- ✅ RecipeDetailScreen - Lecture interactive avec checkboxes et multiplier portions (23 nov)
-- ✅ RecipeCard - Composant réutilisable avec actions (favori, éditer, supprimer)
+- ✅ RecipeEditScreen - Édition complète de recettes (735 lignes, réutilise CreateRecipeScreen)
+- ✅ RecipeDetailScreen - Lecture interactive avec checkboxes, multiplier portions et menu contextuel (⋮)
+- ✅ RecipeCard - Composant compact épuré (2 colonnes, sans boutons actions)
+- ✅ Menus contextuels natifs - ActionSheetIOS (iOS) + Alert (Android) pour actions recettes
 - ✅ IngredientInput - Input dynamique avec support fractions et unité optionnelle
 - ✅ StepInput - Input dynamique pour étapes numérotées
 - ✅ TimeStepper - Composant stepper heures/minutes pour temps de préparation/cuisson
@@ -380,7 +383,52 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 - ✅ Token refresh automatique (AppState listener)
 - ⏳ Deep links pour confirmation email (désactivée temporairement)
 
-**Dernière mise à jour** : 31 décembre 2025
+**Dernière mise à jour** : 2 janvier 2026
+
+**Derniers changements** (2 janvier 2026) :
+
+## 🎨 **Amélioration UI/UX - Interface Cookbooks & Recettes**
+
+### **✅ Layout 2 Colonnes Responsive**
+- ✅ **CookbooksScreen** : Grille 2 colonnes (FlatList numColumns={2})
+- ✅ **RecipeListScreen** : Grille 2 colonnes pour affichage recettes
+- ✅ **Cards optimisées** : Width 48% avec gap 4% pour espacement parfait
+- ✅ **Responsive** : Adaptation automatique selon taille écran
+
+### **✅ CookbookCoverMosaic Component**
+- ✅ **Mosaïque dynamique** : 1 image large (60%) + 3 images small (40%)
+- ✅ **États gérés** : Loading (⏳), Empty (📚), 1 image, 2-3 images, 4+ images
+- ✅ **Placeholder intelligent** : Affichage emoji si aucune recette avec image
+- ✅ **Réutilisable** : 192 lignes, intégré dans CookbookCard
+
+### **✅ Menus Contextuels Natifs**
+- ✅ **Pattern iOS/Android** : ActionSheetIOS (iOS) + Alert (Android)
+- ✅ **Cookbook detail** : Menu ⋮ avec Modifier/Supprimer
+- ✅ **Recipe detail** : Menu ⋮ avec Favori/Courses/Modifier/Supprimer
+- ✅ **Cards épurées** : Suppression boutons actions visibles (UI minimaliste)
+- ✅ **Favorite indicator** : ❤️ affiché à côté du titre si recette favorite
+
+### **✅ Cleanup Interface**
+- ✅ **CookbooksScreen** : Suppression bouton "Déconnexion" (accès via Settings)
+- ✅ **RecipeCard** : Props simplifiées (recipe + onPress uniquement)
+- ✅ **Design system** : Respect strict des tokens (colors, spacing, shadows)
+- ✅ **Accessibilité** : Labels et roles ARIA complets
+
+### **📁 Fichiers Modifiés**
+- ✅ Nouveau : `src/components/cookbook/CookbookCoverMosaic.tsx` (192 lignes)
+- ✅ Modifié : `src/screens/CookbooksScreen.tsx` (~30 lignes)
+- ✅ Modifié : `app/cookbooks/[id].tsx` (~40 lignes)
+- ✅ Modifié : `src/components/recipe/RecipeCard.tsx` (~20 lignes)
+- ✅ Modifié : `app/recipes/[id].tsx` (~30 lignes)
+
+### **📈 Impact sur le Projet**
+- **Frontend UI/UX** : Expérience utilisateur modernisée et épurée
+- **Design consistency** : Pattern menus contextuels établi pour futures features
+- **Code reusability** : CookbookCoverMosaic réutilisable pour d'autres vues
+- **User experience** : Navigation plus intuitive, actions contextuelles natives
+- **Mobile-first** : Grille 2 colonnes optimale pour écrans mobiles
+
+---
 
 **Derniers changements** (31 décembre 2025) :
 
@@ -893,6 +941,6 @@ Ce projet est actuellement en développement privé. Les contributions seront ou
 
 *Version 1.0 - Documentation complète*
 
-*Dernière mise à jour : 29 décembre 2025*
+*Dernière mise à jour : 2 janvier 2026*
 
 </div>
