@@ -25,20 +25,26 @@ import {
   useDeleteCookbook,
   type Cookbook,
 } from "@/hooks/useCookbooks";
+import { useCookbookRecipes } from "@/hooks/useRecipes";
 import { useAuth } from "@/hooks/useAuth";
 import CreateCookbookModal from "@/components/modals/CreateCookbookModal";
+import { CookbookCoverMosaic } from "../components/cookbook/CookbookCoverMosaic";
 
 /**
  * Cookbook Card Component
  */
 interface CookbookCardProps {
   cookbook: Cookbook;
+  userId: string;
   onPress: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
 
-function CookbookCard({ cookbook, onPress, onEdit, onDelete }: CookbookCardProps) {
+function CookbookCard({ cookbook, userId, onPress, onEdit, onDelete }: CookbookCardProps) {
+  // Fetch recipes for this cookbook to show in mosaic
+  const { data: recipes, isLoading: recipesLoading } = useCookbookRecipes(cookbook.id, userId);
+
   return (
     <TouchableOpacity
       style={styles.card}
@@ -47,35 +53,19 @@ function CookbookCard({ cookbook, onPress, onEdit, onDelete }: CookbookCardProps
       accessibilityLabel={`Cookbook: ${cookbook.name}`}
       accessibilityRole="button"
     >
-      {/* Cover Image */}
-      {cookbook.coverImageUrl ? (
-        <Image
-          source={{ uri: cookbook.coverImageUrl }}
-          style={styles.cardImage}
-          resizeMode="cover"
-        />
-      ) : (
-        <View style={[styles.cardImage, styles.cardImagePlaceholder]}>
-          <Text style={styles.placeholderIcon}>📚</Text>
-        </View>
-      )}
+      {/* Cover Mosaic */}
+      <CookbookCoverMosaic recipes={recipes} isLoading={recipesLoading} />
 
       {/* Content */}
       <View style={styles.cardContent}>
-        <Text variant="h3" numberOfLines={2} style={styles.cardTitle}>
+        <Text variant="h3" numberOfLines={1} style={styles.cardTitle}>
           {cookbook.name}
         </Text>
 
-        {cookbook.description && (
-          <Text
-            variant="bodySmall"
-            color="neutral"
-            numberOfLines={2}
-            style={styles.cardDescription}
-          >
-            {cookbook.description}
-          </Text>
-        )}
+        {/* Recipe count */}
+        <Text variant="caption" color="neutral" style={styles.recipeCount}>
+          {recipes?.length || 0} recette{recipes?.length !== 1 ? "s" : ""}
+        </Text>
 
         {cookbook.isDefault && (
           <View style={styles.defaultBadge}>
@@ -96,7 +86,7 @@ function CookbookCard({ cookbook, onPress, onEdit, onDelete }: CookbookCardProps
             accessibilityLabel="Edit cookbook"
           >
             <Text variant="bodySmall" color="primary">
-              ✏️ Modifier
+              ✏️
             </Text>
           </TouchableOpacity>
 
@@ -109,7 +99,7 @@ function CookbookCard({ cookbook, onPress, onEdit, onDelete }: CookbookCardProps
             accessibilityLabel="Delete cookbook"
           >
             <Text variant="bodySmall" color="error">
-              🗑️ Supprimer
+              🗑️
             </Text>
           </TouchableOpacity>
         </View>
@@ -350,18 +340,21 @@ export default function CookbooksScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Cookbooks List */}
+      {/* Cookbooks Grid */}
       <FlatList
         data={cookbooks}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <CookbookCard
             cookbook={item}
+            userId={userId!}
             onPress={() => handleCookbookPress(item)}
             onEdit={() => handleEditPress(item)}
             onDelete={() => handleDeletePress(item)}
           />
         )}
+        numColumns={2}
+        columnWrapperStyle={styles.row}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       />
@@ -419,60 +412,51 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl + 60, // Extra padding for FAB
   },
 
+  row: {
+    justifyContent: "space-between",
+    marginBottom: spacing.md,
+  },
+
   // Card Styles
   card: {
-    backgroundColor: colors.cream.DEFAULT,
+    backgroundColor: colors.white,
     borderRadius: spacing.md,
-    marginBottom: spacing.md,
     overflow: "hidden",
+    width: "48%", // 2 columns with 4% gap
     ...shadows.md,
   },
 
-  cardImage: {
-    width: "100%",
-    height: 150,
-    backgroundColor: colors.gray[200],
-  },
-
-  cardImagePlaceholder: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  placeholderIcon: {
-    fontSize: 48,
-    lineHeight: 56, // Line height plus grande pour éviter le clip vertical
-  },
-
   cardContent: {
-    padding: spacing.md,
+    padding: spacing.sm,
   },
 
-  cardTitle: {
+  recipeCount: {
+    marginTop: spacing.xs,
     marginBottom: spacing.xs,
   },
 
-  cardDescription: {
-    marginBottom: spacing.sm,
+  cardTitle: {
+    marginBottom: 2,
   },
 
   defaultBadge: {
-    alignSelf: "flex-start",
     backgroundColor: colors.primary.DEFAULT,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs / 2,
+    paddingVertical: 2,
+    paddingHorizontal: spacing.xs,
     borderRadius: spacing.xs,
-    marginBottom: spacing.sm,
+    alignSelf: "flex-start",
+    marginTop: spacing.xs,
   },
 
   cardActions: {
     flexDirection: "row",
-    gap: spacing.md,
-    marginTop: spacing.sm,
+    justifyContent: "flex-end",
+    gap: spacing.sm,
+    marginTop: spacing.xs,
   },
 
   actionButton: {
-    paddingVertical: spacing.xs,
+    padding: 2,
   },
 
   // Empty State
