@@ -55,12 +55,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (!authUser) return null;
 
     try {
-      // Fetch user profile from public.users to get isPremium
-      const { data: profile, error } = await supabase
+      // Fetch user profile from public.users to get isPremium with timeout
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Profile fetch timeout")), 5000)
+      );
+
+      const fetchPromise = supabase
         .from("users")
         .select("is_premium")
         .eq("id", authUser.id)
         .single();
+
+      const { data: profile, error } = await Promise.race([
+        fetchPromise,
+        timeoutPromise
+      ]) as any;
 
       if (error) {
         console.error("Failed to fetch user profile:", error);
@@ -81,7 +90,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      console.log("🔐 Initial session:", session?.user?.email ?? "No session");
       setSession(session);
       const enrichedUser = await enrichUserWithProfile(session?.user ?? null);
       setUser(enrichedUser);
@@ -92,7 +100,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("🔐 Auth state changed:", event, "User:", session?.user?.email ?? "No user");
       setSession(session);
       const enrichedUser = await enrichUserWithProfile(session?.user ?? null);
       setUser(enrichedUser);
