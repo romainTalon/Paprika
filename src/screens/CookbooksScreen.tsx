@@ -37,11 +37,9 @@ interface CookbookCardProps {
   cookbook: Cookbook;
   userId: string;
   onPress: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
 }
 
-function CookbookCard({ cookbook, userId, onPress, onEdit, onDelete }: CookbookCardProps) {
+function CookbookCard({ cookbook, userId, onPress }: CookbookCardProps) {
   // Fetch recipes for this cookbook to show in mosaic
   const { data: recipes, isLoading: recipesLoading } = useCookbookRecipes(cookbook.id, userId);
 
@@ -74,35 +72,6 @@ function CookbookCard({ cookbook, userId, onPress, onEdit, onDelete }: CookbookC
             </Text>
           </View>
         )}
-
-        {/* Actions */}
-        <View style={styles.cardActions}>
-          <TouchableOpacity
-            onPress={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}
-            style={styles.actionButton}
-            accessibilityLabel="Edit cookbook"
-          >
-            <Text variant="bodySmall" color="primary">
-              ✏️
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            style={styles.actionButton}
-            accessibilityLabel="Delete cookbook"
-          >
-            <Text variant="bodySmall" color="error">
-              🗑️
-            </Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </TouchableOpacity>
   );
@@ -138,7 +107,7 @@ function EmptyState({ onCreatePress }: { onCreatePress: () => void }) {
  * Main Cookbooks Screen Component
  */
 export default function CookbooksScreen() {
-  const { user, isAuthenticated, loading: authLoading, signOut } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingCookbook, setEditingCookbook] = useState<Cookbook | null>(null);
 
@@ -210,34 +179,6 @@ export default function CookbooksScreen() {
     router.push(`/cookbooks/${cookbook.id}`);
   }, []);
 
-  const handleSignOut = useCallback(async () => {
-    Alert.alert(
-      "Déconnexion",
-      "Voulez-vous vraiment vous déconnecter ?",
-      [
-        {
-          text: "Annuler",
-          style: "cancel",
-        },
-        {
-          text: "Déconnexion",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await signOut();
-              // Navigation handled by AuthContext + app/index.tsx
-            } catch (error) {
-              Alert.alert(
-                "Erreur",
-                "Impossible de se déconnecter. Veuillez réessayer."
-              );
-            }
-          },
-        },
-      ]
-    );
-  }, [signOut]);
-
   // Check freemium limit (2 cookbooks max for free users)
   const canCreateCookbook = cookbooks && cookbooks.length < 2; // TODO: Check premium status
 
@@ -293,18 +234,7 @@ export default function CookbooksScreen() {
     return (
       <Container>
         <View style={styles.header}>
-          <View>
-            <Text variant="h1">Mes Livres</Text>
-          </View>
-          <TouchableOpacity
-            onPress={handleSignOut}
-            style={styles.logoutButton}
-            accessibilityLabel="Se déconnecter"
-          >
-            <Text variant="bodySmall" color="error">
-              Déconnexion
-            </Text>
-          </TouchableOpacity>
+          <Text variant="h1">Mes Livres</Text>
         </View>
         <EmptyState onCreatePress={handleCreatePress} />
 
@@ -323,21 +253,10 @@ export default function CookbooksScreen() {
     <Container>
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text variant="h1">Mes Livres</Text>
-          <Text variant="bodySmall" color="neutral">
-            {cookbooks.length} livre{cookbooks.length > 1 ? "s" : ""}
-          </Text>
-        </View>
-        <TouchableOpacity
-          onPress={handleSignOut}
-          style={styles.logoutButton}
-          accessibilityLabel="Se déconnecter"
-        >
-          <Text variant="bodySmall" color="error">
-            Déconnexion
-          </Text>
-        </TouchableOpacity>
+        <Text variant="h1">Mes Livres</Text>
+        <Text variant="bodySmall" color="neutral">
+          {cookbooks.length} livre{cookbooks.length > 1 ? "s" : ""}
+        </Text>
       </View>
 
       {/* Cookbooks Grid */}
@@ -349,8 +268,6 @@ export default function CookbooksScreen() {
             cookbook={item}
             userId={userId!}
             onPress={() => handleCookbookPress(item)}
-            onEdit={() => handleEditPress(item)}
-            onDelete={() => handleDeletePress(item)}
           />
         )}
         numColumns={2}
@@ -397,15 +314,7 @@ export default function CookbooksScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
     marginBottom: spacing.lg,
-  },
-
-  logoutButton: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
   },
 
   listContent: {
@@ -446,17 +355,6 @@ const styles = StyleSheet.create({
     borderRadius: spacing.xs,
     alignSelf: "flex-start",
     marginTop: spacing.xs,
-  },
-
-  cardActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: spacing.sm,
-    marginTop: spacing.xs,
-  },
-
-  actionButton: {
-    padding: 2,
   },
 
   // Empty State

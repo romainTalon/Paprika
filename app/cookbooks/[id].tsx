@@ -15,6 +15,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Platform,
+  ActionSheetIOS,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Text, Button, Container } from "@/components/ui";
@@ -27,8 +29,9 @@ import {
   useDeleteRecipe,
   type Recipe,
 } from "@/hooks/useRecipes";
-import { useCookbook } from "@/hooks/useCookbooks";
+import { useCookbook, useDeleteCookbook } from "@/hooks/useCookbooks";
 import { useAuth } from "@/hooks/useAuth";
+import CreateCookbookModal from "@/components/modals/CreateCookbookModal";
 
 /**
  * Empty State Component
@@ -86,6 +89,8 @@ export default function CookbookDetailScreen() {
   const { user } = useAuth();
   const userId = user?.id;
 
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+
   // Fetch cookbook details
   const {
     data: cookbook,
@@ -104,11 +109,87 @@ export default function CookbookDetailScreen() {
   // Mutations
   const toggleFavorite = useToggleFavorite();
   const deleteRecipe = useDeleteRecipe();
+  const deleteCookbook = useDeleteCookbook();
 
   // Handlers - MUST be declared before any conditional returns
   const handleCreatePress = useCallback(() => {
     router.push(`/recipes/create?cookbookId=${id}`);
   }, [id]);
+
+  const handleCookbookMenu = useCallback(() => {
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ["Annuler", "Modifier", "Supprimer"],
+          destructiveButtonIndex: 2,
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            // Modifier
+            setIsEditModalVisible(true);
+          } else if (buttonIndex === 2) {
+            // Supprimer
+            handleDeleteCookbook();
+          }
+        }
+      );
+    } else {
+      // Android - Use Alert with buttons
+      Alert.alert(
+        "Actions",
+        "Que souhaitez-vous faire ?",
+        [
+          { text: "Annuler", style: "cancel" },
+          {
+            text: "Modifier",
+            onPress: () => setIsEditModalVisible(true),
+          },
+          {
+            text: "Supprimer",
+            onPress: handleDeleteCookbook,
+            style: "destructive",
+          },
+        ]
+      );
+    }
+  }, []);
+
+  const handleDeleteCookbook = useCallback(() => {
+    Alert.alert(
+      "Supprimer le livre ?",
+      `Êtes-vous sûr de vouloir supprimer "${cookbook?.name}" ? Toutes les recettes seront conservées mais ne seront plus dans ce livre.`,
+      [
+        {
+          text: "Annuler",
+          style: "cancel",
+        },
+        {
+          text: "Supprimer",
+          style: "destructive",
+          onPress: async () => {
+            if (!userId) return;
+
+            try {
+              await deleteCookbook.mutateAsync({
+                cookbookId: id,
+                userId,
+              });
+              Alert.alert("Succès", "Livre supprimé avec succès !");
+              router.back();
+            } catch (error) {
+              Alert.alert(
+                "Erreur",
+                error instanceof Error
+                  ? error.message
+                  : "Impossible de supprimer le livre"
+              );
+            }
+          },
+        },
+      ]
+    );
+  }, [userId, id, cookbook?.name, deleteCookbook]);
 
   const handleRecipePress = useCallback((recipeId: string) => {
     router.push(`/recipes/${recipeId}`);
@@ -157,12 +238,9 @@ export default function CookbookDetailScreen() {
       <RecipeCard
         recipe={item}
         onPress={() => handleRecipePress(item.id)}
-        onToggleFavorite={() => handleToggleFavorite(item.id)}
-        onEdit={() => handleEditRecipe(item.id)}
-        onDelete={() => handleDeleteRecipe(item.id)}
       />
     ),
-    [handleRecipePress, handleToggleFavorite, handleEditRecipe, handleDeleteRecipe]
+    [handleRecipePress]
   );
 
   // Conditional returns AFTER all hooks
@@ -222,12 +300,20 @@ export default function CookbookDetailScreen() {
       <AppHeader showBackButton />
       <Container useSafeArea safeAreaEdges={["bottom"]}>
         <View style={styles.header}>
-          <View>
+          <View style={styles.headerLeft}>
             <Text variant="h1">{cookbook?.name || "Livre de Recettes"}</Text>
             <Text variant="bodySmall" color="neutral">
               {recipes.length} recette{recipes.length > 1 ? "s" : ""}
             </Text>
           </View>
+          <TouchableOpacity
+            onPress={handleCookbookMenu}
+            style={styles.menuButton}
+            accessibilityLabel="Options du livre"
+            accessibilityRole="button"
+          >
+            <Text style={styles.menuIcon}>⋮</Text>
+          </TouchableOpacity>
         </View>
 
         <FlatList
@@ -244,17 +330,27 @@ export default function CookbookDetailScreen() {
           initialNumToRender={10}
         />
 
-      {/* Floating Action Button */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={handleCreatePress}
-        activeOpacity={0.8}
-        accessibilityLabel="Create new recipe"
-        accessibilityRole="button"
-      >
-        <Text style={styles.fabIcon}>+</Text>
-      </TouchableOpacity>
-    </Container>
+        {/* Floating Action Button */}
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={handleCreatePress}
+          activeOpacity={0.8}
+          accessibilityLabel="Create new recipe"
+          accessibilityRole="button"
+        >
+          <Text style={styles.fabIcon}>+</Text>
+        </TouchableOpacity>
+
+        {/* Edit Cookbook Modal */}
+        {cookbook && (
+          <CreateCookbookModal
+            visible={isEditModalVisible}
+            cookbook={cookbook}
+            userId={userId ?? null}
+            onClose={() => setIsEditModalVisible(false)}
+          />
+        )}
+      </Container>
     </>
   );
 }
@@ -263,8 +359,24 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
     marginBottom: spacing.lg,
+  },
+
+  headerLeft: {
+    flex: 1,
+  },
+
+  menuButton: {
+    padding: spacing.xs,
+    marginLeft: spacing.sm,
+  },
+
+  menuIcon: {
+    fontSize: 32,
+    color: colors.warm.brown,
+    fontWeight: "bold",
+    lineHeight: 32,
   },
 
   listContent: {

@@ -15,6 +15,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
+  Platform,
+  ActionSheetIOS,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -92,6 +94,65 @@ export default function RecipeDetailScreen() {
     if (!recipe) return;
     router.push(`/recipes/${recipe.id}/edit`);
   }, [recipe]);
+
+  const handleRecipeMenu = useCallback(() => {
+    if (!recipe) return;
+
+    const options = ["Annuler", "Favori", "Ajouter aux courses", "Modifier", "Supprimer"];
+    const favoriteLabel = recipe.isFavorite ? "Retirer des favoris" : "Ajouter aux favoris";
+    options[1] = favoriteLabel;
+
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options,
+          destructiveButtonIndex: 4,
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            // Favori
+            handleFavoriteToggle();
+          } else if (buttonIndex === 2) {
+            // Courses
+            handleAddToGroceryList();
+          } else if (buttonIndex === 3) {
+            // Modifier
+            handleEdit();
+          } else if (buttonIndex === 4) {
+            // Supprimer
+            handleDelete();
+          }
+        }
+      );
+    } else {
+      // Android
+      Alert.alert(
+        "Actions",
+        "Que souhaitez-vous faire ?",
+        [
+          { text: "Annuler", style: "cancel" },
+          {
+            text: favoriteLabel,
+            onPress: handleFavoriteToggle,
+          },
+          {
+            text: "Ajouter aux courses",
+            onPress: handleAddToGroceryList,
+          },
+          {
+            text: "Modifier",
+            onPress: handleEdit,
+          },
+          {
+            text: "Supprimer",
+            onPress: handleDelete,
+            style: "destructive",
+          },
+        ]
+      );
+    }
+  }, [recipe, handleFavoriteToggle, handleAddToGroceryList, handleEdit]);
 
   const handleDelete = useCallback(() => {
     if (!recipe || !user?.id) return;
@@ -329,60 +390,24 @@ export default function RecipeDetailScreen() {
           />
         </View>
 
-        {/* Title */}
+        {/* Title with Menu */}
         <View style={styles.header}>
-          <Text variant="h1" style={styles.title}>
-            {recipe.title}
-          </Text>
-        </View>
-
-        {/* Action Icons Bar */}
-        <View style={styles.actionsBar}>
-          <View style={styles.actionsRow}>
-            {/* Favorite */}
-            <TouchableOpacity
-              onPress={handleFavoriteToggle}
-              style={styles.actionButton}
-              accessibilityRole="button"
-              accessibilityLabel={recipe.isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
-            >
-              <Text style={styles.actionIcon}>{recipe.isFavorite ? "❤️" : "🤍"}</Text>
-            </TouchableOpacity>
-
-            {/* Grocery List (conditional) */}
-            {adjustedIngredients.length > 0 && (
-              <TouchableOpacity
-                onPress={handleAddToGroceryList}
-                disabled={addToGroceryList.isPending}
-                style={[styles.actionButton, addToGroceryList.isPending && styles.actionButtonDisabled]}
-                accessibilityRole="button"
-                accessibilityLabel="Ajouter les ingrédients aux courses"
-              >
-                <Text style={styles.actionIcon}>🛒</Text>
-              </TouchableOpacity>
+          <View style={styles.headerLeft}>
+            <Text variant="h1" style={styles.title}>
+              {recipe.title}
+            </Text>
+            {recipe.isFavorite && (
+              <Text style={styles.favoriteIndicator}>❤️</Text>
             )}
-
-            {/* Edit */}
-            <TouchableOpacity
-              onPress={handleEdit}
-              style={styles.actionButton}
-              accessibilityRole="button"
-              accessibilityLabel="Modifier la recette"
-            >
-              <Text style={styles.actionIcon}>✏️</Text>
-            </TouchableOpacity>
-
-            {/* Delete */}
-            <TouchableOpacity
-              onPress={handleDelete}
-              disabled={deleteRecipe.isPending}
-              style={[styles.actionButton, deleteRecipe.isPending && styles.actionButtonDisabled]}
-              accessibilityRole="button"
-              accessibilityLabel="Supprimer la recette"
-            >
-              <Text style={styles.actionIcon}>🗑️</Text>
-            </TouchableOpacity>
           </View>
+          <TouchableOpacity
+            onPress={handleRecipeMenu}
+            style={styles.menuButton}
+            accessibilityLabel="Options de la recette"
+            accessibilityRole="button"
+          >
+            <Text style={styles.menuIcon}>⋮</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Description */}
@@ -625,43 +650,40 @@ const styles = StyleSheet.create({
     height: "100%",
   },
 
-  actionsBar: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.cream.DEFAULT,
-  },
-
-  actionsRow: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    alignItems: "center",
-    justifyContent: "flex-start",
-  },
-
   header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
-    paddingBottom: spacing.xs,
+    paddingBottom: spacing.md,
+  },
+
+  headerLeft: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
   },
 
   title: {
+    flex: 1,
     color: colors.warm.brown,
   },
 
-  actionButton: {
-    width: 44,
-    height: 44,
-    justifyContent: "center",
-    alignItems: "center",
+  favoriteIndicator: {
+    fontSize: 20,
   },
 
-  actionButtonDisabled: {
-    opacity: 0.4,
+  menuButton: {
+    padding: spacing.xs,
+    marginLeft: spacing.sm,
   },
 
-  actionIcon: {
-    fontSize: 24,
+  menuIcon: {
+    fontSize: 32,
+    color: colors.warm.brown,
+    fontWeight: "bold",
     lineHeight: 32,
   },
 

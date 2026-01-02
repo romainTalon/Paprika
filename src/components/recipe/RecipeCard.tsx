@@ -24,39 +24,12 @@ interface RecipeCardProps {
   recipe: Recipe;
   /** Callback when card is pressed */
   onPress: () => void;
-  /** Callback to toggle favorite status */
-  onToggleFavorite: () => void;
-  /** Callback when edit button is pressed */
-  onEdit: () => void;
-  /** Callback when delete button is pressed */
-  onDelete: () => void;
 }
 
 export default function RecipeCard({
   recipe,
   onPress,
-  onToggleFavorite,
-  onEdit,
-  onDelete,
 }: RecipeCardProps) {
-  const handleDeletePress = () => {
-    Alert.alert(
-      "Supprimer la recette",
-      `Êtes-vous sûr de vouloir supprimer "${recipe.title}" ?`,
-      [
-        {
-          text: "Annuler",
-          style: "cancel",
-        },
-        {
-          text: "Supprimer",
-          onPress: onDelete,
-          style: "destructive",
-        },
-      ]
-    );
-  };
-
   // Calculate total time
   const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
 
@@ -123,44 +96,6 @@ export default function RecipeCard({
             </Text>
           </View>
         )}
-
-        {/* Actions - Icons only */}
-        <View style={styles.cardActions}>
-          <TouchableOpacity
-            onPress={(e) => {
-              e.stopPropagation();
-              onToggleFavorite();
-            }}
-            style={styles.actionButton}
-            accessibilityLabel={
-              recipe.isFavorite ? "Remove from favorites" : "Add to favorites"
-            }
-          >
-            <Text variant="bodySmall">{recipe.isFavorite ? "❤️" : "🤍"}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}
-            style={styles.actionButton}
-            accessibilityLabel="Edit recipe"
-          >
-            <Text variant="bodySmall">✏️</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={(e) => {
-              e.stopPropagation();
-              handleDeletePress();
-            }}
-            style={styles.actionButton}
-            accessibilityLabel="Delete recipe"
-          >
-            <Text variant="bodySmall">🗑️</Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </TouchableOpacity>
   );
