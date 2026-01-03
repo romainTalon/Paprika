@@ -57,7 +57,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       // Fetch user profile from public.users to get isPremium with timeout
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Profile fetch timeout")), 5000)
+        setTimeout(() => reject(new Error("Profile fetch timeout")), 10000)
       );
 
       const fetchPromise = supabase
@@ -72,7 +72,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       ]) as any;
 
       if (error) {
-        console.error("Failed to fetch user profile:", error);
+        console.warn("Failed to fetch user profile (non-blocking):", error.message);
         return authUser; // Return auth user without premium status if fetch fails
       }
 
@@ -82,7 +82,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isPremium: profile?.is_premium ?? false,
       };
     } catch (error) {
-      console.error("Error enriching user profile:", error);
+      console.warn("Profile fetch timeout (non-blocking):", error instanceof Error ? error.message : error);
       return authUser;
     }
   };
