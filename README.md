@@ -32,13 +32,13 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 |-----------|--------|-------------|
 | 📝 Documentation | ✅ Complète | 100% |
 | 🗄️ Base de Données | ✅ Opérationnelle | 85% |
-| ⚙️ Backend Services | ✅ Fonctionnels | 80% |
-| 📱 Frontend | ✅ Presque complet | 95% |
+| ⚙️ Backend Services | ✅ Fonctionnels | 85% |
+| 📱 Frontend | ✅ Presque complet | 97% |
 | 🤖 Services IA | ✅ Fonctionnels | 85% |
 | 🔐 Authentification | ✅ Complète | 100% |
 | 📚 Gestion Recettes | ✅ Complète | 100% |
 | 🍴 Import Recettes IA | ✅ Complet | 100% (+ Instagram/TikTok) |
-| 🥗 Calcul Nutrition | ✅ Complet | 100% (3-tier: Cache → OpenFoodFacts → AI) |
+| 🥗 Calcul Nutrition | ✅ Complet | 100% (Auto-calcul Premium + 3-tier) |
 | 📅 Meal Planning | ✅ Complète | 100% |
 | 🛒 Listes de Courses | ✅ Complète | 100% |
 | 💳 Paiements | ⏳ À faire | 0% |
@@ -383,7 +383,71 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 - ✅ Token refresh automatique (AppState listener)
 - ⏳ Deep links pour confirmation email (désactivée temporairement)
 
-**Dernière mise à jour** : 2 janvier 2026
+**Dernière mise à jour** : 3 janvier 2026
+
+**Derniers changements** (3 janvier 2026) :
+
+## 🎯 **Optimisations Premium & UX**
+
+### **✅ Calcul Nutritionnel Auto-Trigger pour Premium**
+- ✅ **Auto-calcul intelligent** : Recettes sans nutrition calculées automatiquement pour users premium
+- ✅ **Optimisation useEffect** : Flag `useRef` anti-double-trigger lors du refetch
+- ✅ **Dépendances granulaires** : `recipe?.id` + `recipe?.nutrition` + `isPremium` (évite re-renders inutiles)
+- ✅ **UX fluide** : Pas de blocage UI, calcul en arrière-plan
+- ✅ **Code location** : `app/recipes/[id].tsx` lignes 202-235
+
+### **✅ Fix Bouton Création Cookbook (Premium)**
+- ✅ **Bug corrigé** : Bouton grisé même pour users premium
+- ✅ **Logique freemium** : `user?.isPremium || (cookbooks.length < 2)`
+- ✅ **Impact** : Users premium peuvent maintenant créer cookbooks illimités
+- ✅ **Code location** : `src/screens/CookbooksScreen.tsx` ligne 183
+
+### **✅ Settings : Affichage Dynamique Statut Premium**
+- ✅ **Type AppUser enrichi** : Ajout `premiumUntil?: string | null`
+- ✅ **AuthContext amélioré** : Récupération `premium_until` depuis DB
+- ✅ **Badge "✨ PREMIUM"** : Affichage conditionnel selon `user.isPremium`
+- ✅ **Date d'expiration** : Formatage français "15 janvier 2026"
+- ✅ **Jours restants** : Calcul temps réel en vert (ex: "45 jours restants")
+- ✅ **Liste avantages Premium** : 6 features listées (imports illimités, nutrition auto, etc.)
+- ✅ **UX Free users** : Message "bientôt disponible" (pas de bouton upgrade pour l'instant)
+- ✅ **Code locations** :
+  - `src/types/auth.ts` : Type AppUser (ligne 16)
+  - `src/contexts/AuthContext.tsx` : Enrichissement user (lignes 65, 83)
+  - `app/settings/index.tsx` : UI dynamique (lignes 19-37, 112-184)
+
+### **✅ Documentation FEATURES-TODO.md**
+- ✅ **Nouveau fichier** : `FEATURES-TODO.md` (320 lignes)
+- ✅ **Priorités clarifiées** : 4 features critiques pour sortie
+  1. Export PDF (8-12h) - **PRIORITÉ #1**
+  2. Collections intelligentes / Auto-tags IA (4-6h)
+  3. Recherche avancée / Filtres combinés (6-8h)
+  4. Meal Planning Freemium (1 semaine free) (2-3h)
+- ✅ **Features nice-to-have** : Partage public, QR Code
+- ✅ **Features post-launch** : Mode hors-ligne, synchro avancée, suggestions IA
+- ✅ **Estimations temps** : Total Sprint 1 = 20-29h
+
+### **🔧 Améliorations Techniques**
+- ✅ **AuthContext timeout** : 5s → 10s (évite timeout premier build)
+- ✅ **Logs améliorés** : `console.error` → `console.warn` pour erreurs non-bloquantes
+- ✅ **useEffect dependencies** : Optimisations pour éviter re-triggers inutiles
+
+### **📁 Fichiers Modifiés**
+- ✅ Modifié : `src/types/auth.ts` (+2 lignes)
+- ✅ Modifié : `src/contexts/AuthContext.tsx` (+3 lignes, timeout +5s)
+- ✅ Modifié : `src/screens/CookbooksScreen.tsx` (1 ligne freemium logic)
+- ✅ Modifié : `app/settings/index.tsx` (+80 lignes UI premium dynamique)
+- ✅ Modifié : `app/recipes/[id].tsx` (+20 lignes auto-calcul optimisé)
+- ✅ Nouveau : `FEATURES-TODO.md` (320 lignes documentation)
+
+### **📈 Impact sur le Projet**
+- **Backend Services** : 80% → 85% (+5%)
+- **Frontend** : 95% → 97% (+2%)
+- **UX Premium** : Expérience utilisateur premium complète et cohérente
+- **Documentation** : Roadmap features critiques clarifiée
+- **Code Quality** : Optimisations performance (useEffect, timeout)
+- **Prêt pour** : Implémentation Export PDF (feature #1 prioritaire)
+
+---
 
 **Derniers changements** (2 janvier 2026) :
 
@@ -922,12 +986,59 @@ Ce projet est actuellement en développement privé. Les contributions seront ou
 
 ## 🚀 Prochaines Étapes
 
-**Pour commencer immédiatement :**
+### **🔴 Features Critiques (Sprint 1 - Avant Sortie)**
 
-1. 📄 Lire [PROJECT-CONTEXT.md](./PROJECT-CONTEXT.md) (2 min)
-2. 🎯 Lire [START-HERE.md](./START-HERE.md) (5 min)
-3. 📖 Explorer [docs/00-INDEX.md](./docs/00-INDEX.md) selon votre rôle
-4. 🚀 Suivre [docs/01-setup-guide.md](./docs/01-setup-guide.md) quand prêt à développer
+**Priorité par ordre d'importance** (voir `FEATURES-TODO.md`) :
+
+1. **📄 Export PDF Professionnel** (8-12h) - **PRIORITÉ #1**
+   - Feature premium à forte valeur ajoutée
+   - Template HTML/CSS design pro
+   - Partage natif (Mail, AirDrop, WhatsApp)
+   - Stack recommandée : `react-native-html-to-pdf`
+
+2. **🤖 Collections Intelligentes / Auto-tags IA** (4-6h)
+   - Tags automatiques via IA lors de l'import
+   - Catégories : Type (Végétarien, Vegan), Vitesse (Rapide <30min), Cuisine (Italienne, Asiatique)
+   - Stockage dans champ `tags: TEXT[]` (déjà existant DB)
+   - UI : Chips de tags sur RecipeCard
+
+3. **🔍 Recherche Avancée / Filtres Combinés** (6-8h)
+   - Filtres : Ingrédients, Temps préparation, Difficulté, Tags
+   - Full-text search (index `idx_recipes_search` déjà créé)
+   - Modal filtres avec checkboxes + range sliders
+
+4. **📅 Meal Planning Freemium Limit** (2-3h)
+   - Free : 1 semaine (semaine actuelle uniquement)
+   - Premium : Illimité (4-8 semaines à l'avance)
+   - Paywall sur navigation semaines futures
+
+**Estimation Sprint 1** : 20-29h total
+
+---
+
+### **🟡 Features Nice-to-Have (Sprint 2)**
+
+5. **🔗 Partage Public Recettes** (12-16h)
+6. **📱 QR Code Import** (4-6h)
+
+---
+
+### **🔮 Features Post-Launch**
+
+7. **✈️ Mode Hors-Ligne** (40-60h)
+8. **☁️ Synchro Cloud Avancée** (20-30h)
+9. **🧠 Suggestions IA Meal Planning** (16-24h)
+10. **👥 Partage Collaboratif Listes** (20-30h)
+
+---
+
+**Pour commencer le développement :**
+
+1. 📄 Lire [FEATURES-TODO.md](./FEATURES-TODO.md) pour roadmap détaillée
+2. 📄 Lire [PROJECT-CONTEXT.md](./PROJECT-CONTEXT.md) (2 min)
+3. 🎯 Lire [START-HERE.md](./START-HERE.md) (5 min)
+4. 📖 Explorer [docs/00-INDEX.md](./docs/00-INDEX.md) selon votre rôle
+5. 🚀 Suivre [docs/01-setup-guide.md](./docs/01-setup-guide.md) pour setup
 
 ---
 
@@ -941,6 +1052,6 @@ Ce projet est actuellement en développement privé. Les contributions seront ou
 
 *Version 1.0 - Documentation complète*
 
-*Dernière mise à jour : 2 janvier 2026*
+*Dernière mise à jour : 3 janvier 2026*
 
 </div>
