@@ -16,6 +16,26 @@ import { useAuth } from "@/hooks/useAuth";
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
 
+  // Calculate days remaining for premium
+  const getDaysRemaining = () => {
+    if (!user?.premiumUntil) return null;
+    const now = new Date();
+    const expiry = new Date(user.premiumUntil);
+    const diffTime = expiry.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 0;
+  };
+
+  const formatExpiryDate = () => {
+    if (!user?.premiumUntil) return null;
+    const expiry = new Date(user.premiumUntil);
+    return expiry.toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+
   const handleSignOut = async () => {
     Alert.alert(
       "Déconnexion",
@@ -89,17 +109,64 @@ export default function SettingsScreen() {
         <Text variant="h3" style={styles.sectionTitle}>
           Abonnement
         </Text>
-        <View style={styles.premiumCard}>
-          <Text variant="h3">Version Gratuite</Text>
-          <Text variant="bodySmall" color="neutral" style={{ marginTop: spacing.xs }}>
-            2 livres • 20 recettes • 5 imports IA/mois
-          </Text>
-          <TouchableOpacity style={styles.upgradeButton}>
-            <Text variant="body" style={{ color: colors.primary.DEFAULT, fontWeight: "600" }}>
-              Passer à Premium →
+        {user?.isPremium ? (
+          <View style={styles.premiumCard}>
+            <View style={styles.premiumBadge}>
+              <Text variant="bodySmall" style={styles.premiumBadgeText}>
+                ✨ PREMIUM
+              </Text>
+            </View>
+            <Text variant="h3" style={{ marginTop: spacing.sm }}>
+              Abonnement Premium
             </Text>
-          </TouchableOpacity>
-        </View>
+            {user.premiumUntil && (
+              <>
+                <Text variant="bodySmall" color="neutral" style={{ marginTop: spacing.xs }}>
+                  Expire le {formatExpiryDate()}
+                </Text>
+                {getDaysRemaining() !== null && getDaysRemaining()! > 0 && (
+                  <Text variant="caption" style={{ color: colors.success, marginTop: spacing.xs }}>
+                    {getDaysRemaining()} jour{getDaysRemaining()! > 1 ? "s" : ""} restant{getDaysRemaining()! > 1 ? "s" : ""}
+                  </Text>
+                )}
+              </>
+            )}
+
+            <View style={styles.divider} />
+
+            <Text variant="bodySmall" style={{ fontWeight: "600", marginBottom: spacing.xs }}>
+              Avantages Premium :
+            </Text>
+            <Text variant="bodySmall" color="neutral">
+              ✓ Livres de recettes illimités
+            </Text>
+            <Text variant="bodySmall" color="neutral">
+              ✓ Recettes illimitées
+            </Text>
+            <Text variant="bodySmall" color="neutral">
+              ✓ Imports IA illimités
+            </Text>
+            <Text variant="bodySmall" color="neutral">
+              ✓ Listes de courses illimitées
+            </Text>
+            <Text variant="bodySmall" color="neutral">
+              ✓ Calculs nutritionnels automatiques
+            </Text>
+            <Text variant="bodySmall" color="neutral">
+              ✓ Export PDF professionnel
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.premiumCard}>
+            <Text variant="h3">Version Gratuite</Text>
+            <Text variant="bodySmall" color="neutral" style={{ marginTop: spacing.xs }}>
+              2 livres • 20 recettes • 5 imports IA/mois
+            </Text>
+            <Text variant="bodySmall" color="neutral" style={{ marginTop: spacing.md, fontStyle: "italic" }}>
+              Passez à Premium pour débloquer toutes les fonctionnalités (bientôt disponible)
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* About Section */}
@@ -200,9 +267,23 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.primary.DEFAULT,
   },
-  upgradeButton: {
-    marginTop: spacing.md,
+  premiumBadge: {
+    backgroundColor: colors.primary.DEFAULT,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: spacing.sm,
     alignSelf: "flex-start",
+  },
+  premiumBadgeText: {
+    color: colors.white,
+    fontWeight: "700",
+    fontSize: 11,
+    letterSpacing: 0.5,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.gray[200],
+    marginVertical: spacing.md,
   },
   signOutButton: {
     marginHorizontal: spacing.lg,

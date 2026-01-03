@@ -62,7 +62,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       const fetchPromise = supabase
         .from("users")
-        .select("is_premium")
+        .select("is_premium, premium_until")
         .eq("id", authUser.id)
         .single();
 
@@ -76,10 +76,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return authUser; // Return auth user without premium status if fetch fails
       }
 
-      // Merge isPremium into auth user
+      // Merge isPremium and premiumUntil into auth user
       return {
         ...authUser,
         isPremium: profile?.is_premium ?? false,
+        premiumUntil: profile?.premium_until ?? null,
       };
     } catch (error) {
       console.warn("Profile fetch timeout (non-blocking):", error instanceof Error ? error.message : error);

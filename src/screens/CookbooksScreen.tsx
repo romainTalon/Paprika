@@ -179,8 +179,8 @@ export default function CookbooksScreen() {
     router.push(`/cookbooks/${cookbook.id}`);
   }, []);
 
-  // Check freemium limit (2 cookbooks max for free users)
-  const canCreateCookbook = cookbooks && cookbooks.length < 2; // TODO: Check premium status
+  // Check freemium limit (2 cookbooks max for free users, unlimited for premium)
+  const canCreateCookbook = user?.isPremium || (cookbooks && cookbooks.length < 2);
 
   // Auth loading state
   if (authLoading) {

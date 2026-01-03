@@ -12,6 +12,8 @@ import type { User, Session } from "@supabase/supabase-js";
 export interface AppUser extends User {
   /** Premium status */
   isPremium?: boolean;
+  /** Premium expiration date (null if not premium or lifetime) */
+  premiumUntil?: string | null;
 }
 
 /**
