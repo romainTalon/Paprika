@@ -46,6 +46,9 @@ export default function RecipeDetailScreen() {
   const addToGroceryList = useAddIngredientsFromRecipe();
   const calculateNutrition = useCalculateNutrition();
 
+  // Track if we've already calculated nutrition for this recipe
+  const calculatedRecipesRef = React.useRef<Set<string>>(new Set());
+
   // Local State
   const [servingsMultiplier, setServingsMultiplier] = useState(1);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
@@ -204,13 +207,32 @@ export default function RecipeDetailScreen() {
     // 1. User is Premium
     // 2. Recipe exists and has no nutrition data yet
     // 3. Not already calculating
+    // 4. Haven't already calculated for this recipe in this session
     const isPremium = user?.isPremium === true;
 
-    if (isPremium && recipe && !recipe.nutrition && !calculateNutrition.isPending) {
-      console.log("🎁 Premium auto-calculation triggered");
-      handleCalculateNutrition();
+    if (
+      isPremium &&
+      recipe &&
+      !recipe.nutrition &&
+      !calculateNutrition.isPending &&
+      !calculatedRecipesRef.current.has(recipe.id)
+    ) {
+      console.log("🎁 Premium auto-calculation triggered for recipe:", recipe.title);
+
+      // Mark this recipe as calculated to prevent double triggers
+      calculatedRecipesRef.current.add(recipe.id);
+
+      // Inline the calculation logic to avoid dependency issues
+      calculateNutrition.mutate({
+        recipeId: recipe.id,
+        userId: user.id!,
+        ingredients: recipe.ingredients,
+        servings: recipe.servings,
+      });
     }
-  }, [recipe, user, calculateNutrition.isPending, handleCalculateNutrition]);
+    // Use granular deps to avoid unnecessary re-triggers
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipe?.id, user?.isPremium, user?.id, calculateNutrition.isPending]);
 
   // Computed Values
   const adjustedIngredients = useMemo(() => {
