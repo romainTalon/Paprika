@@ -29,6 +29,7 @@ import { useRecipe, useToggleFavorite, useDeleteRecipe } from "@/hooks/useRecipe
 import { useAddIngredientsFromRecipe } from "@/hooks/useGroceryList";
 import { useCalculateNutrition } from "@/hooks/useNutrition";
 import { useAuth } from "@/hooks/useAuth";
+import { exportRecipeToPDF } from "@/services";
 import type { RecipeIngredient, RecipeStep } from "@/types/database";
 import type { GroceryList } from "@/types";
 
@@ -98,64 +99,31 @@ export default function RecipeDetailScreen() {
     router.push(`/recipes/${recipe.id}/edit`);
   }, [recipe]);
 
-  const handleRecipeMenu = useCallback(() => {
-    if (!recipe) return;
-
-    const options = ["Annuler", "Favori", "Ajouter aux courses", "Modifier", "Supprimer"];
-    const favoriteLabel = recipe.isFavorite ? "Retirer des favoris" : "Ajouter aux favoris";
-    options[1] = favoriteLabel;
-
-    if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options,
-          destructiveButtonIndex: 4,
-          cancelButtonIndex: 0,
-        },
-        (buttonIndex) => {
-          if (buttonIndex === 1) {
-            // Favori
-            handleFavoriteToggle();
-          } else if (buttonIndex === 2) {
-            // Courses
-            handleAddToGroceryList();
-          } else if (buttonIndex === 3) {
-            // Modifier
-            handleEdit();
-          } else if (buttonIndex === 4) {
-            // Supprimer
-            handleDelete();
-          }
-        }
-      );
-    } else {
-      // Android
+  const handleExportPDF = useCallback(async () => {
+    if (!recipe || !user?.isPremium) {
       Alert.alert(
-        "Actions",
-        "Que souhaitez-vous faire ?",
+        "Fonctionnalité Premium",
+        "L'export PDF est réservé aux utilisateurs Premium. Passez à Premium pour débloquer cette fonctionnalité !",
         [
           { text: "Annuler", style: "cancel" },
-          {
-            text: favoriteLabel,
-            onPress: handleFavoriteToggle,
-          },
-          {
-            text: "Ajouter aux courses",
-            onPress: handleAddToGroceryList,
-          },
-          {
-            text: "Modifier",
-            onPress: handleEdit,
-          },
-          {
-            text: "Supprimer",
-            onPress: handleDelete,
-            style: "destructive",
-          },
+          { text: "Devenir Premium", onPress: () => router.push("/settings/premium") },
         ]
       );
+      return;
     }
-  }, [recipe, handleFavoriteToggle, handleAddToGroceryList, handleEdit]);
+
+    try {
+      await exportRecipeToPDF(recipe, {
+        includeImage: true,
+        includeNutrition: true,
+      });
+    } catch (error) {
+      Alert.alert(
+        "Erreur",
+        "Impossible d'exporter le PDF. Veuillez réessayer."
+      );
+    }
+  }, [recipe, user?.isPremium]);
 
   const handleDelete = useCallback(() => {
     if (!recipe || !user?.id) return;
@@ -306,6 +274,73 @@ export default function RecipeDetailScreen() {
     },
     [handleSelectList]
   );
+
+  const handleRecipeMenu = useCallback(() => {
+    if (!recipe) return;
+
+    const favoriteLabel = recipe.isFavorite ? "Retirer des favoris" : "Ajouter aux favoris";
+    const pdfLabel = user?.isPremium ? "Exporter PDF" : "🔒 Exporter PDF (Premium)";
+
+    const options = ["Annuler", favoriteLabel, "Ajouter aux courses", pdfLabel, "Modifier", "Supprimer"];
+
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options,
+          destructiveButtonIndex: 5,
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            // Favori
+            handleFavoriteToggle();
+          } else if (buttonIndex === 2) {
+            // Courses
+            handleAddToGroceryList();
+          } else if (buttonIndex === 3) {
+            // Exporter PDF
+            handleExportPDF();
+          } else if (buttonIndex === 4) {
+            // Modifier
+            handleEdit();
+          } else if (buttonIndex === 5) {
+            // Supprimer
+            handleDelete();
+          }
+        }
+      );
+    } else {
+      // Android
+      Alert.alert(
+        "Actions",
+        "Que souhaitez-vous faire ?",
+        [
+          { text: "Annuler", style: "cancel" },
+          {
+            text: favoriteLabel,
+            onPress: handleFavoriteToggle,
+          },
+          {
+            text: "Ajouter aux courses",
+            onPress: handleAddToGroceryList,
+          },
+          {
+            text: pdfLabel,
+            onPress: handleExportPDF,
+          },
+          {
+            text: "Modifier",
+            onPress: handleEdit,
+          },
+          {
+            text: "Supprimer",
+            onPress: handleDelete,
+            style: "destructive",
+          },
+        ]
+      );
+    }
+  }, [recipe, handleFavoriteToggle, handleAddToGroceryList, handleExportPDF, handleEdit, handleDelete, user?.isPremium]);
 
   // Loading State
   if (isLoading) {

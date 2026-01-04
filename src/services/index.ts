@@ -19,6 +19,7 @@ export { CookbookService } from "./cookbook.service";
 export { RecipeService } from "./recipe.service";
 export { MealPlanService } from "./mealPlan.service";
 export { GroceryListService } from "./groceryList.service";
+export { exportRecipeToPDF, printRecipe } from "./pdf.service";
 
 // New AI-powered services
 // Note: RecipeImportService, NutritionService, and ImageService are not exported here
