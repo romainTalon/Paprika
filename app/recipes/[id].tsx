@@ -29,7 +29,7 @@ import { useRecipe, useToggleFavorite, useDeleteRecipe } from "@/hooks/useRecipe
 import { useAddIngredientsFromRecipe } from "@/hooks/useGroceryList";
 import { useCalculateNutrition } from "@/hooks/useNutrition";
 import { useAuth } from "@/hooks/useAuth";
-import { exportRecipeToPDF } from "@/services";
+import { exportRecipeToPDF, RecipeService } from "@/services";
 import type { RecipeIngredient, RecipeStep } from "@/types/database";
 import type { GroceryList } from "@/types";
 
@@ -56,6 +56,7 @@ export default function RecipeDetailScreen() {
   const [checkedSteps, setCheckedSteps] = useState<Set<number>>(new Set());
   const [selectListModalVisible, setSelectListModalVisible] = useState(false);
   const [createListModalVisible, setCreateListModalVisible] = useState(false);
+  const [imageMigrated, setImageMigrated] = useState(false);
 
   // Handlers
   const handleFavoriteToggle = useCallback(() => {
@@ -201,6 +202,35 @@ export default function RecipeDetailScreen() {
     // Use granular deps to avoid unnecessary re-triggers
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recipe?.id, user?.isPremium, user?.id, calculateNutrition.isPending]);
+
+  // Lazy migration of external images to Supabase Storage
+  useEffect(() => {
+    if (!recipe || imageMigrated) return;
+
+    // Check if image is external (not in Supabase Storage)
+    if (RecipeService.isExternalImage(recipe.coverImageUrl)) {
+      console.log("🔄 Detected external image, migrating...");
+
+      // Migrate in background (non-blocking)
+      RecipeService.migrateImageToStorage(
+        recipe.id,
+        recipe.coverImageUrl!,
+        recipe.importUrl
+      )
+        .then(({ data: newUrl, error }) => {
+          if (newUrl) {
+            console.log("✅ Image migrated to Storage:", newUrl);
+            setImageMigrated(true);
+
+            // Optionally refresh the recipe to show the new image immediately
+            // The image URL in the database has been updated by the Edge Function
+            refetch();
+          } else {
+            console.warn("⚠️ Image migration failed:", error);
+          }
+        });
+    }
+  }, [recipe, imageMigrated, refetch]);
 
   // Computed Values
   const adjustedIngredients = useMemo(() => {

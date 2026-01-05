@@ -86,7 +86,8 @@
       "Bash(npx supabase functions deploy recipe-import)",
       "Bash(powershell -Command \"Get-Content supabase\\\\functions\\\\nutrition-calculate\\\\index.ts | Select-String -Pattern ''import'' | Select-Object -First 5\")",
       "Bash(powershell -Command \"Get-Content src\\\\hooks\\\\useNutrition.ts | Select-String -Pattern ''error'' -Context 2\")",
-      "Bash(npx expo start:*)"
+      "Bash(npx expo start:*)",
+      "Bash(psql:*)"
     ],
     "deny": [],
     "ask": []

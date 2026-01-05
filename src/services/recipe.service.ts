@@ -385,4 +385,59 @@ export class RecipeService {
       return { data: null, error: error as Error };
     }
   }
+
+  /**
+   * Migrate external image URL to Supabase Storage
+   *
+   * For Instagram/TikTok: Extracts clean image without play button
+   * For other URLs: Downloads and uploads as-is
+   *
+   * Called automatically when opening a recipe with external image
+   */
+  static async migrateImageToStorage(
+    recipeId: string,
+    externalUrl: string,
+    importUrl?: string | null
+  ): Promise<ServiceResponse<string>> {
+    try {
+      console.log(`🔄 Migrating image for recipe ${recipeId}...`);
+
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error("User not authenticated");
+      }
+
+      // Call Edge Function to migrate image
+      const { data, error } = await supabase.functions.invoke("migrate-recipe-image", {
+        body: {
+          recipeId,
+          externalUrl,
+          importUrl: importUrl || null,
+          userId: user.id,
+        },
+      });
+
+      if (error) throw error;
+
+      if (!data.success) {
+        throw new Error(data.error || "Migration failed");
+      }
+
+      console.log(`✅ Image migrated successfully: ${data.newUrl}`);
+
+      return { data: data.newUrl, error: null };
+    } catch (error) {
+      console.error("❌ Image migration failed:", error);
+      return { data: null, error: error as Error };
+    }
+  }
+
+  /**
+   * Check if image URL is external (not Supabase Storage)
+   */
+  static isExternalImage(imageUrl: string | null | undefined): boolean {
+    if (!imageUrl) return false;
+    return !imageUrl.includes("supabase.co/storage");
+  }
 }

@@ -55,6 +55,12 @@ const corsHeaders = {
 };
 
 // =============================================================================
+// Supabase Storage Configuration
+// =============================================================================
+
+const STORAGE_BUCKET = "recipe-images";
+
+// =============================================================================
 // Zod Validation Schemas (copied from src/lib/validators.ts)
 // =============================================================================
 
@@ -94,6 +100,86 @@ const aiRecipeImportSchema = z
 // =============================================================================
 // Helper Functions
 // =============================================================================
+
+/**
+ * Download image from URL and upload to Supabase Storage
+ * Returns the permanent Supabase Storage URL
+ *
+ * NOTE: Uses admin client with SERVICE_ROLE_KEY to bypass RLS policies
+ *
+ * Storage structure: recipes/{userId}/{recipeId}-{timestamp}.{ext}
+ */
+async function downloadAndUploadImage(
+  imageUrl: string,
+  recipeId: string,
+  userId: string
+): Promise<string | null> {
+  try {
+    console.log(`📥 Downloading image from: ${imageUrl}`);
+
+    // Fetch the image
+    const response = await fetch(imageUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; PaprikaBot/1.0)",
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`❌ Failed to fetch image: ${response.status}`);
+      return null;
+    }
+
+    // Get content type to determine file extension
+    const contentType = response.headers.get("content-type") || "image/jpeg";
+    const extension = contentType.includes("png") ? "png" : "jpg";
+
+    // Get the image blob
+    const blob = await response.blob();
+
+    // Generate unique filename organized by user
+    const filename = `${recipeId}-${Date.now()}.${extension}`;
+    const storagePath = `recipes/${userId}/${filename}`;
+
+    console.log(`⬆️  Uploading to Supabase Storage: ${storagePath}`);
+
+    // Create admin client with SERVICE_ROLE_KEY to bypass RLS
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
+
+    // Upload to Supabase Storage using admin client
+    const { data, error } = await supabaseAdmin.storage
+      .from(STORAGE_BUCKET)
+      .upload(storagePath, blob, {
+        contentType,
+        cacheControl: "3600",
+        upsert: false,
+      });
+
+    if (error) {
+      console.error("❌ Upload error:", error);
+      return null;
+    }
+
+    // Get public URL
+    const {
+      data: { publicUrl },
+    } = supabaseAdmin.storage.from(STORAGE_BUCKET).getPublicUrl(data.path);
+
+    console.log(`✅ Image uploaded successfully: ${publicUrl}`);
+    return publicUrl;
+  } catch (error) {
+    console.error("❌ Download and upload failed:", error);
+    return null;
+  }
+}
 
 /**
  * Safe parse AI JSON response with Zod validation
@@ -425,9 +511,162 @@ async function extractFromInstagram(url: string): Promise<SocialMediaExtraction>
       description = ogDescription || twitterDescription || "";
     }
 
-    // Get image
-    const ogImage = $('meta[property="og:image"]').attr("content");
-    imageUrl = ogImage || "";
+    // Get image (avoid video thumbnails with play button)
+    // Priority: 1. display_url from JSON (clean image) 2. og:image (may have play button)
+    console.log("🔍 Searching for clean image URL without play button overlay...");
+
+    // Debug: Log scripts with Instagram Polaris data (modern structure)
+    let scriptCount = 0;
+    $("script").each((_, element) => {
+      const scriptContent = $(element).html() || "";
+      scriptCount++;
+
+      // Look specifically for Instagram Polaris media data
+      if (scriptContent.includes("xig_polaris_media") || scriptContent.includes("PolarisVideoMedia")) {
+        console.log(`📋 Script #${scriptCount} contains Polaris media data (first 3000 chars):`, scriptContent.substring(0, 3000));
+      }
+    });
+
+    $("script").each((_, element) => {
+      const scriptContent = $(element).html() || "";
+
+      // Try to extract from modern Instagram Polaris structure
+      if (scriptContent.includes("xig_polaris_media")) {
+        try {
+          console.log("🔍 Found xig_polaris_media, parsing...");
+
+          // Extract video_image.uri (for Reels/Videos - without play button overlay)
+          const videoImageMatch = scriptContent.match(/"video_image":\s*{\s*"uri":\s*"([^"]+)"/);
+          if (videoImageMatch && videoImageMatch[1]) {
+            const cleanUrl = videoImageMatch[1]
+              .replace(/\\\//g, "/")
+              .replace(/\\u0026/g, "&")
+              .replace(/\\u00253D/g, "=");
+
+            // Verify it doesn't have cmp1_ (composite overlay with play button)
+            if (!cleanUrl.includes("cmp1_")) {
+              console.log(`✅ Found clean video_image.uri from Polaris (no play button): ${cleanUrl.substring(0, 100)}...`);
+              imageUrl = cleanUrl;
+              return false;
+            } else {
+              console.log("⚠️  video_image.uri has cmp1_ overlay, skipping");
+            }
+          }
+
+          // Fallback: Try image_versions2 for photos
+          const imageMatch = scriptContent.match(/"image_versions2":\s*{\s*"candidates":\s*\[\s*{\s*"url":\s*"([^"]+)"/);
+          if (imageMatch && imageMatch[1]) {
+            const cleanUrl = imageMatch[1].replace(/\\\//g, "/");
+            console.log(`✅ Found image from Polaris image_versions2: ${cleanUrl.substring(0, 100)}...`);
+            imageUrl = cleanUrl;
+            return false;
+          }
+        } catch (e) {
+          console.error("❌ Error parsing Polaris data:", e);
+        }
+      }
+
+      // Instagram modern structure: look for various image URL patterns
+      const displayUrlPatterns = [
+        // Standard display_url (most common)
+        /"display_url"\s*:\s*"([^"]+)"/,
+        /"display_src"\s*:\s*"([^"]+)"/,
+
+        // Video poster/cover images (without play button)
+        /"video_url"\s*:\s*"[^"]+",\s*"thumbnail_src"\s*:\s*"([^"]+)"/,
+        /"poster"\s*:\s*"([^"]+)"/,
+        /"cover_frame_url"\s*:\s*"([^"]+)"/,
+
+        // Image candidates (Instagram stores multiple sizes)
+        /"image_versions2"\s*:\s*{\s*"candidates"\s*:\s*\[\s*{\s*"url"\s*:\s*"([^"]+)"/,
+
+        // Carousel media
+        /"carousel_media"\s*:\s*\[.*?"image_versions2".*?"url"\s*:\s*"([^"]+)"/,
+      ];
+
+      for (const pattern of displayUrlPatterns) {
+        const match = scriptContent.match(pattern);
+        if (match && match[1]) {
+          // Clean the URL (unescape if needed)
+          const cleanUrl = match[1]
+            .replace(/\\u0026/g, "&")
+            .replace(/\\\//g, "/")
+            .replace(/\\"/g, '"');
+
+          // Verify it's not the same as og:image (which has play button)
+          const ogImage = $('meta[property="og:image"]').attr("content");
+          if (cleanUrl !== ogImage) {
+            console.log(`✅ Found clean image URL via pattern: ${pattern.source.substring(0, 50)}...`);
+            imageUrl = cleanUrl;
+            return false; // Stop searching once found
+          }
+        }
+      }
+
+      // Try to extract from window._sharedData (legacy Instagram)
+      const sharedDataMatch = scriptContent.match(/window\._sharedData\s*=\s*({.+?});/);
+      if (sharedDataMatch) {
+        try {
+          const sharedData = JSON.parse(sharedDataMatch[1]);
+          const postData =
+            sharedData?.entry_data?.PostPage?.[0]?.graphql?.shortcode_media;
+
+          // For images: use display_url
+          if (postData?.display_url) {
+            console.log("✅ Found display_url in window._sharedData");
+            imageUrl = postData.display_url;
+            return false;
+          }
+
+          // For videos: try to get the best display_resources (without overlay)
+          if (postData?.is_video && postData?.display_resources) {
+            // Get the largest display resource (better quality)
+            const bestResource = postData.display_resources[postData.display_resources.length - 1];
+            if (bestResource?.src) {
+              console.log("✅ Found video display_resources in window._sharedData");
+              imageUrl = bestResource.src;
+              return false;
+            }
+          }
+        } catch (e) {
+          // Silently ignore parse errors
+        }
+      }
+
+      // Try modern Instagram __additionalDataLoaded patterns
+      const additionalDataMatch = scriptContent.match(/__additionalDataLoaded\s*\([^,]+,\s*({.+?})\)/);
+      if (additionalDataMatch) {
+        try {
+          const data = JSON.parse(additionalDataMatch[1]);
+          // Navigate through possible paths
+          const items = data?.items || data?.data?.xdt_api__v1__media__shortcode__web_info?.items;
+          if (items && items.length > 0) {
+            const item = items[0];
+            // For carousel/albums, get first item
+            const mediaItem = item.carousel_media?.[0] || item;
+
+            // Image versions with candidates
+            const foundImageUrl = mediaItem?.image_versions2?.candidates?.[0]?.url;
+            if (foundImageUrl) {
+              console.log("✅ Found image URL in __additionalDataLoaded");
+              imageUrl = foundImageUrl;
+              return false;
+            }
+          }
+        } catch (e) {
+          // Silently ignore parse errors
+        }
+      }
+    });
+
+    // Fallback to og:image if no display_url found
+    if (!imageUrl) {
+      console.log("⚠️  No clean image found, falling back to og:image (may have play button overlay)");
+      const ogImage = $('meta[property="og:image"]').attr("content");
+      imageUrl = ogImage || "";
+    } else {
+      console.log(`✅ Using clean image URL: ${imageUrl.substring(0, 100)}...`);
+    }
 
     if (description) {
       // Check if description is too short and doesn't contain recipe keywords
@@ -585,7 +824,8 @@ async function parseTextWithAI(
   imageUrl: string | undefined,
   sourceUrl: string,
   sourcePlatform: "instagram" | "tiktok",
-  apiKeys: { anthropic?: string; openai?: string; deepseek?: string }
+  apiKeys: { anthropic?: string; openai?: string; deepseek?: string },
+  userId: string
 ) {
   const modelKey = Deno.env.get("AI_MODEL") || DEFAULT_MODEL;
   const startTime = Date.now();
@@ -712,6 +952,22 @@ Si la description NE contient NI ingrédients NI étapes (juste une photo, un po
 
     const aiRecipe = validation.data;
 
+    // Download and upload image to Supabase Storage if available
+    let finalImageUrl = aiRecipe.coverImageUrl ?? null;
+    if (imageUrl) {
+      // Generate unique ID for the recipe image
+      const tempRecipeId = crypto.randomUUID();
+      const uploadedUrl = await downloadAndUploadImage(imageUrl, tempRecipeId, userId);
+
+      if (uploadedUrl) {
+        console.log(`✅ Image stored in Supabase Storage: ${uploadedUrl}`);
+        finalImageUrl = uploadedUrl;
+      } else {
+        console.log(`⚠️  Image upload failed, keeping external URL: ${imageUrl}`);
+        finalImageUrl = imageUrl; // Fallback to external URL
+      }
+    }
+
     return {
       success: true,
       recipe: {
@@ -724,7 +980,7 @@ Si la description NE contient NI ingrédients NI étapes (juste une photo, un po
         tags: aiRecipe.tags,
         ingredients: aiRecipe.ingredients,
         steps: aiRecipe.steps,
-        coverImageUrl: aiRecipe.coverImageUrl ?? null,
+        coverImageUrl: finalImageUrl,
         importUrl: sourceUrl,
         importSource: "web" as const,
         importStrategy: sourcePlatform, // "instagram" or "tiktok"
@@ -748,7 +1004,8 @@ Si la description NE contient NI ingrédients NI étapes (juste une photo, un po
 
 async function parseHTMLWithAI(
   url: string,
-  apiKeys: { anthropic?: string; openai?: string; deepseek?: string }
+  apiKeys: { anthropic?: string; openai?: string; deepseek?: string },
+  userId: string
 ) {
   const modelKey = Deno.env.get("AI_MODEL") || DEFAULT_MODEL;
   try {
@@ -868,6 +1125,26 @@ ${cleanedHTML.slice(0, 100000)}`;
 
     const aiRecipe = validation.data;
 
+    // Download and upload image to Supabase Storage if available
+    let finalImageUrl = aiRecipe.coverImageUrl ?? null;
+    if (aiRecipe.coverImageUrl) {
+      // Generate unique ID for the recipe image
+      const tempRecipeId = crypto.randomUUID();
+      const uploadedUrl = await downloadAndUploadImage(
+        aiRecipe.coverImageUrl,
+        tempRecipeId,
+        userId
+      );
+
+      if (uploadedUrl) {
+        console.log(`✅ Image stored in Supabase Storage: ${uploadedUrl}`);
+        finalImageUrl = uploadedUrl;
+      } else {
+        console.log(`⚠️  Image upload failed, keeping external URL: ${aiRecipe.coverImageUrl}`);
+        finalImageUrl = aiRecipe.coverImageUrl; // Fallback to external URL
+      }
+    }
+
     return {
       success: true,
       recipe: {
@@ -886,7 +1163,7 @@ ${cleanedHTML.slice(0, 100000)}`;
           ...step,
           duration: step.duration ?? null,
         })),
-        coverImageUrl: aiRecipe.coverImageUrl ?? null,
+        coverImageUrl: finalImageUrl,
         importUrl: url,
         importSource: "web",
         importStrategy: "ai",
@@ -1081,7 +1358,8 @@ serve(async (req) => {
         extraction.imageUrl,
         url,
         "instagram",
-        apiKeys
+        apiKeys,
+        userId
       );
     } else if (urlDetection.type === "tiktok") {
       // Extract description from TikTok
@@ -1111,11 +1389,12 @@ serve(async (req) => {
         extraction.imageUrl,
         url,
         "tiktok",
-        apiKeys
+        apiKeys,
+        userId
       );
     } else {
       // Web URL - use existing HTML parsing
-      aiResult = await parseHTMLWithAI(url, apiKeys);
+      aiResult = await parseHTMLWithAI(url, apiKeys, userId);
     }
 
     // Handle result (same for all types)

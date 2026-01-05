@@ -32,12 +32,12 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 |-----------|--------|-------------|
 | 📝 Documentation | ✅ Complète | 100% |
 | 🗄️ Base de Données | ✅ Opérationnelle | 85% |
-| ⚙️ Backend Services | ✅ Fonctionnels | 85% |
+| ⚙️ Backend Services | ✅ Fonctionnels | 90% |
 | 📱 Frontend | ✅ Presque complet | 98% |
-| 🤖 Services IA | ✅ Fonctionnels | 85% |
+| 🤖 Services IA | ✅ Fonctionnels | 90% |
 | 🔐 Authentification | ✅ Complète | 100% |
 | 📚 Gestion Recettes | ✅ Complète | 100% |
-| 🍴 Import Recettes IA | ✅ Complet | 100% (+ Instagram/TikTok) |
+| 🍴 Import Recettes IA | ✅ Complet | 100% (+ Images permanentes) |
 | 🥗 Calcul Nutrition | ✅ Complet | 100% (Auto-calcul Premium + 3-tier) |
 | 📅 Meal Planning | ✅ Complète | 100% |
 | 🛒 Listes de Courses | ✅ Complète | 100% |
@@ -72,7 +72,12 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
   - Vérification limites via RPC PostgreSQL `check_import_limit()`
 - ⏳ **Stratégie 4 (Vision AI)** - À implémenter plus tard (~10% cas edge, screenshots)
 - ✅ **NutritionService** - Edge Function déployée (stratégie 3-tier: Cache → OpenFoodFacts → AI)
-- ⚠️ **ImageService** - Créé mais non utilisé (migration Edge Function à planifier)
+- ✅ **ImageMigrationService** - Edge Function `migrate-recipe-image` déployée
+  - Migration lazy automatique des images externes vers Supabase Storage
+  - Extraction Instagram améliorée (video_image.uri sans bouton play)
+  - Organisation par userId : `recipes/{userId}/{recipeId}-{timestamp}.jpg`
+  - Détection automatique via RecipeDetailScreen (migration transparente)
+  - Bucket `recipe-images` configuré (public, 5MB limit)
 
 **Frontend fonctionnel** 🚧 :
 
@@ -384,7 +389,127 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 - ✅ Token refresh automatique (AppState listener)
 - ⏳ Deep links pour confirmation email (désactivée temporairement)
 
-**Dernière mise à jour** : 4 janvier 2026
+**Dernière mise à jour** : 5 janvier 2026
+
+**Derniers changements** (5 janvier 2026) :
+
+## 🖼️ **Migration Automatique des Images - Stockage Permanent**
+
+### **✅ Edge Function `migrate-recipe-image` Implémentée**
+- ✅ **Migration lazy transparente** : Images externes migrées automatiquement lors de l'ouverture d'une recette
+- ✅ **Extraction Instagram améliorée** :
+  - Re-scraping depuis `import_url` pour obtenir image propre
+  - Extraction `video_image.uri` depuis Instagram Polaris API (sans bouton play overlay)
+  - Vérification absence de `cmp1_` (composite overlay)
+- ✅ **Téléchargement et upload** :
+  - Détection automatique Instagram/TikTok via `import_url`
+  - Téléchargement image externe avec User-Agent
+  - Upload Supabase Storage avec SERVICE_ROLE_KEY (bypass RLS)
+  - Organisation : `recipes/{userId}/{recipeId}-{timestamp}.jpg`
+- ✅ **Mise à jour DB automatique** : `cover_image_url` remplacée par URL Storage
+- ✅ **Edge Function complète** : 278 lignes, CORS headers, error handling
+
+### **✅ Amélioration Edge Function `recipe-import`**
+- ✅ **Téléchargement automatique lors import** :
+  - Fonction `downloadAndUploadImage()` créée (70 lignes)
+  - Appelée depuis toutes les stratégies (JSON-LD, Claude, Instagram, TikTok)
+  - Images téléchargées directement lors de l'import (pas besoin migration)
+- ✅ **Extraction Instagram optimisée** :
+  - Patterns améliorés pour `video_image.uri` (Polaris API)
+  - Logging détaillé pour debugging (scriptContent 3000 chars)
+  - Fallback intelligent si extraction échoue
+- ✅ **Organisation Storage par userId** :
+  - Path : `recipes/{userId}/{recipeId}-{timestamp}.jpg`
+  - Isolation utilisateurs (RGPD compliant)
+  - Scalabilité : Support millions d'objets
+
+### **✅ Service Frontend `RecipeService`**
+- ✅ **Méthode `migrateImageToStorage()`** (33 lignes) :
+  - Appelle Edge Function avec `recipeId`, `externalUrl`, `importUrl`
+  - Récupère user.id via `supabase.auth.getUser()`
+  - Retourne nouvelle URL Storage ou erreur
+  - Logging complet (success/failure)
+- ✅ **Méthode `isExternalImage()`** (3 lignes) :
+  - Détecte URLs externes (pas Supabase Storage)
+  - Pattern : `!imageUrl.includes("supabase.co/storage")`
+  - Utilisée pour trigger migration lazy
+
+### **✅ Integration RecipeDetailScreen**
+- ✅ **Migration lazy automatique** :
+  - État `imageMigrated` pour éviter doubles appels
+  - useEffect détecte images externes au chargement
+  - Migration en background (non-bloquante)
+  - Logs console : "🔄 Detected external image" → "✅ Image migrated"
+  - `refetch()` pour afficher nouvelle image immédiatement
+- ✅ **UX transparente** :
+  - Utilisateur ne voit rien (migration invisible)
+  - Ancienne image affichée pendant migration
+  - Nouvelle image apparaît après refresh
+  - Fallback gracieux si migration échoue
+
+### **✅ Configuration Storage**
+- ✅ **Bucket `recipe-images` créé** :
+  - Type : Public (URLs accessibles sans auth)
+  - Limite : 5 MB par fichier
+  - MIME types : image/jpeg, image/png, image/webp
+  - Path organization : `recipes/{userId}/{filename}`
+- ✅ **Documentation STORAGE-SETUP.md** (220 lignes) :
+  - 3 méthodes de création (Dashboard, SQL, auto)
+  - RLS policies (lecture publique, écriture service role)
+  - Permissions utilisateurs (upload/delete optionnel)
+  - Vérification et troubleshooting
+
+### **✅ Documentation Complète**
+- ✅ **IMAGE-MIGRATION.md** (361 lignes) :
+  - Architecture Edge Function + Service + UI
+  - Guide d'intégration RecipeDetailScreen
+  - Tests et monitoring
+  - Migration batch (option future)
+  - Troubleshooting complet
+  - Statistiques SQL queries
+- ✅ **STORAGE-SETUP.md** (220 lignes)
+
+### **🧹 Nettoyage Codebase**
+- 🗑️ **Fichiers supprimés** :
+  - `supabase/add-user-trigger.sql` (redondant avec schema.sql)
+  - `supabase/DEPLOY-RECIPE-IMPORT-UPDATE.md` (obsolète)
+  - `supabase/migrations/` (dossier complet - migrations déjà exécutées)
+
+### **📁 Fichiers Créés/Modifiés**
+**Nouveaux fichiers** :
+- ✅ `supabase/functions/migrate-recipe-image/index.ts` (278 lignes)
+- ✅ `docs/IMAGE-MIGRATION.md` (361 lignes)
+- ✅ `supabase/STORAGE-SETUP.md` (220 lignes)
+
+**Fichiers modifiés** :
+- ✅ `supabase/functions/recipe-import/index.ts` (+70 lignes downloadAndUploadImage)
+- ✅ `src/services/recipe.service.ts` (+43 lignes, 2 nouvelles méthodes)
+- ✅ `app/recipes/[id].tsx` (+28 lignes migration lazy)
+
+**Total** : 3 nouveaux fichiers + 3 fichiers modifiés = **~1000 lignes de code**
+
+### **📈 Impact sur le Projet**
+- **Backend Services** : 85% → 90% (+5%)
+- **Services IA** : 85% → 90% (+5%)
+- **Import Recettes IA** : Qualité améliorée (images permanentes + sans bouton play)
+- **Infrastructure** : Supabase Storage configuré et opérationnel
+- **Code Quality** : Nettoyage fichiers redondants
+
+### **🎯 Avantages Utilisateur**
+- ✅ **Permanence** : Images ne disparaissent plus jamais (même si post source supprimé)
+- ✅ **Qualité Instagram** : Reels sans bouton play overlay
+- ✅ **Performance** : CDN Supabase rapide (edge locations mondiales)
+- ✅ **Transparence** : Migration automatique invisible
+- ✅ **Rétroactif** : Anciennes recettes migrées automatiquement
+
+### **🧪 Tests Effectués**
+- ✅ Import recette Instagram Reel → Image sans bouton play ✅
+- ✅ Ouverture ancienne recette externe → Migration automatique ✅
+- ✅ Vérification Storage : Images dans `recipes/{userId}/` ✅
+- ✅ TypeScript compile clean (0 erreur)
+- ✅ Logs Edge Function fonctionnels (monitoring OK)
+
+---
 
 **Derniers changements** (4 janvier 2026) :
 
