@@ -33,7 +33,7 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 | 📝 Documentation | ✅ Complète | 100% |
 | 🗄️ Base de Données | ✅ Opérationnelle | 85% |
 | ⚙️ Backend Services | ✅ Fonctionnels | 90% |
-| 📱 Frontend | ✅ Presque complet | 98% |
+| 📱 Frontend | ✅ Presque complet | 99% |
 | 🤖 Services IA | ✅ Fonctionnels | 90% |
 | 🔐 Authentification | ✅ Complète | 100% |
 | 📚 Gestion Recettes | ✅ Complète | 100% |
@@ -106,6 +106,23 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 - ✅ Empty state, error state, loading state, not found state
 - ✅ FAB pour création rapide
 - ✅ Mapping snake_case ↔ camelCase (CookbookService + RecipeService)
+
+**Tags & Filtrage** ✅ (10 janvier 2026 - Système complet) :
+- ✅ **60 tags prédéfinis** - 6 catégories (Cuisine, Régime, Type, Vitesse, Occasion, Méthode)
+- ✅ **TAG_ALIASES enrichi** - ~100 mappings FR/EN pour normalisation (french→Française, vegan→Végétalien, etc.)
+- ✅ **Normalisation automatique** - Tags AI nettoyés avant sauvegarde (frontend + backend)
+- ✅ **TagBadge component** - Affichage tags avec 2 tailles (sm/md) + suppression
+- ✅ **TagPicker component** - Multi-select avec tabs horizontaux (max 10 tags)
+- ✅ **TagFilterSheet component** - Modal filtrage bottom sheet avec Apply/Reset
+- ✅ **Intégration complète** :
+  - Preview import (normalisation tags AI automatique)
+  - Création manuelle (TagPicker)
+  - Édition recette (modification tags)
+  - Détail recette (affichage badges)
+  - Liste recettes (filtrage multi-tags avec AND logic)
+- ✅ **Edge Function contrainte** - Prompts AI modifiés pour extraire uniquement tags prédéfinis
+- ✅ **Filtrage case-insensitive** - Fonction tagsMatch() avec normalisation
+- ✅ **Validation stricte** - Schema Zod modifié (nullable pour champs optionnels)
 
 **Import de Recettes IA** ✅ (31 décembre 2025 - Instagram/TikTok ajoutés) :
 - ✅ **Edge Function `recipe-import`** - Backend serverless Deno (1200+ lignes)
@@ -389,7 +406,127 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 - ✅ Token refresh automatique (AppState listener)
 - ⏳ Deep links pour confirmation email (désactivée temporairement)
 
-**Dernière mise à jour** : 5 janvier 2026
+**Dernière mise à jour** : 10 janvier 2026 - 15h00
+
+**Derniers changements** (10 janvier 2026) :
+
+## 🏷️ **Système de Tags pour Recettes - Feature Complète**
+
+### **✅ Architecture Tags Prédéfinis**
+- ✅ **60 tags organisés** : 6 catégories avec emojis
+  - 🌍 Cuisine (12 tags) : Française, Italienne, Asiatique, Mexicaine, Japonaise, Indienne, Méditerranéenne, Américaine, Thaïlandaise, Chinoise, Libanaise, Espagnole
+  - 🥗 Régime (10 tags) : Végétarien, Végétalien, Sans gluten, Sans lactose, Cétogène, Paléo, Protéiné, Faible en calories, Halal, Casher
+  - 🍽️ Type (11 tags) : Entrée, Plat principal, Accompagnement, Dessert, Petit-déjeuner, Apéritif, Soupe, Salade, Pâtisserie, Snack, Boisson
+  - ⚡ Vitesse (7 tags) : Express (<15 min), Rapide (<30 min), Modéré (<1h), Long (>1h), Batch cooking, À l'avance, One pot
+  - 🎉 Occasion (10 tags) : Quotidien, Week-end, Fête, Noël, Pâques, Été, Hiver, Pique-nique, BBQ, Romantique
+  - 👨‍🍳 Méthode (10 tags) : Four, Poêle, Casserole, Mijoteuse, Air fryer, Autocuiseur, Grill, Cru, Sans cuisson, Fermentation
+- ✅ **TAG_ALIASES mappings** : ~100 variantes (FR/EN, accents, casse, synonymes)
+  - Exemples : "de saison" → "Été", "entrée chaude" → "Entrée", "quick" → "Rapide (<30 min)", "vegetarian" → "Végétarien"
+  - Support bilingue : french/français/francaise → "Française", vegan/plant-based → "Végétalien"
+- ✅ **Utilitaire normalisation** : `src/utils/tagNormalizer.ts`
+  - `normalizeTagArray()` : Normalise + filtre invalides + déduplique + limite 10 tags
+  - `normalizeTag()` : Mapping via TAG_ALIASES + case-insensitive
+  - `tagsMatch()` : Comparaison normalisée pour filtrage
+
+### **✅ Composants UI (5 fichiers créés)**
+- ✅ **`src/constants/recipeTags.ts`** (516 lignes)
+  - Définition 6 catégories avec types TypeScript
+  - TAG_ALIASES complet (~100 mappings)
+  - Helper functions : getAllTags(), getCategoryById(), getCategoryForTag(), isValidTag()
+- ✅ **`src/utils/tagNormalizer.ts`** (35 lignes)
+  - Normalisation complète avant sauvegarde
+  - Filtrage + dédoublonnage + limite 10 tags
+- ✅ **`TagBadge.tsx`** (97 lignes)
+  - Affichage pill compact (sm/md)
+  - Support suppression (bouton ✕ optionnel)
+  - Design system cohérent (colors.primary[100/700])
+- ✅ **`TagPicker.tsx`** (297 lignes)
+  - Multi-select avec horizontal tabs navigation
+  - 2 colonnes grid responsive (FlatList)
+  - Badge compteur sur tabs (ex: "3" tags sélectionnés)
+  - Warning banner si limite 10 atteinte
+  - Checkbox visual feedback (✓)
+- ✅ **`TagFilterSheet.tsx`** (187 lignes)
+  - Bottom sheet modal (85% hauteur)
+  - Réutilise TagPicker
+  - Footer fixe : Réinitialiser / Appliquer (X)
+  - État local temporaire (apply pour valider)
+
+### **✅ Intégration Complète (6 fichiers modifiés)**
+- ✅ **Preview import** (`app/recipes/preview.tsx`)
+  - Tags AI normalisés automatiquement à l'initialisation
+  - `normalizeTagArray(imported.tags)` filtrage côté frontend
+- ✅ **Création manuelle** (`app/recipes/create.tsx`)
+  - TagPicker intégré dans formulaire
+  - Normalisation avant validation Zod
+- ✅ **Édition recette** (`app/recipes/[id]/edit.tsx`)
+  - Tags pré-sélectionnés depuis DB
+  - Modification complète via TagPicker
+  - Normalisation avant sauvegarde
+- ✅ **Détail recette** (`app/recipes/[id].tsx`)
+  - Affichage badges avec flexWrap
+  - Uniquement si `recipe.tags && recipe.tags.length > 0`
+- ✅ **Liste recettes** (`app/cookbooks/[id].tsx`)
+  - Filtrage multi-tags avec AND logic
+  - Modal TagFilterSheet pour sélection
+  - Badge compteur sur bouton filtre
+  - Matching case-insensitive via `tagsMatch()`
+- ✅ **Edge Function** (`supabase/functions/recipe-import/index.ts`)
+  - ALLOWED_TAGS constant (60 tags)
+  - Prompts AI modifiés (Instagram/TikTok + Web URL)
+  - Instructions strictes : "Utilise EXACTEMENT les tags de la liste ci-dessus"
+  - Exemples concrets dans prompts
+
+### **✅ Corrections Techniques**
+- ✅ **Schema Zod** (`src/lib/validations/recipe.validation.ts`)
+  - `quantity` : `.positive()` → `.nonnegative()` (accepte 0 pour "sel", "poivre")
+  - `notes` et `duration` : Ajout `.nullable()` pour accepter valeurs NULL depuis DB
+  - `imageUrl` : Ajout `.nullable()` pour compatibilité DB
+- ✅ **Transformation null → undefined** dans edit.tsx
+  - Conversion automatique avant validation Zod
+  - Garantit compatibilité schema
+
+### **📁 Fichiers Créés/Modifiés**
+**Nouveaux fichiers (5)** :
+- ✅ `src/constants/recipeTags.ts` (516 lignes)
+- ✅ `src/utils/tagNormalizer.ts` (35 lignes)
+- ✅ `src/components/recipe/TagBadge.tsx` (97 lignes)
+- ✅ `src/components/recipe/TagPicker.tsx` (297 lignes)
+- ✅ `src/components/recipe/TagFilterSheet.tsx` (187 lignes)
+
+**Fichiers modifiés (7)** :
+- ✅ `app/recipes/preview.tsx` (+15 lignes)
+- ✅ `app/recipes/create.tsx` (+18 lignes)
+- ✅ `app/recipes/[id].tsx` (+20 lignes affichage)
+- ✅ `app/recipes/[id]/edit.tsx` (+30 lignes TagPicker + normalisation)
+- ✅ `app/cookbooks/[id].tsx` (+60 lignes filtrage)
+- ✅ `supabase/functions/recipe-import/index.ts` (+30 lignes ALLOWED_TAGS + prompts)
+- ✅ `src/lib/validations/recipe.validation.ts` (+3 lignes nullable)
+
+**Total** : 5 nouveaux fichiers + 7 fichiers modifiés = **~1300 lignes de code**
+
+### **📈 Impact sur le Projet**
+- **Frontend** : 98% → 99% (+1%)
+- **Phase 2 Core Features** : Tags système complet (feature majeure)
+- **User Experience** : Organisation + filtrage intelligent
+- **AI Import Quality** : Tags normalisés automatiquement (pas de "de saison", "quick", etc.)
+- **Code Quality** : 0 erreur TypeScript, validation stricte
+
+### **🎯 Avantages Utilisateur**
+- ✅ **Organisation** : Filtrage rapide par tags (ex: "Végétarien" + "Rapide")
+- ✅ **Découverte** : Exploration par catégories (Cuisine, Régime, Occasion)
+- ✅ **Cohérence** : Tags normalisés (pas de doublons "vegan"/"Végétalien")
+- ✅ **Import intelligent** : IA sélectionne uniquement tags valides
+- ✅ **Multi-langue** : Support FR/EN automatique (french → Française)
+
+### **🧪 Tests Effectués**
+- ✅ Import recette avec tags AI → Normalisation automatique ✅
+- ✅ Filtrage multi-tags → AND logic fonctionne ✅
+- ✅ Édition tags existants → Sauvegarde correcte ✅
+- ✅ TypeScript compile clean (`npm run type-check`) ✅
+- ✅ Validation Zod (nullable fields) → Fix appliqué ✅
+
+---
 
 **Derniers changements** (5 janvier 2026) :
 
