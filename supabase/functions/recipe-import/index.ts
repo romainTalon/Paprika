@@ -105,12 +105,14 @@ const aiIngredientSchema = z.object({
   quantity: z.number().nonnegative("Quantity must be non-negative"),
   unit: z.string(),
   notes: z.string().nullable().optional(),
+  imageUrl: z.string().nullable().optional(),
 });
 
 const aiRecipeStepSchema = z.object({
   order: z.number().int().positive("Step order must be a positive integer"),
   instruction: z.string().min(1, "Instruction cannot be empty"),
   duration: z.number().int().positive().nullable().optional(),
+  imageUrl: z.string().nullable().optional(),
 });
 
 const aiRecipeImportSchema = z
@@ -124,7 +126,7 @@ const aiRecipeImportSchema = z
     tags: z.array(z.string()).default([]),
     ingredients: z.array(aiIngredientSchema).min(0), // ✅ Can be empty (partial import)
     steps: z.array(aiRecipeStepSchema).min(0), // ✅ Can be empty (partial import)
-    coverImageUrl: z.string().url().nullable().optional(),
+    coverImageUrl: z.string().nullable().optional(),
   })
   .refine((data) => data.ingredients.length > 0 || data.steps.length > 0, {
     message: "Recipe must have at least ingredients OR steps (not both empty)",
@@ -211,6 +213,45 @@ async function downloadAndUploadImage(
     return publicUrl;
   } catch (error) {
     console.error("❌ Download and upload failed:", error);
+    return null;
+  }
+}
+
+/**
+ * Convert relative URL to absolute URL using base URL
+ */
+function resolveUrl(urlString: string, baseUrl: string): string {
+  try {
+    return new URL(urlString, baseUrl).href;
+  } catch {
+    return urlString;
+  }
+}
+
+/**
+ * Check if a string is a valid URL (absolute or relative)
+ * Returns the absolute URL if valid, null otherwise
+ */
+function normalizeImageUrl(str: string | null | undefined, baseUrl: string): string | null {
+  if (!str || str === "") return null;
+
+  try {
+    // Try as absolute URL first
+    const url = new URL(str);
+    if (url.protocol === "http:" || url.protocol === "https:") {
+      return url.href;
+    }
+    return null;
+  } catch {
+    // Try as relative URL
+    if (str.startsWith("/") || str.startsWith("./") || str.startsWith("../")) {
+      try {
+        const absoluteUrl = new URL(str, baseUrl);
+        return absoluteUrl.href;
+      } catch {
+        return null;
+      }
+    }
     return null;
   }
 }
@@ -1004,18 +1045,27 @@ Si la description NE contient NI ingrédients NI étapes (juste une photo, un po
 
     // Download and upload image to Supabase Storage if available
     let finalImageUrl = aiRecipe.coverImageUrl ?? null;
-    if (imageUrl) {
+
+    // Normalize URL (handles both absolute and relative URLs)
+    const normalizedImageUrl = normalizeImageUrl(imageUrl, sourceUrl);
+
+    if (normalizedImageUrl) {
+      console.log(`📸 Normalized image URL: ${normalizedImageUrl}`);
       // Generate unique ID for the recipe image
       const tempRecipeId = crypto.randomUUID();
-      const uploadedUrl = await downloadAndUploadImage(imageUrl, tempRecipeId, userId);
+      const uploadedUrl = await downloadAndUploadImage(normalizedImageUrl, tempRecipeId, userId);
 
       if (uploadedUrl) {
         console.log(`✅ Image stored in Supabase Storage: ${uploadedUrl}`);
         finalImageUrl = uploadedUrl;
       } else {
-        console.log(`⚠️  Image upload failed, keeping external URL: ${imageUrl}`);
-        finalImageUrl = imageUrl; // Fallback to external URL
+        console.log(`⚠️  Image upload failed, keeping external URL: ${normalizedImageUrl}`);
+        finalImageUrl = normalizedImageUrl; // Fallback to external URL
       }
+    } else if (imageUrl) {
+      // Invalid or unsupported URL detected, set to null
+      console.log(`⚠️  Invalid image URL detected, skipping: ${imageUrl}`);
+      finalImageUrl = null;
     }
 
     return {
@@ -1193,11 +1243,16 @@ ${cleanedHTML.slice(0, 100000)}`;
 
     // Download and upload image to Supabase Storage if available
     let finalImageUrl = aiRecipe.coverImageUrl ?? null;
-    if (aiRecipe.coverImageUrl) {
+
+    // Normalize and validate image URL (handles relative URLs)
+    const normalizedImageUrl = normalizeImageUrl(aiRecipe.coverImageUrl, url);
+
+    if (normalizedImageUrl) {
+      console.log(`📸 Normalized image URL: ${normalizedImageUrl}`);
       // Generate unique ID for the recipe image
       const tempRecipeId = crypto.randomUUID();
       const uploadedUrl = await downloadAndUploadImage(
-        aiRecipe.coverImageUrl,
+        normalizedImageUrl,
         tempRecipeId,
         userId
       );
@@ -1206,9 +1261,13 @@ ${cleanedHTML.slice(0, 100000)}`;
         console.log(`✅ Image stored in Supabase Storage: ${uploadedUrl}`);
         finalImageUrl = uploadedUrl;
       } else {
-        console.log(`⚠️  Image upload failed, keeping external URL: ${aiRecipe.coverImageUrl}`);
-        finalImageUrl = aiRecipe.coverImageUrl; // Fallback to external URL
+        console.log(`⚠️  Image upload failed, keeping normalized URL: ${normalizedImageUrl}`);
+        finalImageUrl = normalizedImageUrl; // Fallback to normalized external URL
       }
+    } else if (aiRecipe.coverImageUrl) {
+      // Invalid URL detected, set to null
+      console.log(`⚠️  Invalid image URL detected, skipping: ${aiRecipe.coverImageUrl}`);
+      finalImageUrl = null;
     }
 
     return {

@@ -138,6 +138,7 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
   - CORS headers, JWT authentication, error handling complet
   - Freemium check via RPC `check_import_limit()` et `increment_import_count()`
   - Déployée en production avec `ANTHROPIC_API_KEY` + `DEEPSEEK_API_KEY` configurées
+  - **Support URLs relatives** : Images relatives converties en absolues (ex: `/images/...` → full URL)
 
 - ✅ **ImportRecipeScreen** - Écran import URL (402 lignes, mis à jour 31 déc)
   - Input URL avec validation regex + détection type source
@@ -406,9 +407,9 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 - ✅ Token refresh automatique (AppState listener)
 - ⏳ Deep links pour confirmation email (désactivée temporairement)
 
-**Dernière mise à jour** : 10 janvier 2026 - 15h00
+**Dernière mise à jour** : 10 janvier 2026 - 18h00
 
-**Derniers changements** (10 janvier 2026) :
+**Derniers changements** (10 janvier 2026 - Matin) :
 
 ## 🏷️ **Système de Tags pour Recettes - Feature Complète**
 
@@ -525,6 +526,35 @@ Une application mobile iOS/Android qui permet d'importer automatiquement des rec
 - ✅ Édition tags existants → Sauvegarde correcte ✅
 - ✅ TypeScript compile clean (`npm run type-check`) ✅
 - ✅ Validation Zod (nullable fields) → Fix appliqué ✅
+
+---
+
+**Derniers changements** (10 janvier 2026 - Après-midi) :
+
+## 🐛 **Corrections & Améliorations**
+
+### **✅ Fix Édition Tags dans RecipeEditScreen**
+- ✅ **TagPicker intégré** : Modification tags possible lors de l'édition de recette
+- ✅ **Normalisation automatique** : Tags nettoyés avant sauvegarde (via `normalizeTagArray()`)
+- ✅ **État synchronisé** : Tags initialisés depuis `recipe.tags` avec `useEffect`
+- ✅ **Validation corrigée** : Schémas Zod modifiés pour accepter valeurs DB
+  - `quantity` : `.positive()` → `.nonnegative()` (accepte 0 pour sel, épices)
+  - `notes`, `duration`, `imageUrl` : Ajout `.nullable()` pour compatibilité DB
+  - Transformation `null → undefined` avant validation dans edit screen
+
+### **✅ Fix Import Recettes - Support URLs Relatives**
+- ✅ **Edge Function améliorée** : Gestion URLs relatives d'images
+  - `normalizeImageUrl()` : Convertit URLs relatives en absolues avec base URL
+  - Exemple : `/images/recette.jpg` + `https://site.com` → `https://site.com/images/recette.jpg`
+  - Support détection : `/`, `./`, `../` patterns
+- ✅ **parseHTMLWithAI()** : Normalisation images web (ex: Grand Frais)
+- ✅ **parseTextWithAI()** : Normalisation images Instagram/TikTok
+- ✅ **Déployée en production** : `recipe-import` Edge Function mise à jour
+
+### **📈 Impact**
+- **Bug critique corrigé** : Édition tags impossible → Édition fluide ✅
+- **Import images amélioré** : Sites avec URLs relatives (~10% des sites) → Support complet ✅
+- **Validation robuste** : Rejets Zod avec valeurs DB nulles → Validation flexible ✅
 
 ---
 

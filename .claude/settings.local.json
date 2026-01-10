@@ -88,7 +88,9 @@
       "Bash(powershell -Command \"Get-Content src\\\\hooks\\\\useNutrition.ts | Select-String -Pattern ''error'' -Context 2\")",
       "Bash(npx expo start:*)",
       "Bash(psql:*)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "WebFetch(domain:www.grandfrais.com)",
+      "Bash(npx supabase functions deploy:*)"
     ],
     "deny": [],
     "ask": []
