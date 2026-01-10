@@ -19,14 +19,14 @@ export const recipeIngredientSchema = z.object({
     .max(100, "Le nom ne doit pas dépasser 100 caractères"),
   quantity: z
     .number({ message: "La quantité doit être un nombre" })
-    .positive("La quantité doit être positive"),
+    .nonnegative("La quantité doit être positive ou zéro"),
   unit: z
     .string()
     .max(20, "L'unité ne doit pas dépasser 20 caractères")
     .optional()
     .or(z.literal("")),
-  notes: z.string().max(200, "Les notes ne doivent pas dépasser 200 caractères").optional(),
-  imageUrl: z.string().url("URL invalide").optional().or(z.literal("")),
+  notes: z.string().max(200, "Les notes ne doivent pas dépasser 200 caractères").nullable().optional(),
+  imageUrl: z.string().url("URL invalide").nullable().optional().or(z.literal("")),
 });
 
 /**
@@ -45,8 +45,9 @@ export const recipeStepSchema = z.object({
     .number({ message: "La durée doit être un nombre" })
     .int("La durée doit être un entier")
     .positive("La durée doit être positive")
+    .nullable()
     .optional(),
-  imageUrl: z.string().url("URL invalide").optional().or(z.literal("")),
+  imageUrl: z.string().url("URL invalide").nullable().optional().or(z.literal("")),
 });
 
 /**

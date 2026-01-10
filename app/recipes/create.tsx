@@ -23,7 +23,9 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Text, Button } from "@/components/ui";
 import { BackButton } from "@/components/navigation";
 import { IngredientInput, StepInput, TimeStepper } from "@/components/recipe";
+import { TagPicker } from "@/components/recipe/TagPicker";
 import { colors, spacing, fontSizes, fontWeights, shadows } from "@/theme";
+import { normalizeTagArray } from "@/utils/tagNormalizer";
 import { useCreateRecipe } from "@/hooks/useRecipes";
 import { useAuth } from "@/hooks/useAuth";
 import { createRecipeSchema } from "@/lib/validations/recipe.validation";
@@ -47,6 +49,7 @@ export default function CreateRecipeScreen() {
   const [prepTime, setPrepTime] = useState<number | undefined>(undefined);
   const [cookTime, setCookTime] = useState<number | undefined>(undefined);
   const [difficulty, setDifficulty] = useState<RecipeDifficulty>("easy");
+  const [tags, setTags] = useState<string[]>([]);
 
   // Ingredients
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([
@@ -155,6 +158,7 @@ export default function CreateRecipeScreen() {
         prepTime,
         cookTime,
         difficulty,
+        tags: normalizeTagArray(tags),
         ingredients,
         steps,
       });
@@ -212,6 +216,7 @@ export default function CreateRecipeScreen() {
     prepTime,
     cookTime,
     difficulty,
+    tags,
     ingredients,
     steps,
     createRecipe,
@@ -431,6 +436,26 @@ export default function CreateRecipeScreen() {
               </TouchableOpacity>
             </View>
           </View>
+        </View>
+
+        {/* Tags Section */}
+        <View style={styles.section}>
+          <Text variant="h3" style={styles.sectionTitle}>
+            Tags
+          </Text>
+          <Text
+            variant="bodySmall"
+            color="neutral"
+            style={{ marginBottom: spacing.sm }}
+          >
+            Sélectionnez jusqu'à 10 tags pour catégoriser votre recette
+          </Text>
+          <TagPicker
+            selectedTags={tags}
+            onTagsChange={setTags}
+            maxTags={10}
+            showCount={true}
+          />
         </View>
 
         {/* Ingredients Section */}

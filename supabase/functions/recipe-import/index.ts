@@ -46,6 +46,40 @@ const AI_MODELS: Record<string, ModelConfig> = {
 const DEFAULT_MODEL = "deepseek-chat";
 
 // =============================================================================
+// Allowed Recipe Tags (predefined list)
+// =============================================================================
+// IMPORTANT: Keep this synchronized with src/constants/recipeTags.ts
+
+const ALLOWED_TAGS = [
+  // Cuisine
+  "Française", "Italienne", "Asiatique", "Mexicaine", "Japonaise",
+  "Indienne", "Méditerranéenne", "Américaine", "Thaïlandaise",
+  "Chinoise", "Libanaise", "Espagnole",
+
+  // Régime
+  "Végétarien", "Végétalien", "Sans gluten", "Sans lactose",
+  "Cétogène", "Paléo", "Protéiné", "Faible en calories",
+  "Halal", "Casher",
+
+  // Type
+  "Entrée", "Plat principal", "Accompagnement", "Dessert",
+  "Petit-déjeuner", "Apéritif", "Soupe", "Salade",
+  "Pâtisserie", "Snack", "Boisson",
+
+  // Vitesse
+  "Express (<15 min)", "Rapide (<30 min)", "Modéré (<1h)",
+  "Long (>1h)", "Batch cooking", "À l'avance", "One pot",
+
+  // Occasion
+  "Quotidien", "Week-end", "Fête", "Noël", "Pâques",
+  "Été", "Hiver", "Pique-nique", "BBQ", "Romantique",
+
+  // Méthode
+  "Four", "Poêle", "Casserole", "Mijoteuse", "Air fryer",
+  "Autocuiseur", "Grill", "Cru", "Sans cuisson", "Fermentation"
+];
+
+// =============================================================================
 // CORS Configuration
 // =============================================================================
 
@@ -850,7 +884,23 @@ IMPORTANT:
 - SÉPARE chaque action distincte en une étape séparée
 - Une phrase avec un point = une étape distincte
 - Découpe les longs paragraphes en étapes courtes et atomiques
-- Chaque étape = une seule action claire`;
+- Chaque étape = une seule action claire
+
+TAGS - RÈGLES STRICTES:
+Tu DOIS sélectionner les tags UNIQUEMENT parmi cette liste prédéfinie:
+${ALLOWED_TAGS.join(", ")}
+
+Instructions pour les tags:
+1. Analyse le contenu de la recette (titre, ingrédients, description)
+2. Sélectionne 3 à 8 tags qui correspondent le mieux
+3. Utilise EXACTEMENT les tags de la liste ci-dessus (respecte la casse)
+4. N'invente AUCUN nouveau tag
+5. Si un tag semble pertinent mais n'est pas dans la liste, ignore-le
+
+Exemples:
+- Soupe de butternut → Tags: ["Soupe", "Végétarien", "Hiver"] (pas "de saison")
+- Entrée chaude italienne → Tags: ["Entrée", "Italienne", "Four"] (pas "entrée chaude")
+- Quick vegetarian meal → Tags: ["Rapide (<30 min)", "Végétarien"] (pas "quick")`;
 
     const userPrompt = `Analyse cette description ${platformName} et détermine si elle contient une recette de cuisine.
 
@@ -867,7 +917,7 @@ Si c'est une VRAIE RECETTE avec au moins des ingrédients OU des étapes, extrai
   "prepTime": number | null (en minutes, déduis si mentionné),
   "cookTime": number | null (en minutes),
   "difficulty": "easy" | "medium" | "hard" | null (déduis selon complexité),
-  "tags": string[] (ex: ["végétarien", "rapide", "dessert"]),
+  "tags": string[] (UNIQUEMENT des tags de la liste prédéfinie, respecte la casse exacte),
   "ingredients": [
     {
       "name": "string",
@@ -1048,7 +1098,23 @@ IMPORTANT:
 - Respecte strictement le format JSON demandé
 - Pour les quantités, utilise des nombres décimaux (ex: 1.5, 0.25)
 - Pour les unités, normalise en français (cuillère à soupe, tasse, grammes, etc.)
-- Si un ingrédient n'a pas de quantité spécifique (ex: "sel", "poivre"), utilise quantity: 0 et unit: ""`;
+- Si un ingrédient n'a pas de quantité spécifique (ex: "sel", "poivre"), utilise quantity: 0 et unit: ""
+
+TAGS - RÈGLES STRICTES:
+Tu DOIS sélectionner les tags UNIQUEMENT parmi cette liste prédéfinie:
+${ALLOWED_TAGS.join(", ")}
+
+Instructions pour les tags:
+1. Analyse le contenu de la recette (titre, ingrédients, description)
+2. Sélectionne 3 à 8 tags qui correspondent le mieux
+3. Utilise EXACTEMENT les tags de la liste ci-dessus (respecte la casse)
+4. N'invente AUCUN nouveau tag
+5. Si un tag semble pertinent mais n'est pas dans la liste, ignore-le
+
+Exemples:
+- Soupe de butternut → Tags: ["Soupe", "Végétarien", "Hiver"] (pas "de saison")
+- Entrée chaude italienne → Tags: ["Entrée", "Italienne", "Four"] (pas "entrée chaude")
+- Quick vegetarian meal → Tags: ["Rapide (<30 min)", "Végétarien"] (pas "quick")`;
 
     const userPrompt = `Analyse ce HTML de recette et extrais les informations en JSON.
 
@@ -1062,7 +1128,7 @@ Format JSON attendu:
   "prepTime": number | null (en minutes),
   "cookTime": number | null (en minutes),
   "difficulty": "easy" | "medium" | "hard" | null,
-  "tags": string[],
+  "tags": string[] (UNIQUEMENT des tags de la liste prédéfinie, respecte la casse exacte),
   "ingredients": [
     {
       "name": "string",

@@ -24,6 +24,7 @@ import { Text, Button } from "@/components/ui";
 import { AppHeader } from "@/components/navigation";
 import { SelectGroceryListModal, CreateListModal } from "@/components/grocery";
 import { NutritionSummary } from "@/components/recipe/NutritionSummary";
+import { TagBadge } from "@/components/recipe/TagBadge";
 import { colors, spacing, fontSizes, fontWeights, shadows } from "@/theme";
 import { useRecipe, useToggleFavorite, useDeleteRecipe } from "@/hooks/useRecipes";
 import { useAddIngredientsFromRecipe } from "@/hooks/useGroceryList";
@@ -586,6 +587,20 @@ export default function RecipeDetailScreen() {
           )}
         </View>
 
+        {/* Tags Section */}
+        {recipe.tags && recipe.tags.length > 0 && (
+          <View style={styles.tagsSection}>
+            <Text variant="h3" style={styles.sectionTitle}>
+              Tags
+            </Text>
+            <View style={styles.tagsContainer}>
+              {recipe.tags.map((tag, index) => (
+                <TagBadge key={`${tag}-${index}`} tag={tag} size="md" />
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* Ingredients Section */}
         {adjustedIngredients.length > 0 && (
           <View style={styles.section}>
@@ -807,6 +822,19 @@ const styles = StyleSheet.create({
   metadataValue: {
     fontWeight: fontWeights.semibold as any,
     color: colors.warm.brown,
+  },
+
+  tagsSection: {
+    padding: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray[200],
+  },
+
+  tagsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginTop: spacing.sm,
   },
 
   servingsStepper: {

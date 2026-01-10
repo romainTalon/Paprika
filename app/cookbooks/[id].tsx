@@ -7,7 +7,7 @@
  * @module app/cookbooks/[id]
  */
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useMemo } from "react";
 import {
   View,
   FlatList,
@@ -22,6 +22,8 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Text, Button, Container } from "@/components/ui";
 import { AppHeader } from "@/components/navigation";
 import RecipeCard from "@/components/recipe/RecipeCard";
+import { TagFilterSheet } from "@/components/recipe/TagFilterSheet";
+import { tagsMatch } from "@/constants/recipeTags";
 import { colors, spacing, shadows } from "@/theme";
 import {
   useCookbookRecipes,
@@ -90,6 +92,8 @@ export default function CookbookDetailScreen() {
   const userId = user?.id;
 
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [filterTags, setFilterTags] = useState<string[]>([]);
+  const [filterSheetVisible, setFilterSheetVisible] = useState(false);
 
   // Fetch cookbook details
   const {
@@ -105,6 +109,19 @@ export default function CookbookDetailScreen() {
     error: recipesError,
     refetch,
   } = useCookbookRecipes(id, userId);
+
+  // Filter recipes by tags (AND logic, case-insensitive with normalization)
+  const filteredRecipes = useMemo(() => {
+    if (!recipes || filterTags.length === 0) return recipes;
+    return recipes.filter((recipe) => {
+      if (!recipe.tags || recipe.tags.length === 0) return false;
+
+      // Check if recipe has ALL selected tags (using tagsMatch for smart comparison)
+      return filterTags.every((filterTag) =>
+        recipe.tags!.some((recipeTag) => tagsMatch(recipeTag, filterTag))
+      );
+    });
+  }, [recipes, filterTags]);
 
   // Mutations
   const toggleFavorite = useToggleFavorite();
@@ -303,9 +320,23 @@ export default function CookbookDetailScreen() {
           <View style={styles.headerLeft}>
             <Text variant="h1">{cookbook?.name || "Livre de Recettes"}</Text>
             <Text variant="bodySmall" color="neutral">
-              {recipes.length} recette{recipes.length > 1 ? "s" : ""}
+              {filteredRecipes?.length || 0} recette{(filteredRecipes?.length || 0) > 1 ? "s" : ""}
+              {filterTags.length > 0 && ` (${recipes?.length || 0} total)`}
             </Text>
           </View>
+          <TouchableOpacity
+            onPress={() => setFilterSheetVisible(true)}
+            style={styles.filterButton}
+            accessibilityLabel="Filtrer par tags"
+            accessibilityRole="button"
+          >
+            <Text style={styles.filterIcon}>🏷️</Text>
+            {filterTags.length > 0 && (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{filterTags.length}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={handleCookbookMenu}
             style={styles.menuButton}
@@ -317,7 +348,7 @@ export default function CookbookDetailScreen() {
         </View>
 
         <FlatList
-          data={recipes}
+          data={filteredRecipes}
           renderItem={renderRecipe}
           keyExtractor={(item) => item.id}
           numColumns={2}
@@ -350,6 +381,14 @@ export default function CookbookDetailScreen() {
             onClose={() => setIsEditModalVisible(false)}
           />
         )}
+
+        {/* Tag Filter Modal */}
+        <TagFilterSheet
+          visible={filterSheetVisible}
+          selectedTags={filterTags}
+          onFilterChange={setFilterTags}
+          onClose={() => setFilterSheetVisible(false)}
+        />
       </Container>
     </>
   );
@@ -365,6 +404,36 @@ const styles = StyleSheet.create({
 
   headerLeft: {
     flex: 1,
+  },
+
+  filterButton: {
+    padding: spacing.xs,
+    marginLeft: spacing.sm,
+    position: "relative",
+  },
+
+  filterIcon: {
+    fontSize: 28,
+    lineHeight: 32,
+  },
+
+  filterBadge: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    backgroundColor: colors.primary.DEFAULT,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: spacing.xs / 2,
+  },
+
+  filterBadgeText: {
+    fontSize: 12,
+    color: colors.white,
+    fontWeight: "bold",
   },
 
   menuButton: {

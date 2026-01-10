@@ -23,10 +23,12 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Text, Button } from "@/components/ui";
 import { BackButton } from "@/components/navigation";
 import { IngredientInput, StepInput, TimeStepper } from "@/components/recipe";
+import { TagPicker } from "@/components/recipe/TagPicker";
 import { colors, spacing, fontSizes, fontWeights, shadows } from "@/theme";
 import { useRecipe, useUpdateRecipe } from "@/hooks/useRecipes";
 import { useAuth } from "@/hooks/useAuth";
 import { updateRecipeSchema } from "@/lib/validations/recipe.validation";
+import { normalizeTagArray } from "@/utils/tagNormalizer";
 import type { RecipeIngredient, RecipeStep } from "@/types/database";
 import { z } from "zod";
 
@@ -52,6 +54,9 @@ export default function EditRecipeScreen() {
   const [cookTime, setCookTime] = useState<number | undefined>(undefined);
   const [difficulty, setDifficulty] = useState<RecipeDifficulty>("easy");
 
+  // Tags
+  const [tags, setTags] = useState<string[]>([]);
+
   // Ingredients
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([
     { name: "", quantity: 0 },
@@ -76,6 +81,7 @@ export default function EditRecipeScreen() {
       setPrepTime(recipe.prepTime || undefined);
       setCookTime(recipe.cookTime || undefined);
       setDifficulty(recipe.difficulty || "easy");
+      setTags(recipe.tags || []);
 
       // Ensure at least 1 ingredient
       setIngredients(
@@ -182,7 +188,7 @@ export default function EditRecipeScreen() {
     }
 
     try {
-      // Prepare update data
+      // Prepare update data with null -> undefined conversion for optional fields
       const updates = {
         title,
         description: description || undefined,
@@ -192,8 +198,18 @@ export default function EditRecipeScreen() {
         prepTime,
         cookTime,
         difficulty,
-        ingredients,
-        steps,
+        tags: normalizeTagArray(tags),
+        ingredients: ingredients.map((ing) => ({
+          ...ing,
+          unit: ing.unit || undefined,
+          notes: ing.notes || undefined,
+          imageUrl: ing.imageUrl || undefined,
+        })),
+        steps: steps.map((step) => ({
+          ...step,
+          duration: step.duration || undefined,
+          imageUrl: step.imageUrl || undefined,
+        })),
       };
 
       // Validate form data
@@ -240,6 +256,7 @@ export default function EditRecipeScreen() {
     prepTime,
     cookTime,
     difficulty,
+    tags,
     ingredients,
     steps,
     updateRecipe,
@@ -523,6 +540,19 @@ export default function EditRecipeScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
+          </View>
+
+          {/* Tags */}
+          <View style={styles.field}>
+            <Text variant="bodySmall" style={styles.label}>
+              Tags
+            </Text>
+            <TagPicker
+              selectedTags={tags}
+              onTagsChange={setTags}
+              maxTags={10}
+              showCount={true}
+            />
           </View>
         </View>
 
