@@ -8,7 +8,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { GroceryListService } from "@/services";
+import { GroceryListService, ImageService } from "@/services";
 import type { GroceryList, GroceryItem, NewGroceryItem, RecipeIngredient } from "@/types";
 
 // =============================================================================
@@ -264,9 +264,27 @@ export function useAddGroceryItem() {
       listId: string;
       item: Omit<NewGroceryItem, "groceryListId">;
     }) => {
+      // 🖼️ AUTO-SEARCH: Search image for this ingredient via TheMealDB
+      console.log("🔍 Searching image for ingredient:", params.item.name);
+      const result = await ImageService.searchIngredientImage({
+        ingredientName: params.item.name,
+      });
+      const imageUrl = result.success && result.imageUrl ? result.imageUrl : null;
+
+      if (imageUrl) {
+        console.log("✅ Found ingredient image:", imageUrl);
+      } else {
+        console.log("❌ No image found for:", params.item.name);
+      }
+
+      const itemWithImage = {
+        ...params.item,
+        imageUrl: imageUrl || undefined,
+      };
+
       const { data, error } = await GroceryListService.addItemWithMerge(
         params.listId,
-        params.item
+        itemWithImage
       );
 
       if (error) throw error;

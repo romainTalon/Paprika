@@ -3,7 +3,7 @@
  *
  * This module defines types for third-party API integrations:
  * - OpenFoodFacts (nutrition database)
- * - Unsplash (image search)
+ * - TheMealDB (ingredient images)
  * - Anthropic Claude (already typed by SDK)
  *
  * @module types/api
@@ -118,112 +118,14 @@ export interface OpenFoodFactsSearchOptions {
 }
 
 /**
- * Unsplash API - Free HD images
- * API Docs: https://unsplash.com/documentation
+ * TheMealDB API - Free ingredient images
+ * API Docs: https://www.themealdb.com/api.php
+ *
+ * TheMealDB provides normalized ingredient images on white background.
+ * Format: https://www.themealdb.com/images/ingredients/{IngredientName}.png
+ *
+ * Example: https://www.themealdb.com/images/ingredients/Tomato.png
  */
-
-/**
- * Unsplash photo URLs in different sizes
- */
-export interface UnsplashPhotoUrls {
-  /** Raw uncropped photo */
-  raw: string;
-  /** Full size (default width) */
-  full: string;
-  /** Regular size (1080px wide) */
-  regular: string;
-  /** Small size (400px wide) */
-  small: string;
-  /** Thumbnail (200px wide) */
-  thumb: string;
-}
-
-/**
- * Unsplash user data
- */
-export interface UnsplashUser {
-  /** User ID */
-  id: string;
-  /** Username */
-  username: string;
-  /** Display name */
-  name: string;
-  /** Portfolio URL */
-  portfolio_url?: string;
-  /** Profile image URL */
-  profile_image?: {
-    small: string;
-    medium: string;
-    large: string;
-  };
-}
-
-/**
- * Unsplash photo data structure
- */
-export interface UnsplashPhoto {
-  /** Photo ID */
-  id: string;
-  /** Photo URLs in different sizes */
-  urls: UnsplashPhotoUrls;
-  /** Width in pixels */
-  width: number;
-  /** Height in pixels */
-  height: number;
-  /** Color (hex code) */
-  color: string;
-  /** Alt description */
-  alt_description: string | null;
-  /** Full description */
-  description: string | null;
-  /** Photographer info */
-  user: UnsplashUser;
-  /** Number of likes */
-  likes: number;
-  /** Created date */
-  created_at: string;
-}
-
-/**
- * Unsplash API search response
- */
-export interface UnsplashSearchResponse {
-  /** Total number of results */
-  total: number;
-  /** Total number of pages */
-  total_pages: number;
-  /** Array of photos */
-  results: UnsplashPhoto[];
-}
-
-/**
- * Unsplash search options
- */
-export interface UnsplashSearchOptions {
-  /** Search query */
-  query: string;
-  /** Page number */
-  page?: number;
-  /** Results per page (max 30) */
-  per_page?: number;
-  /** Sort order */
-  order_by?: "relevant" | "latest";
-  /** Orientation filter */
-  orientation?: "landscape" | "portrait" | "squarish";
-  /** Color filter */
-  color?:
-    | "black_and_white"
-    | "black"
-    | "white"
-    | "yellow"
-    | "orange"
-    | "red"
-    | "purple"
-    | "magenta"
-    | "green"
-    | "teal"
-    | "blue";
-}
 
 /**
  * Stripe API - Payment processing

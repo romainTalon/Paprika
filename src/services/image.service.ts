@@ -2,19 +2,14 @@
  * Image Service
  *
  * Handles image search and storage for ingredients and recipes:
- * 1. Search Unsplash for high-quality ingredient photos
+ * 1. Search TheMealDB for normalized ingredient photos (white background)
  * 2. Upload and store images in Supabase Storage
  * 3. Generate image URLs for database storage
  *
  * @module services/image
  */
 
-import { createApi } from "unsplash-js";
 import { supabase } from "@/lib/supabase";
-import {
-  unsplashSearchSchema,
-  type UnsplashPhoto,
-} from "@/lib/validators";
 import type {
   IngredientImageResult,
   IngredientImageOptions,
@@ -22,11 +17,11 @@ import type {
 } from "@/types/ai";
 
 /**
- * Unsplash API client
+ * TheMealDB base URL for ingredient images
+ * Format: https://www.themealdb.com/images/ingredients/{Name}.png
  */
-const unsplash = createApi({
-  accessKey: process.env.UNSPLASH_ACCESS_KEY || "",
-});
+const THEMEALDB_IMAGE_BASE_URL =
+  "https://www.themealdb.com/images/ingredients";
 
 /**
  * Supabase Storage bucket for images
@@ -40,7 +35,7 @@ const STORAGE_BUCKET = "recipe-images";
  */
 export class ImageService {
   /**
-   * Search for an ingredient image on Unsplash
+   * Search for an ingredient image on TheMealDB
    *
    * @param options - Image search options
    * @returns Promise resolving to image result
@@ -48,78 +43,43 @@ export class ImageService {
    * @example
    * ```typescript
    * const result = await ImageService.searchIngredientImage({
-   *   ingredientName: "tomate",
-   *   size: "regular"
+   *   ingredientName: "tomate"
    * });
    *
    * if (result.success) {
    *   console.log("Image URL:", result.imageUrl);
-   *   console.log("Photographer:", result.attribution?.photographerName);
    * }
    * ```
    */
   static async searchIngredientImage(
     options: IngredientImageOptions
   ): Promise<IngredientImageResult> {
-    const { ingredientName, size = "regular", language = "fr" } = options;
+    const { ingredientName } = options;
 
     try {
-      // Check if Unsplash API key is configured
-      if (!process.env.UNSPLASH_ACCESS_KEY) {
+      // Normalize ingredient name for TheMealDB
+      // Examples: "tomate" → "Tomato", "chicken breast" → "Chicken Breast"
+      const normalizedName = this.normalizeIngredientName(ingredientName);
+
+      // Build TheMealDB image URL
+      const imageUrl = `${THEMEALDB_IMAGE_BASE_URL}/${encodeURIComponent(normalizedName)}.png`;
+
+      // Check if image exists by trying to fetch it
+      const response = await fetch(imageUrl, { method: "HEAD" });
+
+      if (!response.ok) {
+        // Image not found on TheMealDB
         return {
           success: false,
-          error: "Unsplash API key not configured",
+          error: `No image found for "${ingredientName}" on TheMealDB`,
         };
       }
 
-      // Build search query
-      // Add "food" or "ingredient" to improve relevance
-      const searchQuery =
-        language === "fr"
-          ? `${ingredientName} aliment`
-          : `${ingredientName} food`;
-
-      // Search Unsplash
-      const response = await unsplash.search.getPhotos({
-        query: searchQuery,
-        page: 1,
-        perPage: 5,
-        orientation: "squarish", // Best for ingredient thumbnails
-      });
-
-      if (response.type === "error") {
-        return {
-          success: false,
-          error: `Unsplash search failed: ${response.errors?.[0] || "Unknown error"}`,
-        };
-      }
-
-      // Validate response
-      const validation = unsplashSearchSchema.safeParse(response.response);
-      if (!validation.success || validation.data.results.length === 0) {
-        return {
-          success: false,
-          error: `No images found for "${ingredientName}"`,
-        };
-      }
-
-      // Take the first (most relevant) photo
-      const photo = validation.data.results[0];
-
-      // Get URL for requested size
-      const imageUrl = this.getPhotoUrl(photo, size);
-
-      // Track download (required by Unsplash API guidelines)
-      await this.trackUnsplashDownload(photo.id);
-
+      // Image found!
       return {
         success: true,
         imageUrl,
-        source: "unsplash",
-        attribution: {
-          photographerName: photo.user.name,
-          photographerUsername: photo.user.username,
-        },
+        source: "themealdb",
       };
     } catch (error) {
       return {
@@ -160,12 +120,205 @@ export class ImageService {
         imageMap[name] = result.imageUrl;
       }
 
-      // Rate limit: Unsplash free tier allows 50 requests/hour
-      // Add small delay between requests
-      await this.delay(100);
+      // Small delay to avoid overwhelming the server
+      await this.delay(50);
     }
 
     return imageMap;
+  }
+
+  /**
+   * Normalize ingredient name for TheMealDB
+   *
+   * Converts ingredient names to TheMealDB format:
+   * - Capitalizes first letter of each word
+   * - Handles basic French→English mapping
+   *
+   * @param name - Raw ingredient name
+   * @returns Normalized name for TheMealDB
+   *
+   * @example
+   * ```typescript
+   * normalizeIngredientName("tomate")        → "Tomato"
+   * normalizeIngredientName("chicken breast") → "Chicken Breast"
+   * normalizeIngredientName("oignon")        → "Onion"
+   * ```
+   */
+  private static normalizeIngredientName(name: string): string {
+    // Basic French→English mapping for common ingredients
+    const frenchToEnglish: Record<string, string> = {
+      // Vegetables
+      tomate: "Tomato",
+      tomates: "Tomato",
+      oignon: "Onion",
+      oignons: "Onion",
+      ail: "Garlic",
+      carotte: "Carrot",
+      carottes: "Carrot",
+      pomme: "Apple",
+      pommes: "Apple",
+      "pomme de terre": "Potato",
+      "pommes de terre": "Potato",
+      courgette: "Zucchini",
+      courgettes: "Zucchini",
+      aubergine: "Eggplant",
+      aubergines: "Eggplant",
+      poivron: "Bell Pepper",
+      poivrons: "Bell Pepper",
+      champignon: "Mushroom",
+      champignons: "Mushroom",
+      épinard: "Spinach",
+      épinards: "Spinach",
+      salade: "Lettuce",
+      laitue: "Lettuce",
+      concombre: "Cucumber",
+      brocoli: "Broccoli",
+      chou: "Cabbage",
+      "chou-fleur": "Cauliflower",
+      haricot: "Bean",
+      haricots: "Bean",
+      "haricots verts": "Green Beans",
+      pois: "Peas",
+      "petits pois": "Peas",
+      radis: "Radish",
+      navet: "Turnip",
+      betterave: "Beetroot",
+      céleri: "Celery",
+      poireau: "Leek",
+      poireaux: "Leek",
+
+      // Meats
+      poulet: "Chicken",
+      boeuf: "Beef",
+      porc: "Pork",
+      agneau: "Lamb",
+      veau: "Veal",
+      bacon: "Bacon",
+      jambon: "Ham",
+      saucisse: "Sausage",
+      saucisses: "Sausage",
+      "blanc de poulet": "Chicken Breast",
+      "blancs de poulet": "Chicken Breast",
+      "cuisse de poulet": "Chicken Thighs",
+      "cuisses de poulet": "Chicken Thighs",
+      dinde: "Turkey",
+      canard: "Duck",
+
+      // Seafood
+      saumon: "Salmon",
+      thon: "Tuna",
+      crevette: "Shrimp",
+      crevettes: "Shrimp",
+      moule: "Mussel",
+      moules: "Mussel",
+      calamar: "Squid",
+      poulpe: "Octopus",
+      cabillaud: "Cod",
+      truite: "Trout",
+      anchois: "Anchovy",
+      sardine: "Sardine",
+
+      // Dairy
+      lait: "Milk",
+      beurre: "Butter",
+      fromage: "Cheese",
+      crème: "Cream",
+      "crème fraîche": "Cream",
+      yaourt: "Yogurt",
+      "fromage blanc": "Cottage Cheese",
+      parmesan: "Parmesan",
+      mozzarella: "Mozzarella",
+      gruyère: "Gruyere",
+
+      // Grains & Pasta
+      riz: "Rice",
+      pâte: "Pasta",
+      pâtes: "Pasta",
+      farine: "Flour",
+      pain: "Bread",
+      spaghetti: "Spaghetti",
+      macaroni: "Macaroni",
+      quinoa: "Quinoa",
+      boulgour: "Bulgur",
+      couscous: "Couscous",
+
+      // Herbs & Spices
+      basilic: "Basil",
+      persil: "Parsley",
+      thym: "Thyme",
+      romarin: "Rosemary",
+      origan: "Oregano",
+      coriandre: "Cilantro",
+      menthe: "Mint",
+      laurier: "Bay Leaf",
+      "feuille de laurier": "Bay Leaf",
+      sel: "Salt",
+      poivre: "Pepper",
+      paprika: "Paprika",
+      cumin: "Cumin",
+      curry: "Curry Powder",
+      cannelle: "Cinnamon",
+      muscade: "Nutmeg",
+      gingembre: "Ginger",
+      piment: "Chili",
+
+      // Fruits
+      citron: "Lemon",
+      orange: "Orange",
+      banane: "Banana",
+      fraise: "Strawberry",
+      fraises: "Strawberry",
+      framboise: "Raspberry",
+      framboises: "Raspberry",
+      myrtille: "Blueberry",
+      myrtilles: "Blueberry",
+      pêche: "Peach",
+      abricot: "Apricot",
+      prune: "Plum",
+      raisin: "Grapes",
+      ananas: "Pineapple",
+      mangue: "Mango",
+      avocat: "Avocado",
+
+      // Nuts & Seeds
+      amande: "Almond",
+      amandes: "Almond",
+      noix: "Walnut",
+      noisette: "Hazelnut",
+      noisettes: "Hazelnut",
+      pistache: "Pistachio",
+      cacahuète: "Peanut",
+      cacahuètes: "Peanut",
+
+      // Others
+      oeuf: "Egg",
+      oeufs: "Egg",
+      sucre: "Sugar",
+      huile: "Oil",
+      "huile d'olive": "Olive Oil",
+      vinaigre: "Vinegar",
+      moutarde: "Mustard",
+      miel: "Honey",
+      chocolat: "Chocolate",
+      "chocolat noir": "Dark Chocolate",
+      tofu: "Tofu",
+      "pâte feuilletée": "Puff Pastry",
+      "pâte brisée": "Shortcrust Pastry",
+    };
+
+    // Normalize to lowercase for lookup
+    const lowerName = name.toLowerCase().trim();
+
+    // Check if we have a French→English mapping
+    if (frenchToEnglish[lowerName]) {
+      return frenchToEnglish[lowerName];
+    }
+
+    // Fallback: capitalize first letter of each word (for English ingredients)
+    return name
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
   }
 
   /**
@@ -275,32 +428,7 @@ export class ImageService {
   }
 
   /**
-   * Get photo URL for specified size
-   */
-  private static getPhotoUrl(
-    photo: UnsplashPhoto,
-    size: "thumb" | "small" | "regular" | "full"
-  ): string {
-    return photo.urls[size];
-  }
-
-  /**
-   * Track download (required by Unsplash API guidelines)
-   *
-   * Per Unsplash API Terms, you must trigger a download event
-   * when you display an image to users.
-   */
-  private static async trackUnsplashDownload(photoId: string): Promise<void> {
-    try {
-      await unsplash.photos.trackDownload({ downloadLocation: photoId });
-    } catch (error) {
-      // Non-critical - log but don't fail
-      console.error("Failed to track Unsplash download:", error);
-    }
-  }
-
-  /**
-   * Helper to delay execution (for rate limiting)
+   * Helper to delay execution
    */
   private static delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));

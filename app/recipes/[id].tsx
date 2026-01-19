@@ -25,6 +25,7 @@ import { AppHeader } from "@/components/navigation";
 import { SelectGroceryListModal, CreateListModal } from "@/components/grocery";
 import { NutritionSummary } from "@/components/recipe/NutritionSummary";
 import { TagBadge } from "@/components/recipe/TagBadge";
+import { IngredientImageAvatar } from "@/components/recipe/IngredientImageAvatar";
 import { colors, spacing, fontSizes, fontWeights, shadows } from "@/theme";
 import { useRecipe, useToggleFavorite, useDeleteRecipe } from "@/hooks/useRecipes";
 import { useAddIngredientsFromRecipe } from "@/hooks/useGroceryList";
@@ -53,7 +54,6 @@ export default function RecipeDetailScreen() {
 
   // Local State
   const [servingsMultiplier, setServingsMultiplier] = useState(1);
-  const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [checkedSteps, setCheckedSteps] = useState<Set<number>>(new Set());
   const [selectListModalVisible, setSelectListModalVisible] = useState(false);
   const [createListModalVisible, setCreateListModalVisible] = useState(false);
@@ -70,18 +70,6 @@ export default function RecipeDetailScreen() {
 
   const handleServingsChange = useCallback((delta: number) => {
     setServingsMultiplier((prev) => Math.max(0.5, prev + delta));
-  }, []);
-
-  const handleIngredientToggle = useCallback((index: number) => {
-    setCheckedIngredients((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
-      } else {
-        next.add(index);
-      }
-      return next;
-    });
   }, []);
 
   const handleStepToggle = useCallback((index: number) => {
@@ -608,30 +596,24 @@ export default function RecipeDetailScreen() {
               Ingrédients
             </Text>
             {adjustedIngredients.map((ingredient, index) => (
-              <TouchableOpacity
+              <View
                 key={index}
                 style={styles.ingredientRow}
-                onPress={() => handleIngredientToggle(index)}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: checkedIngredients.has(index) }}
               >
-                <View style={styles.checkbox}>
-                  {checkedIngredients.has(index) && (
-                    <Text style={styles.checkmark}>✓</Text>
-                  )}
-                </View>
+                <IngredientImageAvatar
+                  imageUrl={ingredient.imageUrl}
+                  fallbackEmoji="🍽️"
+                  size={48}
+                />
                 <Text
                   variant="body"
-                  style={[
-                    styles.ingredientText,
-                    checkedIngredients.has(index) && styles.checkedText,
-                  ]}
+                  style={styles.ingredientText}
                 >
                   {ingredient.quantity > 0 && `${ingredient.quantity.toFixed(1).replace(/\.0$/, "")} `}
                   {ingredient.unit && `${ingredient.unit} `}
                   {ingredient.name}
                 </Text>
-              </TouchableOpacity>
+              </View>
             ))}
           </View>
         )}

@@ -13,11 +13,11 @@ Basic data manipulation services following a consistent pattern.
 - **GroceryListService** - Shopping list management
 
 ### 🤖 AI-Powered Services
-Advanced services using Claude AI, OpenFoodFacts, and Unsplash.
+Advanced services using Claude AI, OpenFoodFacts, and TheMealDB.
 
 - **RecipeImportService** - Import recipes from URLs using 3-tier AI strategy
 - **NutritionService** - Calculate nutrition with OpenFoodFacts + AI fallback
-- **ImageService** - Search and manage images with Unsplash
+- **ImageService** - Search and manage images with TheMealDB
 
 ---
 
@@ -313,9 +313,6 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 
 # Anthropic Claude AI (required for RecipeImportService, NutritionService)
 ANTHROPIC_API_KEY=sk-ant-api03-...
-
-# Unsplash (required for ImageService)
-UNSPLASH_ACCESS_KEY=...
 ```
 
 ---
@@ -346,15 +343,16 @@ OpenFoodFacts is free and covers 90%+ of ingredients:
 Nutrition data is cached globally, so subsequent lookups are instant and free.
 
 ### Image Search
-Unsplash is free with generous rate limits:
+TheMealDB is 100% free with no rate limits:
 
-- **50 requests/hour** (free tier)
-- **Unlimited** (paid tier: $19/month)
+- **600+ ingredient images** available
+- **Normalized white background** for consistent UI
+- **No API key required**
 
 For production, consider:
-- Caching popular ingredient images
-- Rate limiting client-side searches
-- Pre-loading common ingredients
+- Caching popular ingredient images in PostgreSQL
+- Expanding the French→English dictionary
+- Fallback to default emoji for missing ingredients
 
 ---
 
@@ -413,9 +411,9 @@ Track these metrics for production:
 - Confidence scores
 
 ### Image Service
-- Unsplash API usage (monitor rate limits)
-- Image search success rate
-- Storage usage (Supabase bucket size)
+- TheMealDB image hit rate (% found)
+- French→English translation accuracy
+- Storage usage (Supabase bucket size for recipe images)
 
 ---
 

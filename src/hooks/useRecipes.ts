@@ -8,7 +8,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { RecipeService, CookbookService } from "@/services";
+import { RecipeService, CookbookService, ImageService } from "@/services";
 import { supabase } from "@/lib/supabase";
 import type { ServiceResponse } from "@/types/database";
 import type { RecipeIngredient, RecipeStep } from "@/types/database";
@@ -508,6 +508,19 @@ export function useSaveImportedRecipe() {
         console.log("📥 Using default import cookbook:", defaultCookbook.name);
       }
 
+      // 🖼️ AUTO-SEARCH: Batch search images for all ingredients via TheMealDB
+      console.log("🔍 Searching images for", recipe.ingredients.length, "ingredients...");
+      const ingredientNames = recipe.ingredients.map((ing) => ing.name);
+      const imageMap = await ImageService.batchSearchIngredientImages(ingredientNames);
+
+      console.log("✅ Found", Object.keys(imageMap).length, "ingredient images");
+
+      // Attach images to ingredients
+      const ingredientsWithImages = recipe.ingredients.map((ing) => ({
+        ...ing,
+        imageUrl: imageMap[ing.name] || undefined,
+      }));
+
       const { data, error } = await RecipeService.createRecipe(userId, {
         title: recipe.title,
         description: recipe.description,
@@ -518,7 +531,7 @@ export function useSaveImportedRecipe() {
         cookTime: recipe.cookTime,
         difficulty: recipe.difficulty,
         tags: recipe.tags,
-        ingredients: recipe.ingredients,
+        ingredients: ingredientsWithImages,
         steps: recipe.steps,
         importSource: recipe.importSource,
         importUrl: recipe.importUrl,

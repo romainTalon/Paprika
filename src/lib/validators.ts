@@ -173,45 +173,6 @@ export const openFoodFactsSearchSchema = z.object({
 export type OpenFoodFactsSearch = z.infer<typeof openFoodFactsSearchSchema>;
 
 /**
- * Validates Unsplash API photo response
- */
-export const unsplashPhotoSchema = z.object({
-  id: z.string(),
-  urls: z.object({
-    raw: z.string().url(),
-    full: z.string().url(),
-    regular: z.string().url(),
-    small: z.string().url(),
-    thumb: z.string().url(),
-  }),
-  alt_description: z.string().nullable(),
-  description: z.string().nullable(),
-  user: z.object({
-    name: z.string(),
-    username: z.string(),
-  }),
-});
-
-/**
- * Type inference from unsplashPhotoSchema
- */
-export type UnsplashPhoto = z.infer<typeof unsplashPhotoSchema>;
-
-/**
- * Validates Unsplash API search response
- */
-export const unsplashSearchSchema = z.object({
-  total: z.number(),
-  total_pages: z.number(),
-  results: z.array(unsplashPhotoSchema),
-});
-
-/**
- * Type inference from unsplashSearchSchema
- */
-export type UnsplashSearch = z.infer<typeof unsplashSearchSchema>;
-
-/**
  * Helper function to safely parse and validate AI JSON response
  *
  * @param jsonString - JSON string from AI response

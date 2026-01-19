@@ -9,6 +9,7 @@ import React, { useCallback, useRef } from "react";
 import { View, TouchableOpacity, StyleSheet, Animated } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { Text } from "@/components/ui";
+import { IngredientImageAvatar } from "@/components/recipe/IngredientImageAvatar";
 import { colors, spacing, fontSizes } from "@/theme";
 import type { GroceryItem } from "@/types";
 
@@ -17,6 +18,16 @@ interface GroceryItemRowProps {
   onToggle: (itemId: string) => void;
   onDelete: (itemId: string) => void;
   onEdit: (item: GroceryItem) => void;
+}
+
+/**
+ * Extract emoji from category string
+ * Categories are formatted as "🥬 Légumes", extract just the emoji
+ */
+function getCategoryEmoji(category?: string | null): string {
+  if (!category) return "🛒";
+  const match = category.match(/^(\p{Emoji})/u);
+  return match ? match[1] : "🛒";
 }
 
 export function GroceryItemRow({ item, onToggle, onDelete, onEdit }: GroceryItemRowProps) {
@@ -98,18 +109,15 @@ export function GroceryItemRow({ item, onToggle, onDelete, onEdit }: GroceryItem
       rightThreshold={80}
       overshootRight={false}
     >
-      <TouchableOpacity
-        style={styles.container}
-        onPress={handleToggle}
-        activeOpacity={0.7}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: item.isChecked }}
-        accessibilityLabel={`${item.name}${quantityDisplay ? `, ${quantityDisplay}` : ""}`}
-      >
-        {/* Checkbox */}
-        <View style={[styles.checkbox, item.isChecked && styles.checkboxChecked]}>
-          {item.isChecked && <Text style={styles.checkmark}>✓</Text>}
-        </View>
+      <View style={styles.container}>
+        {/* Ingredient Image Avatar */}
+        <IngredientImageAvatar
+          imageUrl={item.imageUrl}
+          fallbackEmoji={getCategoryEmoji(item.category)}
+          isChecked={item.isChecked}
+          onPress={handleToggle}
+          size={48}
+        />
 
         {/* Item Details */}
         <View style={styles.content}>
@@ -129,7 +137,7 @@ export function GroceryItemRow({ item, onToggle, onDelete, onEdit }: GroceryItem
             )}
           </Text>
         </View>
-      </TouchableOpacity>
+      </View>
     </Swipeable>
   );
 }

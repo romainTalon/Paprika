@@ -145,14 +145,9 @@ export interface IngredientImageResult {
   /** Image URL (if found) */
   imageUrl?: string;
   /** Image source */
-  source?: "unsplash" | "cache" | "ai-generated";
+  source?: "themealdb" | "cache" | "ai-generated";
   /** Error message (if failed) */
   error?: string;
-  /** Photographer attribution (for Unsplash) */
-  attribution?: {
-    photographerName: string;
-    photographerUsername: string;
-  };
 }
 
 /**
