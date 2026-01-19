@@ -37,6 +37,29 @@ import type { GroceryList } from "@/types";
 
 const DEFAULT_COVER = "https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=800";
 
+/**
+ * Check if unit should be displayed
+ * Filters out non-informative units like "pieces", "unité", etc.
+ */
+function shouldDisplayUnit(unit?: string | null): boolean {
+  if (!unit) return false;
+
+  const lowerUnit = unit.toLowerCase().trim();
+  const ignoredUnits = [
+    "piece",
+    "pieces",
+    "pièce",
+    "pièces",
+    "unité",
+    "unités",
+    "unite",
+    "unites",
+    "x",
+  ];
+
+  return !ignoredUnits.includes(lowerUnit);
+}
+
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const recipeId = id as string;
@@ -610,7 +633,7 @@ export default function RecipeDetailScreen() {
                   style={styles.ingredientText}
                 >
                   {ingredient.quantity > 0 && `${ingredient.quantity.toFixed(1).replace(/\.0$/, "")} `}
-                  {ingredient.unit && `${ingredient.unit} `}
+                  {shouldDisplayUnit(ingredient.unit) && `${ingredient.unit} `}
                   {ingredient.name}
                 </Text>
               </View>
