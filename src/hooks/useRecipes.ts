@@ -509,11 +509,8 @@ export function useSaveImportedRecipe() {
       }
 
       // 🖼️ AUTO-SEARCH: Batch search images for all ingredients via TheMealDB
-      console.log("🔍 Searching images for", recipe.ingredients.length, "ingredients...");
       const ingredientNames = recipe.ingredients.map((ing) => ing.name);
       const imageMap = await ImageService.batchSearchIngredientImages(ingredientNames);
-
-      console.log("✅ Found", Object.keys(imageMap).length, "ingredient images");
 
       // Attach images to ingredients
       const ingredientsWithImages = recipe.ingredients.map((ing) => ({

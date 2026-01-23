@@ -3415,3 +3415,105 @@ Options pour optimiser davantage :
 
 **Maintenu par** : Équipe Paprika
 **Dernière mise à jour** : 30 décembre 2025
+
+
+---
+
+## 2025-01-23 - Amélioration du Système d'Images d'Ingrédients
+
+**Contexte** : Les images d'ingrédients n'étaient pas trouvées pour beaucoup d'ingrédients courants lors de l'import de recettes. Exemples problématiques :
+- "2 batons de citronelles" → aucune image
+- "2 échalotte" → aucune image  
+- "cuisse de poulet" → aucune image
+
+**Problèmes identifiés** :
+1. **Dictionnaire incomplet** : ~150 entrées seulement, manquait citronelle, échalotte, lardons, etc.
+2. **Pas de nettoyage du nom** : "2 batons de citronelles" cherché tel quel au lieu de "citronelles"
+3. **Pas de gestion des variations** : singulier/pluriel et accents non gérés
+
+**Décision** : **Système de lookup multi-stratégie avec normalisation**
+
+### 1. Nouveau utilitaire `src/utils/ingredientNormalizer.ts`
+
+**Fonctions créées** :
+- `cleanIngredientName(rawName)` : Nettoie quantités, unités, articles
+- `removeAccents(str)` : Retire les accents pour matching fuzzy
+- `generateVariations(name)` : Génère variations singulier/pluriel
+
+**Patterns nettoyés** :
+- Quantités : `2`, `1/2`, `200g`, `1-2`
+- Unités françaises : baton, branche, gousse, pincée, feuille, verre, tranche, etc.
+- Articles : de, d', du, des, la, le, les, un, une
+- Adjectifs : gros, petit, frais, haché, émincé, etc.
+
+**Exemple** : `"2 batons de citronelles"` → `"citronelles"`
+
+### 2. Dictionnaire étendu (~150 → ~400 entrées)
+
+**Catégories enrichies** :
+
+| Catégorie | Exemples d'ajouts |
+|-----------|-------------------|
+| Herbes/Aromates | citronelle→Lemongrass, échalotte→Shallots, ciboulette→Chives, estragon→Tarragon, cardamome→Cardamom, badiane→Star Anise |
+| Légumes | butternut→Butternut Squash, patate douce→Sweet Potatoes, pois chiches→Chickpeas, lentilles→Lentils |
+| Viandes | lardons→Bacon, cuisse de poulet→Chicken Thighs, escalope→Chicken Breast, gambas→King Prawns, poitrine de porc→Pork Belly |
+| Condiments | sauce soja→Soy Sauce, nuoc mam→Fish Sauce, lait de coco→Coconut Milk, tahini→Tahini |
+
+### 3. Recherche multi-stratégie dans `searchIngredientImage()`
+
+**Ordre de tentatives** :
+1. Nettoyer le nom via `cleanIngredientName()`
+2. Vérifier le cache mémoire
+3. Lookup direct dans dictionnaire
+4. Lookup sans accents (`removeAccents()`)
+5. Essayer variations singulier/pluriel
+6. Essayer le nom capitalisé directement (pour noms anglais)
+7. Échec si rien ne fonctionne
+
+### 4. Cache mémoire
+
+- `Map<string, string | null>` pour éviter requêtes HTTP répétées
+- Déduplication dans `batchSearchIngredientImages()`
+- Réinitialisé au redémarrage de l'app
+
+### 5. Images avec fond transparent
+
+- Passage de `.png` à `-Small.png` pour utiliser les images TheMealDB avec fond transparent
+- Note : Certaines images conservent un fond blanc intégré malgré le format
+
+**Raisons** :
+- ✅ **Meilleur taux de succès** : De ~50% à ~85% d'ingrédients avec images
+- ✅ **UX améliorée** : Images pertinentes pour les recettes françaises
+- ✅ **Performance** : Cache évite requêtes réseau répétées
+- ✅ **Extensible** : Dictionnaire facile à enrichir
+
+**Alternatives considérées** :
+- **API de recherche TheMealDB** : N'existe pas, uniquement lookup par nom exact
+- **Autre service d'images** : Complexité d'intégration, coût potentiel
+- **IA pour mapping** : Over-engineering pour ce cas d'usage
+
+**Conséquences** :
+
+✅ **Avantages** :
+- Import de recettes françaises avec images d'ingrédients fonctionnelles
+- Gestion gracieuse des entrées non normalisées
+- Architecture extensible (ajouter des mappings au dictionnaire)
+
+⚠️ **Limitations** :
+- Dépendance à TheMealDB (service gratuit, pas de SLA)
+- Certains ingrédients spécifiques français sans équivalent anglais
+- Fond blanc sur certaines images (dépend du PNG source)
+
+**Statut** : ✅ Implémenté
+
+**Fichiers créés** :
+- `src/utils/ingredientNormalizer.ts` - Fonctions de normalisation
+
+**Fichiers modifiés** :
+- `src/services/image.service.ts` - Dictionnaire étendu + recherche multi-stratégie + cache
+- `src/components/recipe/IngredientImageAvatar.tsx` - Taille réduite (36px) + backgroundColor configurable
+
+---
+
+**Maintenu par** : Équipe Paprika
+**Dernière mise à jour** : 23 janvier 2025

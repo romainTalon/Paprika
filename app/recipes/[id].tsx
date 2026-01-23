@@ -626,7 +626,8 @@ export default function RecipeDetailScreen() {
                 <IngredientImageAvatar
                   imageUrl={ingredient.imageUrl}
                   fallbackEmoji="🍽️"
-                  size={48}
+                  size={36}
+                  backgroundColor={colors.white}
                 />
                 <Text
                   variant="body"

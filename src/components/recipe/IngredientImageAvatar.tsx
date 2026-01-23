@@ -21,8 +21,10 @@ interface IngredientImageAvatarProps {
   isChecked?: boolean;
   /** Callback when avatar is pressed */
   onPress?: () => void;
-  /** Size of the avatar (default: 48) */
+  /** Size of the avatar (default: 36) */
   size?: number;
+  /** Background color to match parent (default: cream) */
+  backgroundColor?: string;
 }
 
 export function IngredientImageAvatar({
@@ -30,7 +32,8 @@ export function IngredientImageAvatar({
   fallbackEmoji = "🍽️",
   isChecked = false,
   onPress,
-  size = 48,
+  size = 36,
+  backgroundColor = colors.cream.DEFAULT,
 }: IngredientImageAvatarProps) {
   const containerStyle = {
     width: size,
@@ -42,7 +45,10 @@ export function IngredientImageAvatar({
     width: size,
     height: size,
     borderRadius: size / 2,
+    backgroundColor,
   };
+
+  const emojiSize = Math.max(16, Math.floor(size * 0.55));
 
   return (
     <TouchableOpacity
@@ -57,8 +63,8 @@ export function IngredientImageAvatar({
           resizeMode="cover"
         />
       ) : (
-        <View style={[styles.emojiContainer, containerStyle]}>
-          <Text style={styles.emoji}>{fallbackEmoji}</Text>
+        <View style={[styles.emojiContainer, containerStyle, { backgroundColor }]}>
+          <Text style={[styles.emoji, { fontSize: emojiSize }]}>{fallbackEmoji}</Text>
         </View>
       )}
 
@@ -77,15 +83,13 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   image: {
-    backgroundColor: colors.white,
+    // backgroundColor set dynamically via imageStyle
   },
   emojiContainer: {
-    backgroundColor: colors.gray[100],
     justifyContent: "center",
     alignItems: "center",
   },
   emoji: {
-    fontSize: 24,
     textAlign: "center",
   },
   checkmarkOverlay: {

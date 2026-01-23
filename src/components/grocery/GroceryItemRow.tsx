@@ -116,7 +116,8 @@ export function GroceryItemRow({ item, onToggle, onDelete, onEdit }: GroceryItem
           fallbackEmoji={getCategoryEmoji(item.category)}
           isChecked={item.isChecked}
           onPress={handleToggle}
-          size={48}
+          size={36}
+          backgroundColor={colors.white}
         />
 
         {/* Item Details */}
