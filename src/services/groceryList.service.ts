@@ -13,6 +13,7 @@ import type {
   RecipeIngredient,
 } from "@/types";
 import { DEFAULT_CATEGORY_ID, getCategoryDisplay } from "@/constants/categories";
+import { ImageService } from "./image.service";
 
 export class GroceryListService {
   // =============================================================================
@@ -578,6 +579,7 @@ export class GroceryListService {
   /**
    * Add ingredients from a recipe to the grocery list
    * Uses merge logic to avoid duplicates.
+   * Includes ingredient images from recipe or searches TheMealDB.
    */
   static async addItemsFromRecipe(
     listId: string,
@@ -589,9 +591,18 @@ export class GroceryListService {
       let added = 0;
       let merged = 0;
 
+      // Batch search images for all ingredients that don't have one
+      const ingredientsWithoutImages = ingredients.filter((ing) => !ing.imageUrl);
+      const imageMap = await ImageService.batchSearchIngredientImages(
+        ingredientsWithoutImages.map((ing) => ing.name)
+      );
+
       for (const ingredient of ingredients) {
         const normalizedName = this.normalizeItemName(ingredient.name);
         const itemCategory = category || getCategoryDisplay(DEFAULT_CATEGORY_ID);
+
+        // Use ingredient's imageUrl if available, otherwise use searched image
+        const imageUrl = ingredient.imageUrl || imageMap[ingredient.name] || null;
 
         // Check if item already exists
         const { data: existingItems } = await supabase
@@ -605,30 +616,33 @@ export class GroceryListService {
         );
 
         if (match) {
-          // Merge quantities
+          // Merge quantities, update image if existing doesn't have one
           const existingQty = parseFloat(String(match.quantity)) || 0;
           const newQty = ingredient.quantity || 0;
 
           await supabase
             .from("grocery_items")
             .update({
-              quantity: String(existingQty + newQty), // Convert to string for decimal type
+              quantity: String(existingQty + newQty),
               is_checked: false,
               checked_at: null,
+              // Update image only if existing item doesn't have one
+              ...(imageUrl && !match.image_url ? { image_url: imageUrl } : {}),
             })
             .eq("id", match.id);
 
           merged++;
         } else {
-          // Insert new item
+          // Insert new item with image
           await supabase.from("grocery_items").insert({
             grocery_list_id: listId,
             name: ingredient.name,
-            quantity: ingredient.quantity ? String(ingredient.quantity) : null, // Convert to string
+            quantity: ingredient.quantity ? String(ingredient.quantity) : null,
             unit: ingredient.unit || null,
             category: itemCategory,
-            added_from: "recipe", // snake_case for database
-            source_id: recipeId, // snake_case for database
+            image_url: imageUrl,
+            added_from: "recipe",
+            source_id: recipeId,
           });
 
           added++;

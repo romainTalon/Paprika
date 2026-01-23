@@ -3517,3 +3517,74 @@ Options pour optimiser davantage :
 
 **Maintenu par** : Équipe Paprika
 **Dernière mise à jour** : 23 janvier 2025
+
+
+---
+
+## 2025-01-23 - Images d'ingrédients dans l'export vers liste de courses
+
+**Contexte** : Lors de l'export d'ingrédients depuis une fiche recette vers une liste de courses, tous les éléments étaient ajoutés avec l'emoji de la catégorie "Autres" au lieu de l'image de l'ingrédient.
+
+**Problème identifié** :
+- `GroceryListService.addItemsFromRecipe()` ne remplissait pas le champ `image_url`
+- Le champ existe dans la table `grocery_items` mais n'était pas utilisé
+- Incohérence : l'ajout manuel d'un item cherchait l'image, mais pas l'export depuis recette
+
+**Décision** : **Enrichir `addItemsFromRecipe()` avec recherche d'images**
+
+### Modifications apportées
+
+**Fichier** : `src/services/groceryList.service.ts`
+
+1. **Import de ImageService** pour accéder à la recherche d'images TheMealDB
+
+2. **Batch search optimisé** :
+```typescript
+const ingredientsWithoutImages = ingredients.filter((ing) => !ing.imageUrl);
+const imageMap = await ImageService.batchSearchIngredientImages(
+  ingredientsWithoutImages.map((ing) => ing.name)
+);
+```
+
+3. **Logique de priorité pour les images** :
+   - Utilise `ingredient.imageUrl` si disponible (depuis l'import de recette)
+   - Sinon utilise l'image trouvée via `ImageService.batchSearchIngredientImages()`
+   - Fallback sur `null` si aucune image trouvée
+
+4. **Insertion avec image** :
+```typescript
+await supabase.from("grocery_items").insert({
+  // ... autres champs
+  image_url: imageUrl,  // Nouveau champ rempli
+});
+```
+
+5. **Mise à jour intelligente lors du merge** :
+   - Si un item existant n'a pas d'image et le nouvel ingrédient en a une → mise à jour
+
+**Raisons** :
+- ✅ **Cohérence UX** : Même expérience que l'ajout manuel d'items
+- ✅ **Performance** : Batch search évite N requêtes séquentielles
+- ✅ **Priorité données existantes** : Utilise l'image de la recette si disponible
+- ✅ **Pas de régression** : Items existants sans image sont mis à jour
+
+**Conséquences** :
+
+✅ **Avantages** :
+- Liste de courses avec images d'ingrédients visuelles
+- Meilleure reconnaissance des produits en magasin
+- Expérience utilisateur cohérente dans toute l'app
+
+⚠️ **Points d'attention** :
+- Légère latence supplémentaire lors de l'export (batch search)
+- Dépendance à TheMealDB pour les images
+
+**Statut** : ✅ Implémenté
+
+**Fichiers modifiés** :
+- `src/services/groceryList.service.ts` - Import ImageService + enrichissement `addItemsFromRecipe()`
+
+---
+
+**Maintenu par** : Équipe Paprika
+**Dernière mise à jour** : 23 janvier 2025
