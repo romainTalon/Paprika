@@ -199,11 +199,10 @@ export function usePhotoImport(
         return null;
       }
 
-      // Launch camera
+      // Launch camera - no forced crop to allow full page capture
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
+        mediaTypes: ["images"],
+        allowsEditing: false,
         quality: 1, // Max quality, we'll compress after
       });
 
@@ -243,11 +242,10 @@ export function usePhotoImport(
         return null;
       }
 
-      // Launch gallery
+      // Launch gallery - no forced crop to allow full page selection
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
+        mediaTypes: ["images"],
+        allowsEditing: false,
         quality: 1, // Max quality, we'll compress after
       });
 
