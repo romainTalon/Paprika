@@ -28,6 +28,13 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 - Renommage `frontend-development-guidelines.md` → `08-frontend-guidelines.md`
 - Organisation numérotée des documents (00-08)
 
+### 🤖 IA & Import
+- Import de recettes par photo avec Gemini Vision API (`gemini-2.0-flash`)
+- Hook `usePhotoImport` pour capture caméra/galerie avec compression (1024px, JPEG 0.8)
+- Modal `PhotoImportModal` pour sélection de la source photo
+- Support de la stratégie d'import "photo" dans l'Edge Function
+- Images d'ingrédients enrichies lors de l'export vers liste de courses (TheMealDB)
+
 ---
 
 ## [0.1.0] - 2025-11-05

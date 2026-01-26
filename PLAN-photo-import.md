@@ -1,7 +1,7 @@
 # Plan : Import de recettes par photo (Gemini Vision)
 
-> **Statut** : En attente d'implémentation
-> **Date** : 23 janvier 2025
+> **Statut** : ✅ Implémentée
+> **Date** : 25 janvier 2026
 
 ## Objectif
 Permettre aux utilisateurs de photographier une recette dans un livre de cuisine et de l'importer automatiquement via **Gemini Vision API** (Google).
@@ -91,3 +91,24 @@ Photos comptent dans le quota (5/mois gratuit).
 - Recettes multi-pages
 - Rotation/recadrage avancé
 - OCR local
+
+---
+
+## Résumé d'implémentation
+
+**Date de complétion** : 25 janvier 2026
+
+### Modèle utilisé
+- `gemini-2.0-flash` (Google Generative AI)
+- Coût estimé : ~€0.002/import
+
+### Problèmes rencontrés
+1. **Quota 429** : Modèle `gemini-2.0-flash-exp` avait des limites strictes sur le free tier
+2. **Models 1.5 retirés** : `gemini-1.5-flash` et `gemini-1.5-flash-latest` retournaient 404 (Google a retiré les modèles 1.5)
+3. **expo-file-system deprecated** : `getInfoAsync()` deprecated dans Expo 54, remplacé par calcul de taille depuis base64
+
+### Solution finale
+- Modèle : `gemini-2.0-flash`
+- API URL : `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`
+- Compression : 1024px max, JPEG quality 0.8 (~100-300KB)
+- Taille fichier : Calculée depuis `base64.length * 0.75`

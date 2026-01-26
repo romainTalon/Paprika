@@ -3586,5 +3586,71 @@ await supabase.from("grocery_items").insert({
 
 ---
 
+## 2026-01-25 - Import Photo avec Gemini Vision API
+
+**Contexte** : Besoin d'importer des recettes depuis des photos de livres de cuisine ou magazines. Comparaison entre Claude Vision (~€0.03/image) et Gemini Vision (~€0.002/image).
+
+**Décision** : Utiliser **Gemini Vision API** avec le modèle `gemini-2.0-flash`
+
+### Raisons
+
+- ✅ **Coût ~15x inférieur** à Claude Vision
+- ✅ **Qualité d'extraction comparable** pour les recettes structurées
+- ✅ **API simple** avec support base64 inline (pas de storage intermédiaire)
+- ✅ **Modèle 2.0 stable** et rapide (~2-3s par image)
+
+### Implémentation
+
+**Nouveaux fichiers** :
+- `src/hooks/usePhotoImport.ts` - Hook pour capture caméra/galerie avec compression
+- `src/components/recipe/PhotoImportModal.tsx` - Modal de sélection source photo
+
+**Fichiers modifiés** :
+- `supabase/functions/recipe-import/index.ts` - Branche Gemini Vision pour stratégie "photo"
+- `src/types/ai.ts` - Ajout stratégie "photo" dans `ImportStrategy`
+- `src/hooks/useRecipes.ts` - Support `imageBase64` dans mutation import
+- `app/recipes/import.tsx` - Bouton et UI pour import photo
+
+### Flux technique
+
+```
+1. Utilisateur prend photo (caméra) ou sélectionne (galerie)
+2. Image compressée côté client (1024px max, JPEG 0.8)
+3. Base64 envoyé à Edge Function avec strategy="photo"
+4. Edge Function appelle Gemini Vision API
+5. Prompt structuré extrait titre, ingrédients, instructions
+6. Recette créée en base de données
+```
+
+### Alternatives considérées
+
+| Option | Coût/import | Rejeté car |
+|--------|-------------|------------|
+| Claude Vision | ~€0.03 | Trop coûteux pour freemium |
+| Google Cloud Vision OCR | ~€0.001 | Pas de compréhension sémantique |
+| Tesseract local | Gratuit | Qualité insuffisante, pas de structure |
+
+### Problèmes rencontrés
+
+1. **Quota 429** : `gemini-2.0-flash-exp` avait des limites strictes → migration vers modèle stable
+2. **Models 1.5 retirés** : `gemini-1.5-flash` retournait 404 (Google a retiré les modèles 1.5 fin 2025)
+3. **expo-file-system deprecated** : `getInfoAsync()` deprecated dans Expo 54 → calcul taille depuis base64
+
+### Conséquences
+
+✅ **Avantages** :
+- Import de recettes papier possible
+- Coût maîtrisé (~€0.002/import)
+- Compression efficace (~100-300KB par image)
+
+⚠️ **Points d'attention** :
+- Import photo compte dans le quota freemium (5/mois)
+- Nécessite clé `GOOGLE_API_KEY` configurée sur Supabase
+- Qualité dépend de la photo (éclairage, netteté)
+
+**Statut** : ✅ Implémenté
+
+---
+
 **Maintenu par** : Équipe Paprika
-**Dernière mise à jour** : 23 janvier 2025
+**Dernière mise à jour** : 25 janvier 2026

@@ -391,16 +391,20 @@ export function useToggleFavorite() {
 export function useImportRecipe() {
   return useMutation({
     mutationFn: async (params: {
-      url: string;
+      url?: string;
       userId: string;
       cookbookId?: string;
       onProgress?: (progress: number) => void;
+      /** Base64 image data for photo import (without data:image prefix) */
+      imageBase64?: string;
+      /** MIME type of the image (for photo import) */
+      imageMimeType?: "image/jpeg" | "image/png";
     }) => {
-      const { url, userId, cookbookId, onProgress } = params;
+      const { url, userId, cookbookId, onProgress, imageBase64, imageMimeType } = params;
 
       // Call Edge Function
       const { data, error } = await supabase.functions.invoke("recipe-import", {
-        body: { url, userId, cookbookId },
+        body: { url, userId, cookbookId, imageBase64, imageMimeType },
       });
 
       // Check data first (contains detailed error message from Edge Function)

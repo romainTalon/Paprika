@@ -12,7 +12,7 @@ import { z } from "npm:zod@3.22.4";
 // AI Model Configuration
 // =============================================================================
 
-type AIProvider = "anthropic" | "openai" | "deepseek";
+type AIProvider = "anthropic" | "openai" | "deepseek" | "google";
 
 interface ModelConfig {
   provider: AIProvider;
@@ -39,6 +39,12 @@ const AI_MODELS: Record<string, ModelConfig> = {
     model: "deepseek-chat",
     costPer1kInputTokens: 0.00014,
     costPer1kOutputTokens: 0.00028,
+  },
+  "gemini-2.0-flash": {
+    provider: "google",
+    model: "gemini-2.0-flash",
+    costPer1kInputTokens: 0.0001,   // ~$0.10/1M input
+    costPer1kOutputTokens: 0.0004,  // ~$0.40/1M output
   },
 };
 
@@ -413,6 +419,220 @@ function calculateCost(modelKey: string, inputTokens: number, outputTokens: numb
   const inputCost = (inputTokens / 1000) * config.costPer1kInputTokens;
   const outputCost = (outputTokens / 1000) * config.costPer1kOutputTokens;
   return inputCost + outputCost;
+}
+
+// =============================================================================
+// Gemini Vision API - Photo Import
+// =============================================================================
+
+/**
+ * Parse photo of a recipe using Gemini Vision API
+ * Optimized for cookbook page photos
+ *
+ * @param imageBase64 - Base64 encoded image (without data:image prefix)
+ * @param mimeType - Image MIME type (image/jpeg or image/png)
+ * @param googleApiKey - Google AI API key
+ * @param userId - User ID for image storage
+ */
+async function parsePhotoWithGemini(
+  imageBase64: string,
+  mimeType: "image/jpeg" | "image/png",
+  googleApiKey: string,
+  userId: string
+) {
+  const startTime = Date.now();
+  const modelKey = "gemini-2.0-flash";
+
+  try {
+    console.log("📸 Parsing photo with Gemini Vision...");
+
+    // System prompt for recipe extraction from photos
+    const systemPrompt = `Tu es un expert en extraction de recettes de cuisine depuis des photos de livres de cuisine.
+
+IMPORTANT:
+- Extrais TOUT le texte visible sur la photo: titre, ingrédients, étapes, temps, portions
+- Si le texte est en anglais, traduis-le en français
+- Si certaines informations sont partiellement visibles ou floues, fais de ton mieux
+- Normalise les unités en français (cuillère à soupe, tasse, grammes, etc.)
+- Si le nombre de portions n'est pas visible, utilise 4 par défaut
+- Déduis la difficulté selon le nombre d'étapes et la complexité
+
+ÉTAPES - RÈGLES DE SÉPARATION:
+- SÉPARE chaque action distincte en une étape séparée
+- Une phrase = une étape
+- Chaque étape = une seule action claire
+
+TAGS - RÈGLES STRICTES:
+Tu DOIS sélectionner les tags UNIQUEMENT parmi cette liste prédéfinie:
+${ALLOWED_TAGS.join(", ")}
+
+Instructions pour les tags:
+1. Analyse le contenu de la recette (titre, ingrédients)
+2. Sélectionne 3 à 8 tags qui correspondent le mieux
+3. Utilise EXACTEMENT les tags de la liste ci-dessus (respecte la casse)
+4. N'invente AUCUN nouveau tag`;
+
+    const userPrompt = `Analyse cette photo de recette et extrais les informations en JSON.
+
+Format JSON attendu:
+{
+  "title": "string",
+  "description": "string | null",
+  "servings": number (> 0, utilise 4 si non spécifié),
+  "prepTime": number | null (en minutes),
+  "cookTime": number | null (en minutes),
+  "difficulty": "easy" | "medium" | "hard" | null,
+  "tags": string[] (UNIQUEMENT des tags de la liste prédéfinie),
+  "ingredients": [
+    {
+      "name": "string",
+      "quantity": number (>= 0, utilise 0 si pas de quantité),
+      "unit": "string (peut être vide)",
+      "notes": "string | null"
+    }
+  ],
+  "steps": [
+    {
+      "order": number (1, 2, 3...),
+      "instruction": "string (une seule action par étape)",
+      "duration": number | null (en minutes si mentionnée)
+    }
+  ],
+  "coverImageUrl": null
+}
+
+Si l'image ne contient PAS de recette (pas d'ingrédients ET pas d'étapes), réponds:
+{
+  "error": "NOT_A_RECIPE",
+  "reason": "Cette image ne semble pas contenir une recette de cuisine."
+}`;
+
+    // Call Gemini Vision API
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: systemPrompt + "\n\n" + userPrompt },
+                {
+                  inline_data: {
+                    mime_type: mimeType,
+                    data: imageBase64,
+                  },
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 4096,
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("❌ Gemini API error:", errorText);
+      throw new Error(`Gemini API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // Extract text response
+    const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!textResponse) {
+      throw new Error("No text response from Gemini");
+    }
+
+    // Extract token counts for cost calculation
+    const inputTokens = data.usageMetadata?.promptTokenCount || 0;
+    const outputTokens = data.usageMetadata?.candidatesTokenCount || 0;
+    const cost = calculateCost(modelKey, inputTokens, outputTokens);
+
+    console.log(`💰 Gemini cost: €${cost.toFixed(6)} (${inputTokens} input + ${outputTokens} output tokens)`);
+
+    // Parse JSON from response
+    const jsonString = extractJSON(textResponse);
+    let parsedData;
+
+    try {
+      parsedData = JSON.parse(jsonString);
+
+      // Check if Gemini determined it's not a recipe
+      if (parsedData.error === "NOT_A_RECIPE") {
+        return {
+          success: false,
+          error: parsedData.reason || "Cette image ne semble pas contenir une recette de cuisine.",
+        };
+      }
+
+      // Fix servings if needed
+      if (!parsedData.servings || parsedData.servings === 0) {
+        parsedData.servings = 4;
+      }
+    } catch (parseError) {
+      console.error("❌ Failed to parse Gemini JSON:", parseError);
+      console.error("JSON string:", jsonString.substring(0, 500));
+      return {
+        success: false,
+        error: "Gemini a retourné un JSON invalide",
+      };
+    }
+
+    // Validate with Zod
+    const validation = safeParseAIResponse(JSON.stringify(parsedData), aiRecipeImportSchema);
+
+    if (!validation.success) {
+      console.error("❌ Gemini validation failed:", validation.error.message);
+      return {
+        success: false,
+        error: `Données de recette invalides: ${validation.error.message}`,
+      };
+    }
+
+    const aiRecipe = validation.data;
+
+    return {
+      success: true,
+      recipe: {
+        title: aiRecipe.title,
+        description: aiRecipe.description ?? null,
+        servings: aiRecipe.servings,
+        prepTime: aiRecipe.prepTime ?? null,
+        cookTime: aiRecipe.cookTime ?? null,
+        difficulty: aiRecipe.difficulty ?? null,
+        tags: aiRecipe.tags,
+        ingredients: aiRecipe.ingredients.map((ing) => ({
+          ...ing,
+          notes: ing.notes ?? null,
+        })),
+        steps: aiRecipe.steps.map((step) => ({
+          ...step,
+          duration: step.duration ?? null,
+        })),
+        coverImageUrl: null, // Photo import doesn't have a cover image from URL
+        importUrl: null,
+        importSource: "ocr" as const,
+        importStrategy: "photo",
+      },
+      cost,
+      modelUsed: modelKey,
+      duration: Date.now() - startTime,
+    };
+  } catch (error) {
+    console.error("❌ Gemini Vision parsing error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Erreur lors de l'analyse de la photo",
+    };
+  }
 }
 
 // =============================================================================
@@ -1319,14 +1539,29 @@ serve(async (req) => {
 
   try {
     // Parse request body
-    const { url, userId, cookbookId } = await req.json();
+    const { url, userId, cookbookId, imageBase64, imageMimeType } = await req.json();
 
-    // Validate input
-    if (!url || typeof url !== "string") {
+    // Validate input - either URL or imageBase64 is required
+    const isPhotoImport = !!imageBase64;
+
+    if (!isPhotoImport && (!url || typeof url !== "string")) {
       return new Response(
         JSON.stringify({
           success: false,
-          error: "URL is required and must be a string",
+          error: "URL or imageBase64 is required",
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 422,
+        }
+      );
+    }
+
+    if (isPhotoImport && typeof imageBase64 !== "string") {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "imageBase64 must be a string",
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -1447,6 +1682,72 @@ serve(async (req) => {
         }
       );
     }
+
+    // Get Google API key for photo imports
+    const googleApiKey = Deno.env.get("GOOGLE_API_KEY");
+
+    // =========================================================================
+    // PHOTO IMPORT BRANCH (Gemini Vision)
+    // =========================================================================
+    if (isPhotoImport) {
+      console.log("📸 Photo import detected, using Gemini Vision...");
+
+      if (!googleApiKey) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Google API key not configured for photo import",
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500,
+          }
+        );
+      }
+
+      const mimeType = (imageMimeType || "image/jpeg") as "image/jpeg" | "image/png";
+      const photoResult = await parsePhotoWithGemini(imageBase64, mimeType, googleApiKey, userId);
+
+      if (photoResult.success) {
+        // Increment import counter
+        await supabaseClient.rpc("increment_import_count", {
+          p_user_id: userId,
+        });
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            recipe: photoResult.recipe,
+            strategy: "photo",
+            model: photoResult.modelUsed,
+            cost: photoResult.cost,
+            duration: photoResult.duration,
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          }
+        );
+      }
+
+      // Photo parsing failed
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: photoResult.error || "Impossible d'extraire la recette de cette photo.",
+          photoImportError: true,
+          duration: Date.now() - startTime,
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200, // Return 200 so client can parse JSON
+        }
+      );
+    }
+
+    // =========================================================================
+    // URL IMPORT BRANCH (existing logic)
+    // =========================================================================
 
     // Detect URL type (Instagram/TikTok/web)
     const urlDetection = detectURLType(url);

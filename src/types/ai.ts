@@ -19,7 +19,8 @@ export type ImportStrategy =
   | "html-llm"
   | "vision-ai"
   | "instagram"
-  | "tiktok";
+  | "tiktok"
+  | "photo";
 
 /**
  * Import source tracking
@@ -74,8 +75,8 @@ export interface ImportedRecipeData {
  * Options for recipe import
  */
 export interface RecipeImportOptions {
-  /** URL to import from */
-  url: string;
+  /** URL to import from (required for web import) */
+  url?: string;
   /** User ID performing the import */
   userId: string;
   /** Target cookbook ID (optional) */
@@ -84,6 +85,10 @@ export interface RecipeImportOptions {
   forceStrategy?: ImportStrategy;
   /** Skip freemium limit check (for testing) */
   skipLimitCheck?: boolean;
+  /** Base64 image data for photo import (without data:image prefix) */
+  imageBase64?: string;
+  /** MIME type of the image (for photo import) */
+  imageMimeType?: "image/jpeg" | "image/png";
 }
 
 /**
@@ -223,6 +228,7 @@ export interface ImportStatistics {
     "vision-ai": number;
     instagram: number;
     tiktok: number;
+    photo: number;
   };
   /** Average cost per import */
   averageCost: number;

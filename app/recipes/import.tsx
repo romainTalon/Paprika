@@ -21,20 +21,30 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Text, Button } from "@/components/ui";
 import { BackButton } from "@/components/navigation";
+import { PhotoImportModal } from "@/components/recipe/PhotoImportModal";
 import { colors, spacing, fontSizes, fontWeights, shadows } from "@/theme";
 import { useAuth } from "@/hooks/useAuth";
 import { useCookbooks } from "@/hooks/useCookbooks";
 import { useImportRecipe } from "@/hooks/useRecipes";
+import { usePhotoImport } from "@/hooks/usePhotoImport";
 
 export default function ImportRecipeScreen() {
   const { user } = useAuth();
   const { data: cookbooks, isLoading: loadingCookbooks } = useCookbooks(user?.id);
   const importRecipe = useImportRecipe();
+  const {
+    takePhoto,
+    pickFromGallery,
+    photo,
+    clearPhoto,
+    isLoading: isCapturingPhoto,
+  } = usePhotoImport();
 
   const [url, setUrl] = useState("");
   const [selectedCookbookId, setSelectedCookbookId] = useState<string | undefined>(undefined);
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState("");
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
 
   // URL source type detection
   type URLSourceType = "instagram" | "tiktok" | "web" | "invalid";
@@ -235,6 +245,105 @@ export default function ImportRecipeScreen() {
     }
   }, [url, user, selectedCookbookId, importRecipe, isValidUrl]);
 
+  // ==========================================================================
+  // PHOTO IMPORT HANDLERS
+  // ==========================================================================
+
+  const handleCameraPress = useCallback(async () => {
+    await takePhoto();
+  }, [takePhoto]);
+
+  const handleGalleryPress = useCallback(async () => {
+    await pickFromGallery();
+  }, [pickFromGallery]);
+
+  const handlePhotoImport = useCallback(async () => {
+    if (!photo) {
+      Alert.alert("Erreur", "Aucune photo sélectionnée");
+      return;
+    }
+
+    if (!user?.id) {
+      Alert.alert("Erreur", "Vous devez être connecté pour importer des recettes");
+      return;
+    }
+
+    try {
+      // Reset progress
+      setProgress(0);
+      setProgressMessage("Analyse de la photo...");
+
+      // Call import mutation with imageBase64
+      const result = await importRecipe.mutateAsync({
+        userId: user.id,
+        cookbookId: selectedCookbookId,
+        imageBase64: photo.base64,
+        imageMimeType: photo.mimeType,
+        onProgress: (p) => {
+          setProgress(p);
+          if (p === 100) {
+            setProgressMessage("Import terminé !");
+          }
+        },
+      });
+
+      // Close modal
+      setShowPhotoModal(false);
+      clearPhoto();
+      setProgress(100);
+      setProgressMessage("Import terminé !");
+
+      // Navigate to preview screen with recipe data
+      router.push({
+        pathname: "/recipes/preview",
+        params: {
+          recipeData: JSON.stringify(result.recipe),
+          strategy: result.strategy,
+          cookbookId: selectedCookbookId || "",
+        },
+      });
+    } catch (error: any) {
+      const errorMessage = error?.message || "Une erreur inconnue est survenue";
+      console.error("❌ Photo import error:", errorMessage);
+
+      if (errorMessage.includes("limit")) {
+        // Freemium limit reached
+        Alert.alert(
+          "Limite atteinte",
+          errorMessage,
+          [
+            { text: "Annuler", style: "cancel" },
+            {
+              text: "Devenir Premium",
+              onPress: () => router.push("/settings/premium"),
+            },
+          ]
+        );
+      } else {
+        // Generic error
+        Alert.alert(
+          "Erreur d'importation",
+          `Impossible d'analyser la photo: ${errorMessage}`,
+          [
+            { text: "Annuler", style: "cancel" },
+            { text: "Réessayer", onPress: handlePhotoImport },
+          ]
+        );
+      }
+
+      // Reset progress
+      setProgress(0);
+      setProgressMessage("");
+    }
+  }, [photo, user, selectedCookbookId, importRecipe, clearPhoto]);
+
+  const handleClosePhotoModal = useCallback(() => {
+    if (!importRecipe.isPending) {
+      setShowPhotoModal(false);
+      clearPhoto();
+    }
+  }, [importRecipe.isPending, clearPhoto]);
+
   // Loading state for cookbooks
   if (loadingCookbooks) {
     return (
@@ -283,6 +392,36 @@ export default function ImportRecipeScreen() {
               </Text>
             </View>
           )}
+        </View>
+
+        {/* Photo Import Button */}
+        <View style={styles.photoImportSection}>
+          <TouchableOpacity
+            style={styles.photoImportButton}
+            onPress={() => setShowPhotoModal(true)}
+            disabled={importRecipe.isPending}
+            activeOpacity={0.7}
+          >
+            <View style={styles.photoImportIcon}>
+              <Text style={styles.photoImportEmoji}>📷</Text>
+            </View>
+            <View style={styles.photoImportContent}>
+              <Text variant="h3" style={styles.photoImportTitle}>
+                Importer depuis une photo
+              </Text>
+              <Text variant="bodySmall" color="neutral">
+                Photographiez une recette de livre de cuisine
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.dividerContainer}>
+            <View style={styles.dividerLine} />
+            <Text variant="caption" color="neutral" style={styles.dividerText}>
+              ou
+            </Text>
+            <View style={styles.dividerLine} />
+          </View>
         </View>
 
         {/* URL Input */}
@@ -405,6 +544,19 @@ export default function ImportRecipeScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Photo Import Modal */}
+      <PhotoImportModal
+        visible={showPhotoModal}
+        onClose={handleClosePhotoModal}
+        onCameraPress={handleCameraPress}
+        onGalleryPress={handleGalleryPress}
+        onImport={handlePhotoImport}
+        isCapturing={isCapturingPhoto}
+        isImporting={importRecipe.isPending}
+        photo={photo}
+        onClearPhoto={clearPhoto}
+      />
     </SafeAreaView>
   );
 }
@@ -447,6 +599,64 @@ const styles = StyleSheet.create({
 
   subtitle: {
     lineHeight: 22,
+  },
+
+  // Photo Import Button
+  photoImportSection: {
+    marginBottom: spacing.lg,
+  },
+
+  photoImportButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.primary[100],
+    borderRadius: spacing.md,
+    padding: spacing.lg,
+    borderWidth: 2,
+    borderColor: colors.primary.DEFAULT,
+    borderStyle: "dashed",
+  },
+
+  photoImportIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.white,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: spacing.md,
+    ...shadows.sm,
+  },
+
+  photoImportEmoji: {
+    fontSize: 28,
+  },
+
+  photoImportContent: {
+    flex: 1,
+  },
+
+  photoImportTitle: {
+    color: colors.warm.brown,
+    marginBottom: spacing.xs,
+  },
+
+  // Divider
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: spacing.lg,
+  },
+
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.gray[300],
+  },
+
+  dividerText: {
+    marginHorizontal: spacing.md,
+    textTransform: "uppercase",
   },
 
   sourceBadge: {

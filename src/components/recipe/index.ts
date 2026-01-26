@@ -8,3 +8,4 @@ export { default as StepInput } from "./StepInput";
 export { TimeStepper } from "./TimeStepper";
 export { NutritionSummary } from "./NutritionSummary";
 export { IngredientImageAvatar } from "./IngredientImageAvatar";
+export { PhotoImportModal } from "./PhotoImportModal";
