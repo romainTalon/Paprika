@@ -9,3 +9,5 @@ export { TimeStepper } from "./TimeStepper";
 export { NutritionSummary } from "./NutritionSummary";
 export { IngredientImageAvatar } from "./IngredientImageAvatar";
 export { PhotoImportModal } from "./PhotoImportModal";
+export { CoverImagePicker } from "./CoverImagePicker";
+export type { CoverImageData } from "./CoverImagePicker";

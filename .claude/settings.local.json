@@ -90,7 +90,8 @@
       "Bash(psql:*)",
       "mcp__ide__getDiagnostics",
       "WebFetch(domain:www.grandfrais.com)",
-      "Bash(npx supabase functions deploy:*)"
+      "Bash(npx supabase functions deploy:*)",
+      "Bash(npm run lint:*)"
     ],
     "deny": [],
     "ask": []

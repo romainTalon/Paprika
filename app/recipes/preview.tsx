@@ -20,10 +20,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
+import * as FileSystem from "expo-file-system/legacy";
 import { Text, Button } from "@/components/ui";
 import { BackButton } from "@/components/navigation";
-import { IngredientInput, StepInput, TimeStepper } from "@/components/recipe";
+import { IngredientInput, StepInput, TimeStepper, CoverImagePicker } from "@/components/recipe";
+import type { CoverImageData } from "@/components/recipe";
 import { TagPicker } from "@/components/recipe/TagPicker";
+import { supabase } from "@/lib/supabase";
 import { colors, spacing, fontSizes, fontWeights, shadows } from "@/theme";
 import { normalizeTagArray } from "@/utils/tagNormalizer";
 import { useSaveImportedRecipe } from "@/hooks/useRecipes";
@@ -62,6 +65,12 @@ export default function PreviewRecipeScreen() {
     imported.ingredients
   );
   const [steps, setSteps] = useState<RecipeStep[]>(imported.steps);
+
+  // Cover image state - initialize from imported data if available
+  const [coverImage, setCoverImage] = useState<CoverImageData | null>(
+    imported.coverImageUrl ? { type: "url", url: imported.coverImageUrl } : null
+  );
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // Ingredient Handlers
   const handleAddIngredient = useCallback(() => {
@@ -142,6 +151,64 @@ export default function PreviewRecipeScreen() {
     }
 
     try {
+      // Handle cover image upload if a new photo was selected
+      let finalCoverImageUrl: string | undefined = undefined;
+
+      if (coverImage) {
+        if (coverImage.type === "url" && coverImage.url) {
+          // Use existing URL directly
+          finalCoverImageUrl = coverImage.url;
+        } else if (coverImage.type === "photo" && coverImage.photo) {
+          // Upload new photo to Supabase Storage
+          setIsUploadingImage(true);
+          try {
+            // Generate unique filename
+            const timestamp = Date.now();
+            const extension = coverImage.photo.mimeType === "image/png" ? "png" : "jpg";
+            const storagePath = `recipes/${user.id}/cover-${timestamp}.${extension}`;
+
+            // Read file as base64 from URI
+            const base64 = await FileSystem.readAsStringAsync(coverImage.photo.uri, {
+              encoding: 'base64',
+            });
+
+            // Decode base64 to ArrayBuffer
+            const binaryString = atob(base64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+
+            // Upload ArrayBuffer to Supabase Storage
+            const { data, error: uploadError } = await supabase.storage
+              .from("recipe-images")
+              .upload(storagePath, bytes.buffer, {
+                cacheControl: "3600",
+                upsert: true,
+                contentType: coverImage.photo.mimeType,
+              });
+
+            if (uploadError) throw uploadError;
+
+            // Get public URL
+            const { data: { publicUrl } } = supabase.storage
+              .from("recipe-images")
+              .getPublicUrl(data.path);
+
+            finalCoverImageUrl = publicUrl;
+          } catch (uploadErr) {
+            // Continue without image - don't block recipe save
+            console.error("Failed to upload cover image:", uploadErr);
+            Alert.alert(
+              "Attention",
+              "L'image n'a pas pu être uploadée, mais la recette sera sauvegardée sans image."
+            );
+          } finally {
+            setIsUploadingImage(false);
+          }
+        }
+      }
+
       const recipe = await saveRecipe.mutateAsync({
         userId: user.id,
         cookbookId: cookbookId || undefined,
@@ -157,6 +224,7 @@ export default function PreviewRecipeScreen() {
           tags,
           ingredients,
           steps,
+          coverImageUrl: finalCoverImageUrl,
         },
       });
 
@@ -186,6 +254,7 @@ export default function PreviewRecipeScreen() {
     cookbookId,
     imported,
     saveRecipe,
+    coverImage,
   ]);
 
   // Cancel Handler
@@ -285,6 +354,13 @@ export default function PreviewRecipeScreen() {
               numberOfLines={3}
             />
           </View>
+
+          {/* Cover Image */}
+          <CoverImagePicker
+            value={coverImage}
+            onChange={setCoverImage}
+            disabled={saveRecipe.isPending || isUploadingImage}
+          />
 
           {/* Servings */}
           <View style={styles.section}>
@@ -473,10 +549,14 @@ export default function PreviewRecipeScreen() {
           <Button
             variant="primary"
             onPress={handleSave}
-            disabled={saveRecipe.isPending}
+            disabled={saveRecipe.isPending || isUploadingImage}
             style={styles.saveButton}
           >
-            {saveRecipe.isPending ? "Enregistrement..." : "Enregistrer"}
+            {isUploadingImage
+              ? "Upload de l'image..."
+              : saveRecipe.isPending
+              ? "Enregistrement..."
+              : "Enregistrer"}
           </Button>
         </View>
       </KeyboardAvoidingView>

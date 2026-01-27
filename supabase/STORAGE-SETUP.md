@@ -56,28 +56,64 @@ Par défaut, un bucket public permet :
 
 L'Edge Function utilise le **service role key** configuré dans les secrets Supabase, donc elle peut uploader des images même si le bucket est en lecture seule pour les utilisateurs.
 
-### Politique Optionnelle : Permettre aux utilisateurs d'uploader leurs propres images
+### ⚠️ Politique Actuelle : Simple et Fonctionnelle (MVP)
 
-Si vous voulez permettre aux utilisateurs d'uploader leurs propres images de recettes (création manuelle), ajoutez cette politique :
+**Version actuelle en production** :
 
 ```sql
--- Policy: Allow authenticated users to upload their own images
-CREATE POLICY "Users can upload their own recipe images"
-ON storage.objects FOR INSERT
-TO authenticated
-WITH CHECK (
-  bucket_id = 'recipe-images' AND
-  (storage.foldername(name))[1] = 'recipes'
-);
+-- Activer RLS sur storage.objects (si pas déjà fait)
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
--- Policy: Allow authenticated users to delete their own images
-CREATE POLICY "Users can delete their own recipe images"
-ON storage.objects FOR DELETE
+-- Politique simple : Tous les utilisateurs authentifiés peuvent gérer les images
+CREATE POLICY "Authenticated users can manage recipe images"
+ON storage.objects FOR ALL
+TO authenticated
+USING (bucket_id = 'recipe-images')
+WITH CHECK (bucket_id = 'recipe-images');
+```
+
+**Note** : Cette politique permet à tous les utilisateurs authentifiés de gérer toutes les images du bucket. C'est suffisant pour le MVP mais devrait être amélioré en production (voir ci-dessous).
+
+### 🔐 Politique Sécurisée (À Implémenter)
+
+**Version recommandée pour la production** (restrictive par utilisateur) :
+
+```sql
+-- SUPPRIMER la politique simple d'abord
+DROP POLICY IF EXISTS "Authenticated users can manage recipe images" ON storage.objects;
+
+-- Politique restrictive : Chaque utilisateur gère uniquement ses propres images
+CREATE POLICY "Users can manage only their own recipe images"
+ON storage.objects FOR ALL
 TO authenticated
 USING (
   bucket_id = 'recipe-images' AND
-  (storage.foldername(name))[1] = 'recipes'
+  name LIKE ('recipes/' || auth.uid()::text || '/%')
+)
+WITH CHECK (
+  bucket_id = 'recipe-images' AND
+  name LIKE ('recipes/' || auth.uid()::text || '/%')
 );
+```
+
+**Problème connu** : Cette politique peut ne pas fonctionner sur certaines versions de Supabase en raison d'un bug avec `auth.uid()` dans le contexte Storage RLS.
+
+**Solution alternative** : Créer une Edge Function dédiée pour l'upload qui valide côté serveur :
+
+```typescript
+// supabase/functions/upload-recipe-image/index.ts
+const userId = await getUserIdFromToken(req);
+const storagePath = await req.json().path;
+
+// Validation : Le chemin doit commencer par recipes/{userId}/
+if (!storagePath.startsWith(`recipes/${userId}/`)) {
+  return new Response("Forbidden: Invalid storage path", { status: 403 });
+}
+
+// Upload via service role
+const { data, error } = await supabase.storage
+  .from('recipe-images')
+  .upload(storagePath, file);
 ```
 
 ## Structure de Stockage
@@ -142,16 +178,58 @@ Une image de recette pèse en moyenne **200-500 KB**. Vous pouvez stocker enviro
 ## Dépannage
 
 ### Erreur "Bucket does not exist"
-→ Créez le bucket via le Dashboard ou SQL (voir ci-dessus)
+**Solution** : Créez le bucket via le Dashboard ou SQL (voir ci-dessus)
 
-### Erreur "Permission denied"
-→ Vérifiez que l'Edge Function utilise bien le service role key
+### Erreur "Permission denied" ou "RLS policy violation"
+**Causes possibles** :
+1. RLS n'est pas activé sur `storage.objects`
+2. Aucune politique n'autorise l'opération
+3. La politique existe mais ne matche pas le chemin
+
+**Solutions** :
+```sql
+-- 1. Vérifier si RLS est activé
+SELECT tablename, rowsecurity
+FROM pg_tables
+WHERE schemaname = 'storage' AND tablename = 'objects';
+-- Si rowsecurity = false, exécuter : ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+
+-- 2. Lister les politiques existantes
+SELECT policyname, cmd
+FROM pg_policies
+WHERE schemaname = 'storage' AND tablename = 'objects';
+
+-- 3. Vérifier qu'au moins une politique existe
+-- Si aucune politique, créer celle recommandée ci-dessus
+```
 
 ### Images non visibles
-→ Vérifiez que le bucket est **public** (option cochée)
+**Solution** : Vérifiez que le bucket est **public** (option cochée dans le Dashboard)
 
 ### Upload échoue (413 Payload Too Large)
-→ L'image dépasse 5 MB, augmentez `file_size_limit` ou compressez l'image
+**Solution** : L'image dépasse 5 MB, augmentez `file_size_limit` ou compressez l'image
+
+### Erreur "mime type not supported"
+**Cause** : Le type MIME de l'image n'est pas dans `allowed_mime_types` du bucket
+**Solution** :
+```sql
+-- Mettre à jour les types MIME autorisés
+UPDATE storage.buckets
+SET allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp']
+WHERE id = 'recipe-images';
+```
+
+### Image uploadée mais affichée en blanc (React Native)
+**Cause** : Problème de conversion base64 → ArrayBuffer
+**Solution** : Vérifier que vous utilisez `expo-file-system/legacy` et non la nouvelle API :
+```typescript
+import * as FileSystem from "expo-file-system/legacy"; // ✅ Correct
+// import * as FileSystem from "expo-file-system"; // ❌ Ne fonctionne pas
+```
+
+### Erreur "Method readAsStringAsync is deprecated"
+**Cause** : Utilisation de la nouvelle API expo-file-system (non compatible)
+**Solution** : Importer depuis `/legacy` (voir ci-dessus)
 
 ---
 
